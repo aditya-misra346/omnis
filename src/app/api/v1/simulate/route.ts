@@ -4,8 +4,8 @@ import { SimulationCategory, SimulationRequestSchema } from "@/types/omnis";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const scenarioId = searchParams.get("scenarioId") ?? "econ-india-2035";
-  const category = (searchParams.get("category") as SimulationCategory) ?? "economic";
+  const scenarioId = searchParams.get("scenarioId") ?? "econ-macro-shock";
+  const category = (searchParams.get("category") as SimulationCategory) ?? "economics";
   const result = executeWhatIfSimulation({
     scenarioId,
     category,
@@ -18,7 +18,8 @@ export async function GET(request: Request) {
       id: s.id,
       title: s.title,
       category: s.category,
-      defaultHorizonYears: s.defaultHorizonYears,
+      modelName: s.modelName,
+      units: s.units,
     })),
     activeSimulation: result,
   });
