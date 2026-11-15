@@ -74,6 +74,16 @@ function latLngToVector3(lat: number, lng: number, radius: number): THREE.Vector
   return new THREE.Vector3(x, y, z);
 }
 
+function latLngToGlobeAngles(lat: number, lng: number): { x: number; y: number } {
+  const x = Math.max(-0.85, Math.min(0.85, ((lat * Math.PI) / 180) * 0.65));
+  const y = -((lng + 90) * Math.PI) / 180;
+  return { x, y };
+}
+
+function shortestAngleDelta(fromRad: number, toRad: number): number {
+  return Math.atan2(Math.sin(toRad - fromRad), Math.cos(toRad - fromRad));
+}
+
 function disposeGroupChildren(group: THREE.Group): void {
   while (group.children.length > 0) {
     const child = group.children[0];
@@ -225,10 +235,39 @@ export function InteractiveGlobe3D({
     y: number;
   } | null>(null);
 
-  const rotationRef = useRef({ x: 0.28, y: -2.95 });
-  const targetQuatRef = useRef<THREE.Quaternion | null>(null);
+  const geoCentroids = useMemo(() => {
+    const atlas = feature(
+      worldAtlas as unknown as Parameters<typeof feature>[0],
+      (worldAtlas as unknown as { objects: { countries: Parameters<typeof feature>[1] } }).objects
+        .countries
+    ) as unknown as GeoJSON.FeatureCollection<GeoJSON.Geometry, { name?: string }>;
+    const map: Record<string, { lat: number; lng: number; name: string }> = {};
+    for (const feat of atlas.features) {
+      const numId = String(feat.id ?? "").padStart(3, "0");
+      const iso3 = NUMERIC_TO_ISO3[numId];
+      if (!iso3) continue;
+      const [lng, lat] = geoCentroid(feat);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        map[iso3] = { lat, lng, name: feat.properties?.name || iso3 };
+      }
+    }
+    return map;
+  }, []);
+
+  const initialTarget =
+    countries.find((c) => c.iso3 === selectedIso3) ??
+    geoCentroids[selectedIso3] ??
+    { lat: 20.5937, lng: 78.9629 };
+  const initialGlobeAngles = latLngToGlobeAngles(initialTarget.lat, initialTarget.lng);
+
+  const rotationRef = useRef({ x: initialGlobeAngles.x, y: initialGlobeAngles.y });
+  const flightTargetRef = useRef<{ x: number; y: number; totalAngle: number } | null>(null);
   const flightTotalAngleRef = useRef(0);
-  const lastFlownIsoRef = useRef<string | null>(null);
+  const lastFlownIsoRef = useRef<string | null>(selectedIso3);
+  const dragVelocityRef = useRef({ x: 0, y: 0 });
+  const idleSpinBlendRef = useRef(1);
+  const clockTimeRef = useRef(0);
+  const lastPointerMoveTimeRef = useRef(0);
   const isDraggingRef = useRef(false);
   const engagedRef = useRef(false);
   const pointerDownPosRef = useRef({ x: 0, y: 0 });
@@ -259,25 +298,6 @@ export function InteractiveGlobe3D({
   activeLayerRef.current = activeLayer;
   countriesRef.current = countries;
 
-  const geoCentroids = useMemo(() => {
-    const atlas = feature(
-      worldAtlas as unknown as Parameters<typeof feature>[0],
-      (worldAtlas as unknown as { objects: { countries: Parameters<typeof feature>[1] } }).objects
-        .countries
-    ) as unknown as GeoJSON.FeatureCollection<GeoJSON.Geometry, { name?: string }>;
-    const map: Record<string, { lat: number; lng: number; name: string }> = {};
-    for (const feat of atlas.features) {
-      const numId = String(feat.id ?? "").padStart(3, "0");
-      const iso3 = NUMERIC_TO_ISO3[numId];
-      if (!iso3) continue;
-      const [lng, lat] = geoCentroid(feat);
-      if (Number.isFinite(lat) && Number.isFinite(lng)) {
-        map[iso3] = { lat, lng, name: feat.properties?.name || iso3 };
-      }
-    }
-    return map;
-  }, []);
-
   const matchedCountry = useMemo(
     () => countries.find((c) => c.iso3 === selectedIso3) ?? null,
     [countries, selectedIso3]
@@ -295,6 +315,22 @@ export function InteractiveGlobe3D({
     const fallback = countries[0];
     return fallback ? { iso3: fallback.iso3, lat: fallback.lat, lng: fallback.lng } : null;
   }, [matchedCountry, geoCentroids, selectedIso3, countries]);
+
+  const focusGlobeOnCoords = useCallback((lat: number, lng: number) => {
+    const nextAngles = latLngToGlobeAngles(lat, lng);
+    const deltaY = shortestAngleDelta(rotationRef.current.y, nextAngles.y);
+    const continuousTargetY = rotationRef.current.y + deltaY;
+    const totalAngle = Math.hypot(nextAngles.x - rotationRef.current.x, deltaY);
+    flightTargetRef.current = {
+      x: nextAngles.x,
+      y: continuousTargetY,
+      totalAngle,
+    };
+    flightTotalAngleRef.current = totalAngle;
+    dragVelocityRef.current.x = 0;
+    dragVelocityRef.current.y = 0;
+    idleSpinBlendRef.current = 0;
+  }, []);
 
   useEffect(() => {
     const mq = window.matchMedia?.("(prefers-reduced-motion: reduce)");
@@ -344,13 +380,8 @@ export function InteractiveGlobe3D({
     if (!target) return;
     if (lastFlownIsoRef.current === selectedIso3) return;
     lastFlownIsoRef.current = selectedIso3;
-    const nextX = Math.max(-0.85, Math.min(0.85, (target.lat * Math.PI) / 180 * 0.65));
-    const rawY = -((target.lng + 90) * Math.PI) / 180;
-    const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(nextX, rawY, 0, "XYZ"));
-    targetQuatRef.current = q;
-    const handle = sceneHandleRef.current;
-    flightTotalAngleRef.current = handle ? handle.globeGroup.quaternion.angleTo(q) : 0.8;
-  }, [selectedIso3, geoCentroids]);
+    focusGlobeOnCoords(target.lat, target.lng);
+  }, [selectedIso3, geoCentroids, focusGlobeOnCoords]);
 
   // Monitor rail horizontal scroll state for overflow chevrons & masks
   const updateRailScrollState = useCallback(() => {
@@ -583,6 +614,9 @@ export function InteractiveGlobe3D({
     camera.position.set(0, 0, zoomRef.current);
 
     const globeGroup = new THREE.Group();
+    globeGroup.quaternion.setFromEuler(
+      new THREE.Euler(rotationRef.current.x, rotationRef.current.y, 0, "XYZ")
+    );
     scene.add(globeGroup);
 
     const earthCanvas = document.createElement("canvas");
@@ -819,46 +853,109 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
       sunUniforms,
     };
     sceneHandleRef.current = handle;
+    paintEarthSurfaceAndAtmosphere(handle, themeRef.current, selectedIso3Ref.current);
 
-    const scratchEuler = new THREE.Euler(0, 0, 0, "XYZ");
-    const scratchQuat = new THREE.Quaternion();
+    const scratchEuler = new THREE.Euler(rotationRef.current.x, rotationRef.current.y, 0, "XYZ");
     let animFrameId = 0;
-    let clockTime = 0;
-    const animate = () => {
+    let lastFrameTime = performance.now();
+    let isViewportVisible = true;
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        lastFrameTime = performance.now();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    const intersectionObserver =
+      typeof IntersectionObserver !== "undefined"
+        ? new IntersectionObserver(
+            (entries) => {
+              const entry = entries[0];
+              if (entry) {
+                isViewportVisible = entry.isIntersecting;
+                if (entry.isIntersecting) {
+                  lastFrameTime = performance.now();
+                }
+              }
+            },
+            { threshold: 0.02 }
+          )
+        : null;
+    intersectionObserver?.observe(container);
+
+    const animate = (now: number) => {
       animFrameId = requestAnimationFrame(animate);
+      const rawDelta = Math.max(0.001, (now - lastFrameTime) / 1000);
+      lastFrameTime = now;
+      if (!isViewportVisible || document.visibilityState === "hidden") {
+        return;
+      }
+
+      // Clamp frame delta at 50ms so texture/GeoJSON decode spikes NEVER jump the globe
+      const dt = Math.min(rawDelta, 0.05);
       const motionIdle = reducedMotionRef.current || motionPausedRef.current;
-      clockTime += motionIdle ? 0 : 0.004;
+      if (!motionIdle) {
+        clockTimeRef.current += dt * 0.24;
+      }
+      const clockTime = clockTimeRef.current;
 
       let cameraFlightLift = 0;
-      if (targetQuatRef.current && !isDraggingRef.current) {
-        const angleRemaining = globeGroup.quaternion.angleTo(targetQuatRef.current);
-        globeGroup.quaternion.slerp(targetQuatRef.current, 0.085);
-        scratchEuler.setFromQuaternion(globeGroup.quaternion, "XYZ");
-        rotationRef.current.x = scratchEuler.x;
-        rotationRef.current.y = scratchEuler.y;
+      const activeFlight = flightTargetRef.current;
+      if (activeFlight && !isDraggingRef.current) {
+        const diffX = activeFlight.x - rotationRef.current.x;
+        const diffY = activeFlight.y - rotationRef.current.y;
+        const angleRemaining = Math.hypot(diffX, diffY);
+        const flightAlpha = 1 - Math.exp(-6.0 * dt);
+        rotationRef.current.x += diffX * flightAlpha;
+        rotationRef.current.y += diffY * flightAlpha;
+
         const totalAngle = flightTotalAngleRef.current;
         if (totalAngle > 0.15) {
           const flightProgress = Math.max(0, Math.min(1, 1 - angleRemaining / totalAngle));
           cameraFlightLift = Math.sin(flightProgress * Math.PI) * 0.24;
         }
-        if (angleRemaining < 0.003) {
-          globeGroup.quaternion.copy(targetQuatRef.current);
-          scratchEuler.setFromQuaternion(globeGroup.quaternion, "XYZ");
-          rotationRef.current.x = scratchEuler.x;
-          rotationRef.current.y = scratchEuler.y;
-          targetQuatRef.current = null;
+        if (angleRemaining < 0.002) {
+          rotationRef.current.x = activeFlight.x;
+          rotationRef.current.y = activeFlight.y;
+          flightTargetRef.current = null;
           flightTotalAngleRef.current = 0;
         }
       } else {
-        if (autoRotateRef.current && !isDraggingRef.current && !motionIdle) {
-          rotationRef.current.y += 0.0014;
+        if (isDraggingRef.current) {
+          idleSpinBlendRef.current = 0;
+        } else {
+          // Smooth damped pointer/touch drag inertia
+          const inertiaSpeed = Math.hypot(dragVelocityRef.current.x, dragVelocityRef.current.y);
+          if (inertiaSpeed > 0.001) {
+            rotationRef.current.y += dragVelocityRef.current.y * dt;
+            rotationRef.current.x = Math.max(
+              -1.05,
+              Math.min(1.05, rotationRef.current.x + dragVelocityRef.current.x * dt)
+            );
+            const damping = Math.exp(-6.5 * dt);
+            dragVelocityRef.current.x *= damping;
+            dragVelocityRef.current.y *= damping;
+          } else {
+            dragVelocityRef.current.x = 0;
+            dragVelocityRef.current.y = 0;
+          }
+
+          // Smooth ~600ms handoff back to steady idle orbital spin (0.085 rad/s)
+          const targetBlend = autoRotateRef.current && !motionIdle ? 1 : 0;
+          idleSpinBlendRef.current +=
+            (targetBlend - idleSpinBlendRef.current) * (1 - Math.exp(-3.5 * dt));
+          const IDLE_SPIN_RAD_PER_SEC = 0.085;
+          rotationRef.current.y += IDLE_SPIN_RAD_PER_SEC * idleSpinBlendRef.current * dt;
         }
-        scratchEuler.set(rotationRef.current.x, rotationRef.current.y, 0, "XYZ");
-        scratchQuat.setFromEuler(scratchEuler);
-        globeGroup.quaternion.copy(scratchQuat);
       }
 
-      zoomRef.current += (targetZoomRef.current - zoomRef.current) * 0.12;
+      // Unified orientation path: ALWAYS construct quaternion from (x, y, 0, "XYZ")
+      scratchEuler.set(rotationRef.current.x, rotationRef.current.y, 0, "XYZ");
+      globeGroup.quaternion.setFromEuler(scratchEuler);
+
+      const zoomAlpha = 1 - Math.exp(-8.0 * dt);
+      zoomRef.current += (targetZoomRef.current - zoomRef.current) * zoomAlpha;
       cloudMesh.rotation.y = clockTime * 0.18;
       camera.position.z = zoomRef.current + cameraFlightLift;
 
@@ -873,7 +970,7 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
 
       renderer.render(scene, camera);
     };
-    animate();
+    animFrameId = requestAnimationFrame(animate);
 
     const handleResize = () => {
       if (!container) return;
@@ -937,6 +1034,9 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
       engagedRef.current = true;
       pointerDownPosRef.current = { x: e.clientX, y: e.clientY };
       prevMouseRef.current = { x: e.clientX, y: e.clientY };
+      lastPointerMoveTimeRef.current = performance.now();
+      dragVelocityRef.current.x = 0;
+      dragVelocityRef.current.y = 0;
 
       if (e.pointerType === "touch" && !touchOrbitLockedRef.current) {
         activeTouchGesture.id = e.pointerId;
@@ -950,7 +1050,7 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
       activeTouchGesture.id = null;
       activeTouchGesture.axis = "undecided";
       isDraggingRef.current = true;
-      targetQuatRef.current = null;
+      flightTargetRef.current = null;
       flightTotalAngleRef.current = 0;
     };
 
@@ -972,9 +1072,10 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
           }
           activeTouchGesture.axis = "horizontal";
           isDraggingRef.current = true;
-          targetQuatRef.current = null;
+          flightTargetRef.current = null;
           flightTotalAngleRef.current = 0;
           prevMouseRef.current = { x: e.clientX, y: e.clientY };
+          lastPointerMoveTimeRef.current = performance.now();
           try {
             domElem.setPointerCapture(e.pointerId);
           } catch {
@@ -986,13 +1087,22 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
 
       const rect = renderer.domElement.getBoundingClientRect();
       if (isDraggingRef.current) {
+        const now = performance.now();
+        const moveDt = Math.max(0.004, Math.min(0.08, (now - lastPointerMoveTimeRef.current) / 1000));
+        lastPointerMoveTimeRef.current = now;
         const dx = e.clientX - prevMouseRef.current.x;
         const dy = e.clientY - prevMouseRef.current.y;
-        rotationRef.current.y += dx * 0.0055;
+        const deltaY = dx * 0.0055;
+        const deltaX = dy * 0.0055;
+        rotationRef.current.y += deltaY;
         rotationRef.current.x = Math.max(
           -1.05,
-          Math.min(1.05, rotationRef.current.x + dy * 0.0055)
+          Math.min(1.05, rotationRef.current.x + deltaX)
         );
+        const instVy = Math.max(-3.0, Math.min(3.0, deltaY / moveDt));
+        const instVx = Math.max(-2.2, Math.min(2.2, deltaX / moveDt));
+        dragVelocityRef.current.y = dragVelocityRef.current.y * 0.45 + instVy * 0.55;
+        dragVelocityRef.current.x = dragVelocityRef.current.x * 0.45 + instVx * 0.55;
         prevMouseRef.current = { x: e.clientX, y: e.clientY };
         setHoveredCountry(null);
         setHoveredIsoAndRepaint(null);
@@ -1046,6 +1156,8 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
         activeTouchGesture.axis = "undecided";
       }
       isDraggingRef.current = false;
+      dragVelocityRef.current.x = 0;
+      dragVelocityRef.current.y = 0;
       try {
         if (domElem.hasPointerCapture?.(e.pointerId)) {
           domElem.releasePointerCapture(e.pointerId);
@@ -1073,6 +1185,10 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
       }
 
       if (!isDraggingRef.current && !wasTouchTapCandidate) return;
+      if (performance.now() - lastPointerMoveTimeRef.current > 90) {
+        dragVelocityRef.current.x = 0;
+        dragVelocityRef.current.y = 0;
+      }
       const tapThreshold = e.pointerType === "touch" ? 7 : 5;
       const moved =
         Math.hypot(
@@ -1082,6 +1198,8 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
       isDraggingRef.current = false;
 
       if (!moved) {
+        dragVelocityRef.current.x = 0;
+        dragVelocityRef.current.y = 0;
         const rect = renderer.domElement.getBoundingClientRect();
         mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
         mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
@@ -1128,6 +1246,8 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
       sceneHandleRef.current = null;
       cancelAnimationFrame(animFrameId);
       resizeObserver?.disconnect();
+      intersectionObserver?.disconnect();
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       window.removeEventListener("resize", handleResize);
       domElem.removeEventListener("pointerdown", onPointerDown);
       domElem.removeEventListener("pointermove", onPointerMove);
@@ -1153,7 +1273,7 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
       starsMat.dispose();
       renderer.dispose();
     };
-  }, []);
+  }, [paintEarthSurfaceAndAtmosphere]);
 
   // Lifecycle Effect B: Re-rasterize textures & materials in-place on theme or selected country change
   useEffect(() => {
@@ -1163,6 +1283,10 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
   }, [theme, selectedIso3, paintEarthSurfaceAndAtmosphere]);
 
   // Lifecycle Effect C: Rebuild data markers & great-circle arcs with explicit GPU disposal
+  const selectedIsoKey = selectedCoords?.iso3 ?? "";
+  const selectedLatKey = selectedCoords?.lat ?? 0;
+  const selectedLngKey = selectedCoords?.lng ?? 0;
+
   useEffect(() => {
     const handle = sceneHandleRef.current;
     if (!handle) return;
@@ -1216,10 +1340,10 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
     hitMeshesRef.current = newHits;
 
     const newPulses: { curve: THREE.QuadraticBezierCurve3; mesh: THREE.Mesh; offset: number }[] = [];
-    if (selectedCoords) {
-      const startVec = latLngToVector3(selectedCoords.lat, selectedCoords.lng, 1.015);
+    if (selectedIsoKey) {
+      const startVec = latLngToVector3(selectedLatKey, selectedLngKey, 1.015);
       const peerTargets = countries
-        .filter((other) => other.iso3 !== selectedCoords.iso3)
+        .filter((other) => other.iso3 !== selectedIsoKey)
         .slice(0, 11);
       let idx = 0;
       for (const other of peerTargets) {
@@ -1245,13 +1369,16 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
           color: isLight ? 0x1d4ed8 : 0x93c5fd,
         });
         const pulseMesh = new THREE.Mesh(pulseGeo, pulseMat);
+        const offset = (idx * 0.19) % 1;
+        const initT = (clockTimeRef.current * 0.35 + offset) % 1;
+        pulseMesh.position.copy(curve.getPoint(initT));
         arcsGroup.add(pulseMesh);
-        newPulses.push({ curve, mesh: pulseMesh, offset: (idx * 0.19) % 1 });
+        newPulses.push({ curve, mesh: pulseMesh, offset });
         idx += 1;
       }
     }
     arcPulsesRef.current = newPulses;
-  }, [countries, selectedIso3, activeLayer, selectedCoords, theme]);
+  }, [countries, selectedIso3, activeLayer, selectedIsoKey, selectedLatKey, selectedLngKey, theme]);
 
   const activeLayerMeta = selectedCountry
     ? getLayerMetricForCountry(selectedCountry, activeLayer)
@@ -1268,12 +1395,7 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
     setZoomDistance(DEFAULT_ZOOM);
     const target = selectedCoords;
     if (target) {
-      const nextX = Math.max(-0.85, Math.min(0.85, (target.lat * Math.PI) / 180 * 0.65));
-      const rawY = -((target.lng + 90) * Math.PI) / 180;
-      const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(nextX, rawY, 0, "XYZ"));
-      targetQuatRef.current = q;
-      const handle = sceneHandleRef.current;
-      flightTotalAngleRef.current = handle ? handle.globeGroup.quaternion.angleTo(q) : 0.8;
+      focusGlobeOnCoords(target.lat, target.lng);
     }
   };
 
@@ -1498,7 +1620,12 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
               <button
                 key={c.iso3}
                 type="button"
-                onClick={() => onSelectCountry(c.iso3)}
+                onClick={() => {
+                  if (c.iso3 === selectedIso3) {
+                    focusGlobeOnCoords(c.lat, c.lng);
+                  }
+                  onSelectCountry(c.iso3);
+                }}
                 className={`shrink-0 px-3 py-1.5 rounded-lg text-[13px] transition-all flex items-center gap-2 border cursor-pointer ${
                   active
                     ? "bg-[var(--accent-blue-solid)] text-white border-white/20 shadow-sm"
