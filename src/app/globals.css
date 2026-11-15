@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+:root,
+[data-theme="dark"] {
+  --bg-obsidian: #07090e;
+  --bg-graphite: #0c1018;
+  --bg-slate: #121824;
+  --bg-elevated: #171f2e;
+  --border-subtle: rgba(148, 163, 184, 0.14);
+  --border-strong: rgba(59, 130, 246, 0.38);
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-blue: #3b82f6;
+  --accent-blue-strong: #2563eb;
+  --accent-violet: #8b5cf6;
+  --status-verified: #10b981;
+  --status-warning: #f59e0b;
+  --status-danger: #ef4444;
+  --surface-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.55);
+}
+
+[data-theme="light"] {
+  --bg-obsidian: #f8fafc;
+  --bg-graphite: #ffffff;
+  --bg-slate: #f1f5f9;
+  --bg-elevated: #e2e8f0;
+  --border-subtle: rgba(15, 23, 42, 0.12);
+  --border-strong: rgba(37, 99, 235, 0.42);
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --accent-blue: #2563eb;
+  --accent-blue-strong: #1d4ed8;
+  --accent-violet: #6d28d9;
+  --status-verified: #059669;
+  --status-warning: #d97706;
+  --status-danger: #dc2626;
+  --surface-shadow: 0 8px 24px -6px rgba(15, 23, 42, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-obsidian);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "SF Pro Display", "Segoe UI", Roboto,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.omnis-card {
+  background-color: var(--bg-graphite);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--surface-shadow);
+  border-radius: 0.75rem;
+}
+
+.omnis-surface-slate {
+  background-color: var(--bg-slate);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.625rem;
+}
+
+.omnis-mono {
+  font-family: "JetBrains Mono", "SF Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo,
+    Monaco, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.omnis-grid-bg {
+  background-image: radial-gradient(var(--border-subtle) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+@media print {
+  aside,
+  header,
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+}

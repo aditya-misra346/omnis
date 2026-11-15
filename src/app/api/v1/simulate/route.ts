@@ -1,0 +1,34 @@
+import { checkApiRateLimit } from "@/lib/security/guardrails";
+import { executeWhatIfSimulation } from "@/lib/simulations/engine";
+import { SimulationRequestSchema } from "@/types/omnis";
+
+export async function POST(request: Request) {
+  try {
+    const ip = request.headers.get("x-forwarded-for") ?? "local";
+    if (!checkApiRateLimit(`simulate:${ip}`, 90, 60_000).allowed) {
+      return Response.json({ error: "Rate limit exceeded." }, { status: 429 });
+    }
+
+    const body = await request.json();
+    const parsed = SimulationRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      return Response.json(
+        { error: "Invalid simulation request.", details: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    const result = executeWhatIfSimulation({
+      scenarioId: parsed.data.scenarioId,
+      category: parsed.data.category,
+      horizonYears: parsed.data.horizonYears,
+      seed: parsed.data.seed,
+      overrides: parsed.data.parameters,
+    });
+
+    return Response.json(result);
+  } catch (err) {
+    console.error("[OMNIS Simulate API] Error:", err);
+    return Response.json({ error: "Simulation execution failed." }, { status: 500 });
+  }
+}
