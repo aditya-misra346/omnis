@@ -199,7 +199,7 @@ ${report.sources
         icon={<FileSearch className="w-3.5 h-3.5" />}
         actions={
           report ? (
-            <div className="flex flex-wrap items-center gap-2 no-print">
+            <div className="flex flex-wrap items-center gap-2 no-print omnis-no-print">
               <OmnisButton onClick={handleSaveReport}>
                 {savedToast ? <Check className="w-3.5 h-3.5" /> : <Bookmark className="w-3.5 h-3.5" />}
                 <span>{savedToast ? "Saved Report" : "Save Report"}</span>
@@ -290,7 +290,7 @@ ${report.sources
                 Objective: {report.researchObjective}
               </span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 border border-[var(--border-subtle)] rounded-xl overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-[var(--border-subtle)] bg-[var(--bg-obsidian)]/30">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 border border-[var(--border-subtle)] rounded-xl overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-[var(--border-subtle)] bg-[var(--bg-graphite)]">
               {report.decomposedTasks.map((t) => (
                 <div key={t.step} className="p-3.5 text-[13px] space-y-1.5">
                   <div className="flex items-center justify-between text-[11.5px] omnis-mono tone-verified font-bold">
@@ -316,7 +316,7 @@ ${report.sources
                     {report.query}
                   </h2>
                 </div>
-                <div className="flex flex-wrap items-center gap-1.5 no-print">
+                <div className="flex flex-wrap items-center gap-1.5 no-print omnis-no-print">
                   <OmnisSegmentedControl
                     groupId="research-reader-font"
                     ariaLabel="Reader typography toggle"

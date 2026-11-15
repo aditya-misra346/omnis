@@ -148,7 +148,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setMobileMenuOpen(false);
     setCommandPaletteOpen(false);
     setShortcutsOpen(false);
-  }, [pathname, setCommandPaletteOpen]);
+    if (typeof window !== "undefined" && window.innerWidth < 640) {
+      setAssistantOpen(false);
+    }
+  }, [pathname, setCommandPaletteOpen, setAssistantOpen]);
 
   // Prevent background page scroll while modal overlays/drawers are open
   useEffect(() => {
@@ -973,23 +976,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {/* Docked Right-Side Context-Aware Universal AI Assistant Drawer (Cmd+J) */}
           <AnimatePresence>
             {assistantOpen && (
-              <>
+              <div key="assistant-drawer-root" className="fixed inset-0 top-14 z-[60]">
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.16 }}
                   onClick={() => setAssistantOpen(false)}
-                  className="fixed inset-0 top-14 z-[55] omnis-modal-scrim backdrop-blur-md"
+                  className="absolute inset-0 omnis-modal-scrim backdrop-blur-md"
                 />
                 <motion.div
                   initial={{ x: "100%" }}
                   animate={{ x: 0 }}
-                  exit={{ x: "100%" }}
+                  exit={{ x: "100%", transition: { duration: 0.18, ease: "easeIn" } }}
                   transition={{ type: "spring", damping: 30, stiffness: 320 }}
                   role="dialog"
                   aria-label="OMNIS Contextual AI Assistant Drawer"
-                  className="fixed top-14 bottom-0 right-0 z-[60] w-full sm:w-[400px] bg-[var(--bg-graphite)] border-l border-[var(--border-subtle)] flex flex-col shadow-2xl"
+                  className="absolute top-0 bottom-0 right-0 w-full sm:w-[400px] bg-[var(--bg-graphite)] border-l border-[var(--border-subtle)] flex flex-col shadow-2xl"
                 >
                 <div className="px-4 py-3 bg-[var(--bg-slate)] border-b border-[var(--border-subtle)] flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
@@ -1024,7 +1027,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   </div>
                 </div>
 
-                <div className="flex-1 p-3.5 overflow-y-auto space-y-3 text-[13px] sm:text-sm bg-[var(--bg-obsidian)]/40">
+                <div className="flex-1 p-3.5 overflow-y-auto space-y-3 text-[13px] sm:text-sm bg-[var(--bg-obsidian)]">
                   {assistantMessages.map((m) => (
                     <div
                       key={m.id}
@@ -1102,7 +1105,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   </button>
                 </form>
               </motion.div>
-              </>
+              </div>
             )}
           </AnimatePresence>
 

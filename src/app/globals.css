@@ -494,11 +494,20 @@ input[type="range"] {
 @media print {
   aside,
   header,
-  .no-print {
+  nav,
+  .no-print,
+  .omnis-no-print {
     display: none !important;
   }
-  body {
+  body,
+  main {
     background: #ffffff !important;
-    color: #000000 !important;
+    color: #0f172a !important;
+  }
+  .omnis-card {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: none !important;
+    break-inside: avoid;
   }
 }

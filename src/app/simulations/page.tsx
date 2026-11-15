@@ -1,7 +1,7 @@
 "use client";
 
-import React, { Suspense, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Sliders,
   RotateCcw,
@@ -12,8 +12,14 @@ import {
   TrendingUp,
   BarChart3,
   Globe2,
+  Share2,
 } from "lucide-react";
 import { COUNTRIES_DATA } from "@/lib/data/global-intelligence";
+import {
+  buildPlaceholderCountryProfile,
+  WORLD_CATALOG_BY_ISO3,
+  WORLD_COUNTRIES_CATALOG,
+} from "@/lib/data/world-catalog";
 import {
   executeWhatIfSimulation,
   parseSimulationQueryPrompt,
@@ -32,7 +38,7 @@ import { OmnisSelect } from "@/components/ui/OmnisSelect";
 import { OmnisParameterSlider } from "@/components/ui/OmnisParameterSlider";
 import { OmnisMathBlock } from "@/components/ui/OmnisMathBlock";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
-import type { SimulationCategory } from "@/types/omnis";
+import type { CountryIntelligenceProfile, SimulationCategory } from "@/types/omnis";
 
 const CATEGORIES: { id: SimulationCategory; label: string }[] = [
   { id: "economics", label: "Economics & Monetary" },
@@ -66,7 +72,14 @@ function resolveScenarioCategory(
   return null;
 }
 
+function isSupportedBaselineCountry(code: string | null | undefined): code is string {
+  if (!code) return false;
+  const upper = code.toUpperCase();
+  return Boolean(COUNTRIES_DATA[upper] || WORLD_CATALOG_BY_ISO3[upper]);
+}
+
 function SimulationsContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const promptQuery = searchParams.get("q") || "";
   const parsedPrompt = useMemo(
@@ -78,6 +91,7 @@ function SimulationsContent() {
     resolveScenarioCategory(searchParams.get("category"), searchParams.get("model")) ||
     parsedPrompt.category ||
     "economics";
+
   const paramOilShock = searchParams.get("oilShock");
   const paramCountry =
     searchParams.get("country")?.toUpperCase() || parsedPrompt.countryIso3 || null;
@@ -100,21 +114,95 @@ function SimulationsContent() {
     CATEGORIES.some((c) => c.id === initialCat) ? initialCat : "economics"
   );
   const [countryBaselineIso3, setCountryBaselineIso3] = useState<string>(
-    paramCountry && COUNTRIES_DATA[paramCountry] ? paramCountry : "GLOBAL"
+    isSupportedBaselineCountry(paramCountry) ? paramCountry : "GLOBAL"
   );
   const [horizonYears, setHorizonYears] = useState(initialHorizon);
   const [seed, setSeed] = useState(initialSeed);
   const [overrides, setOverrides] = useState<Record<string, number>>({});
   const [savedNotice, setSavedNotice] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [hydratedCountries, setHydratedCountries] = useState<
+    Record<string, CountryIntelligenceProfile>
+  >({});
+  const [hydratingCountryIso, setHydratingCountryIso] = useState<string | null>(null);
+  const hydratedRef = useRef<Record<string, CountryIntelligenceProfile>>({});
+  const lastSyncedQueryRef = useRef<string | null>(null);
 
   const { addWorkspaceItem, setActiveContext } = useOmnisStore();
-  const countriesList = useMemo(() => Object.values(COUNTRIES_DATA), []);
+
+  const countryOptions = useMemo(() => {
+    const byIso = new Map<string, { value: string; label: string; hint?: string }>();
+    for (const entry of WORLD_COUNTRIES_CATALOG) {
+      const curated = COUNTRIES_DATA[entry.iso3];
+      byIso.set(entry.iso3, {
+        value: entry.iso3,
+        label: curated
+          ? `${curated.flagEmoji} ${curated.name} (${curated.iso3})`
+          : `${entry.name} (${entry.iso3})`,
+        hint: curated
+          ? `+${curated.gdpGrowthPct}% GDP • ${curated.energyProfile.renewableSharePct}% Clean`
+          : entry.region,
+      });
+    }
+    for (const curated of Object.values(COUNTRIES_DATA)) {
+      if (!byIso.has(curated.iso3)) {
+        byIso.set(curated.iso3, {
+          value: curated.iso3,
+          label: `${curated.flagEmoji} ${curated.name} (${curated.iso3})`,
+          hint: `+${curated.gdpGrowthPct}% GDP • ${curated.energyProfile.renewableSharePct}% Clean`,
+        });
+      }
+    }
+    const sorted = Array.from(byIso.values()).sort((a, b) => a.label.localeCompare(b.label));
+    return [
+      { value: "GLOBAL", label: "🌍 Global Aggregate (IMF/UN Weighted)", hint: "Baseline" },
+      ...sorted,
+    ];
+  }, []);
 
   const activeSpec =
     SIMULATION_SCENARIOS.find((s) => s.category === category) ??
     SIMULATION_SCENARIOS[0];
 
   useEffect(() => {
+    if (
+      countryBaselineIso3 === "GLOBAL" ||
+      COUNTRIES_DATA[countryBaselineIso3] ||
+      hydratedRef.current[countryBaselineIso3]
+    ) {
+      return;
+    }
+    let active = true;
+    const targetIso = countryBaselineIso3;
+    setHydratingCountryIso(targetIso);
+    fetch(`/api/v1/countries/${encodeURIComponent(targetIso)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        const resolved: CountryIntelligenceProfile | null =
+          data?.country ?? (data?.iso3 ? data : null);
+        if (!active || !resolved) return;
+        hydratedRef.current[targetIso] = resolved;
+        setHydratedCountries((prev) => ({ ...prev, [targetIso]: resolved }));
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) {
+          setHydratingCountryIso((prev) => (prev === targetIso ? null : prev));
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [countryBaselineIso3]);
+
+  useEffect(() => {
+    const currentQs = searchParams.toString();
+    if (
+      lastSyncedQueryRef.current !== null &&
+      currentQs === lastSyncedQueryRef.current
+    ) {
+      return;
+    }
     const urlCat = resolveScenarioCategory(
       searchParams.get("category"),
       searchParams.get("model")
@@ -123,7 +211,7 @@ function SimulationsContent() {
       setCategory(urlCat);
     }
     const urlCountry = searchParams.get("country")?.toUpperCase();
-    if (urlCountry && (COUNTRIES_DATA[urlCountry] || urlCountry === "GLOBAL")) {
+    if (urlCountry === "GLOBAL" || isSupportedBaselineCountry(urlCountry)) {
       setCountryBaselineIso3(urlCountry);
     }
     const urlHorizon = Number(searchParams.get("horizon"));
@@ -136,8 +224,15 @@ function SimulationsContent() {
     }
   }, [searchParams]);
 
-  // Reset overrides when category changes, honouring URL sandbox/deep-link presets
+  // Reset overrides when category changes or external URL query changes
   useEffect(() => {
+    const currentQs = searchParams.toString();
+    if (
+      lastSyncedQueryRef.current !== null &&
+      currentQs === lastSyncedQueryRef.current
+    ) {
+      return;
+    }
     const defaults: Record<string, number> = {};
     for (const p of activeSpec.parameters) {
       defaults[p.key] = p.defaultModifiedValue;
@@ -157,6 +252,16 @@ function SimulationsContent() {
     setOverrides(defaults);
   }, [activeSpec, parsedOilShock, parsedPrompt.overrides, searchParams]);
 
+  const activeCountryProfile = useMemo(() => {
+    if (countryBaselineIso3 === "GLOBAL") return undefined;
+    return (
+      COUNTRIES_DATA[countryBaselineIso3] ??
+      hydratedCountries[countryBaselineIso3] ??
+      buildPlaceholderCountryProfile(countryBaselineIso3) ??
+      undefined
+    );
+  }, [countryBaselineIso3, hydratedCountries]);
+
   useEffect(() => {
     setActiveContext(
       "What-If Simulation Engine",
@@ -172,9 +277,18 @@ function SimulationsContent() {
         horizonYears,
         seed,
         countryIso3: countryBaselineIso3,
+        countryProfile: activeCountryProfile,
         overrides,
       }),
-    [activeSpec.id, category, horizonYears, seed, countryBaselineIso3, overrides]
+    [
+      activeSpec.id,
+      category,
+      horizonYears,
+      seed,
+      countryBaselineIso3,
+      activeCountryProfile,
+      overrides,
+    ]
   );
 
   const maxElasticity = useMemo(
@@ -182,24 +296,97 @@ function SimulationsContent() {
     [simulationOutput.sensitivity]
   );
 
+  const buildShareQueryParams = (opts?: {
+    nextCat?: SimulationCategory;
+    nextCountry?: string;
+    nextHorizon?: number;
+    nextSeed?: number;
+    nextOverrides?: Record<string, number>;
+    includeOverrides?: boolean;
+  }) => {
+    const targetCat = opts?.nextCat ?? category;
+    const targetSpec =
+      SIMULATION_SCENARIOS.find((s) => s.category === targetCat) ?? activeSpec;
+    const params = new URLSearchParams({
+      category: targetCat,
+      country: opts?.nextCountry ?? countryBaselineIso3,
+      horizon: String(opts?.nextHorizon ?? horizonYears),
+      seed: String(opts?.nextSeed ?? seed),
+    });
+    if (opts?.includeOverrides !== false) {
+      const sourceOverrides = opts?.nextOverrides ?? overrides;
+      for (const p of targetSpec.parameters) {
+        params.set(p.key, String(sourceOverrides[p.key] ?? p.defaultModifiedValue));
+      }
+    }
+    return params;
+  };
+
+  const syncUrlFromState = (opts?: {
+    nextCat?: SimulationCategory;
+    nextCountry?: string;
+    nextHorizon?: number;
+    nextSeed?: number;
+    nextOverrides?: Record<string, number>;
+    includeOverrides?: boolean;
+  }) => {
+    const params = buildShareQueryParams(opts);
+    const qs = params.toString();
+    lastSyncedQueryRef.current = qs;
+    router.replace(`/simulations?${qs}`, { scroll: false });
+  };
+
+  const handleCategoryChange = (nextCat: SimulationCategory) => {
+    const targetSpec =
+      SIMULATION_SCENARIOS.find((s) => s.category === nextCat) ?? SIMULATION_SCENARIOS[0];
+    const defaults: Record<string, number> = {};
+    for (const p of targetSpec.parameters) {
+      defaults[p.key] = p.defaultModifiedValue;
+    }
+    setCategory(nextCat);
+    setOverrides(defaults);
+    syncUrlFromState({ nextCat, nextOverrides: defaults });
+  };
+
+  const handleCountryChange = (nextCountry: string) => {
+    setCountryBaselineIso3(nextCountry);
+    syncUrlFromState({ nextCountry });
+  };
+
   const handleReset = () => {
     const baseVals: Record<string, number> = {};
     for (const p of activeSpec.parameters) {
       baseVals[p.key] = p.baselineValue;
     }
     setOverrides(baseVals);
+    syncUrlFromState({ nextOverrides: baseVals, includeOverrides: false });
+  };
+
+  const handleRevertGlobalDefault = () => {
+    const baseVals: Record<string, number> = {};
+    for (const p of activeSpec.parameters) {
+      baseVals[p.key] = p.baselineValue;
+    }
+    setCountryBaselineIso3("GLOBAL");
+    setOverrides(baseVals);
+    syncUrlFromState({
+      nextCountry: "GLOBAL",
+      nextOverrides: baseVals,
+      includeOverrides: false,
+    });
+  };
+
+  const handleCopyLink = () => {
+    if (typeof window === "undefined") return;
+    const params = buildShareQueryParams();
+    const shareUrl = `${window.location.origin}/simulations?${params.toString()}`;
+    navigator.clipboard?.writeText(shareUrl).catch(() => {});
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2200);
   };
 
   const handleSaveExperiment = () => {
-    const params = new URLSearchParams({
-      category,
-      country: countryBaselineIso3,
-      horizon: String(horizonYears),
-      seed: String(seed),
-    });
-    for (const p of activeSpec.parameters) {
-      params.set(p.key, String(overrides[p.key] ?? p.defaultModifiedValue));
-    }
+    const params = buildShareQueryParams();
     addWorkspaceItem({
       type: "simulation",
       title: `Simulation: ${activeSpec.title}`,
@@ -254,6 +441,14 @@ function SimulationsContent() {
         mobileFilterLabel={`Model: ${CATEGORIES.find((c) => c.id === category)?.label.split(" ")[0] ?? "Category"}`}
         actions={
           <>
+            <OmnisButton variant="secondary" onClick={handleCopyLink}>
+              {copiedLink ? (
+                <Check className="w-3.5 h-3.5 tone-verified" />
+              ) : (
+                <Share2 className="w-3.5 h-3.5 tone-blue" />
+              )}
+              <span>{copiedLink ? "Link Copied" : "Copy Link"}</span>
+            </OmnisButton>
             <OmnisButton onClick={handleSaveExperiment}>
               {savedNotice ? <Check className="w-3.5 h-3.5" /> : <Bookmark className="w-3.5 h-3.5" />}
               <span>{savedNotice ? "Experiment Saved" : "Save Experiment"}</span>
@@ -271,7 +466,7 @@ function SimulationsContent() {
               ariaLabel="Simulation Scientific Domain"
               size="sm"
               value={category}
-              onChange={(val) => setCategory(val as SimulationCategory)}
+              onChange={(val) => handleCategoryChange(val as SimulationCategory)}
               options={CATEGORIES.map((c) => ({
                 value: c.id,
                 label: c.label,
@@ -280,7 +475,9 @@ function SimulationsContent() {
           </div>
         }
       >
-        {(parsedOilShock !== null || paramCountry || promptQuery) ? (
+        {(parsedOilShock !== null ||
+          (paramCountry && paramCountry !== "GLOBAL" && countryBaselineIso3 !== "GLOBAL") ||
+          Boolean(promptQuery)) ? (
           <div className="px-3 py-2 rounded-xl badge-tone-blue text-[13px] flex flex-wrap items-center justify-between gap-2">
             <span>
               Anchored Baseline:{" "}
@@ -301,7 +498,7 @@ function SimulationsContent() {
             </span>
             <button
               type="button"
-              onClick={handleReset}
+              onClick={handleRevertGlobalDefault}
               className="text-xs font-semibold underline cursor-pointer"
             >
               Revert to Default Baseline
@@ -329,23 +526,23 @@ function SimulationsContent() {
           </div>
 
           <div className="space-y-1.5">
-            <div className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
-              Country Baseline Calibration
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
+                Country Baseline Calibration
+              </div>
+              {hydratingCountryIso === countryBaselineIso3 && (
+                <span className="text-[11px] font-semibold omnis-mono tone-cyan animate-pulse">
+                  Syncing Live WDI…
+                </span>
+              )}
             </div>
             <OmnisSelect
               value={countryBaselineIso3}
-              onChange={setCountryBaselineIso3}
+              onChange={handleCountryChange}
               ariaLabel="Country Baseline Calibration"
               leadingIcon={<Globe2 className="w-3.5 h-3.5 tone-blue" />}
               size="md"
-              options={[
-                { value: "GLOBAL", label: "🌍 Global Aggregate (IMF/UN Weighted)", hint: "Baseline" },
-                ...countriesList.map((c) => ({
-                  value: c.iso3,
-                  label: `${c.flagEmoji} ${c.name} (${c.iso3})`,
-                  hint: `+${c.gdpGrowthPct}% GDP • ${c.energyProfile.renewableSharePct}% Clean`,
-                })),
-              ]}
+              options={countryOptions}
             />
           </div>
 

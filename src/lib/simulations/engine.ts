@@ -1,5 +1,11 @@
 import { COUNTRIES_DATA } from "@/lib/data/global-intelligence";
+import {
+  buildPlaceholderCountryProfile,
+  WORLD_CATALOG_BY_ISO3,
+  WORLD_COUNTRIES_CATALOG,
+} from "@/lib/data/world-catalog";
 import type {
+  CountryIntelligenceProfile,
   SimulationCategory,
   SimulationRunOutput,
   SimulationScenarioSpec,
@@ -370,10 +376,131 @@ function sampleNormal(rand: () => number): number {
   return Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
 }
 
+const REGIONAL_MACRO_PRIORS: Record<
+  string,
+  {
+    gdpGrowthPct: number;
+    renewableSharePct: number;
+    nuclearSharePct: number;
+    medianAgeYears: number;
+    aiReadinessIndex: number;
+    rdSpendPctGdp: number;
+    tempAnomalyC: number;
+  }
+> = {
+  "North America": {
+    gdpGrowthPct: 2.3,
+    renewableSharePct: 31,
+    nuclearSharePct: 18,
+    medianAgeYears: 39,
+    aiReadinessIndex: 82,
+    rdSpendPctGdp: 2.7,
+    tempAnomalyC: 1.41,
+  },
+  "Europe & Central Asia": {
+    gdpGrowthPct: 1.9,
+    renewableSharePct: 44,
+    nuclearSharePct: 16,
+    medianAgeYears: 42,
+    aiReadinessIndex: 72,
+    rdSpendPctGdp: 2.1,
+    tempAnomalyC: 1.38,
+  },
+  "East Asia & Pacific": {
+    gdpGrowthPct: 3.9,
+    renewableSharePct: 34,
+    nuclearSharePct: 6,
+    medianAgeYears: 36,
+    aiReadinessIndex: 64,
+    rdSpendPctGdp: 1.9,
+    tempAnomalyC: 1.34,
+  },
+  "Latin America & Caribbean": {
+    gdpGrowthPct: 2.5,
+    renewableSharePct: 52,
+    nuclearSharePct: 2,
+    medianAgeYears: 31,
+    aiReadinessIndex: 48,
+    rdSpendPctGdp: 0.6,
+    tempAnomalyC: 1.31,
+  },
+  "Middle East & North Africa": {
+    gdpGrowthPct: 3.1,
+    renewableSharePct: 12,
+    nuclearSharePct: 2,
+    medianAgeYears: 29,
+    aiReadinessIndex: 54,
+    rdSpendPctGdp: 0.8,
+    tempAnomalyC: 1.44,
+  },
+  "Sub-Saharan Africa": {
+    gdpGrowthPct: 4.2,
+    renewableSharePct: 38,
+    nuclearSharePct: 1,
+    medianAgeYears: 19,
+    aiReadinessIndex: 36,
+    rdSpendPctGdp: 0.4,
+    tempAnomalyC: 1.29,
+  },
+  "South Asia": {
+    gdpGrowthPct: 5.6,
+    renewableSharePct: 28,
+    nuclearSharePct: 2,
+    medianAgeYears: 28,
+    aiReadinessIndex: 52,
+    rdSpendPctGdp: 0.65,
+    tempAnomalyC: 1.32,
+  },
+};
+
+function resolveCountryDynamicsProfile(
+  countryIso3?: string,
+  countryProfile?: CountryIntelligenceProfile
+): {
+  gdpGrowthPct: number;
+  renewableSharePct: number;
+  nuclearSharePct: number;
+  medianAgeYears: number;
+  aiReadinessIndex: number;
+  rdSpendPctGdp: number;
+  tempAnomalyC: number;
+} | null {
+  const code = countryIso3?.toUpperCase();
+  const explicit =
+    countryProfile ?? (code && code !== "GLOBAL" ? COUNTRIES_DATA[code] : undefined);
+  const hasRealTelemetry =
+    explicit && (explicit.gdpUsdBn > 0 || explicit.population > 0);
+  if (hasRealTelemetry && explicit) {
+    return {
+      gdpGrowthPct: explicit.gdpGrowthPct,
+      renewableSharePct: explicit.energyProfile.renewableSharePct,
+      nuclearSharePct: explicit.energyProfile.nuclearSharePct,
+      medianAgeYears: explicit.medianAgeYears,
+      aiReadinessIndex: explicit.technologyProfile.aiReadinessIndex,
+      rdSpendPctGdp: explicit.technologyProfile.rdSpendPctGdp,
+      tempAnomalyC: explicit.environmentProfile.tempAnomalyC,
+    };
+  }
+  const catalogEntry = code && code !== "GLOBAL" ? WORLD_CATALOG_BY_ISO3[code] : undefined;
+  if (!catalogEntry) return null;
+  return (
+    REGIONAL_MACRO_PRIORS[catalogEntry.region] ?? {
+      gdpGrowthPct: 3.2,
+      renewableSharePct: 36,
+      nuclearSharePct: 9,
+      medianAgeYears: 31,
+      aiReadinessIndex: 58,
+      rdSpendPctGdp: 1.5,
+      tempAnomalyC: 1.32,
+    }
+  );
+}
+
 function computeScenarioDynamics(
   category: SimulationCategory,
   values: Record<string, number>,
-  countryIso3?: string
+  countryIso3?: string,
+  countryProfile?: CountryIntelligenceProfile
 ): {
   initialVal: number;
   baseDrift: number;
@@ -381,7 +508,7 @@ function computeScenarioDynamics(
   sigma: number;
   additiveMode: boolean;
 } {
-  const country = countryIso3 ? COUNTRIES_DATA[countryIso3.toUpperCase()] : undefined;
+  const country = resolveCountryDynamicsProfile(countryIso3, countryProfile);
   let initialVal = 100.0;
   let baseDrift = 0.032;
   let modDrift = 0.032;
@@ -395,7 +522,7 @@ function computeScenarioDynamics(
     const tariff = (values.tariffRatePct ?? 12) / 100;
     baseDrift = country ? Math.max(0.006, country.gdpGrowthPct / 100) : 0.032;
     const fossilExposure = country
-      ? Math.max(0.4, (100 - country.energyProfile.renewableSharePct) / 68)
+      ? Math.max(0.4, (100 - country.renewableSharePct) / 68)
       : 1.0;
     modDrift =
       baseDrift -
@@ -413,11 +540,7 @@ function computeScenarioDynamics(
     sigma = 0.005;
   } else if (category === "energy") {
     initialVal = country
-      ? Number(
-          (
-            country.energyProfile.renewableSharePct + country.energyProfile.nuclearSharePct
-          ).toFixed(1)
-        )
+      ? Number((country.renewableSharePct + country.nuclearSharePct).toFixed(1))
       : 41.2;
     additiveMode = true;
     const capex = values.renewableCapexDeclinePct ?? 8;
@@ -431,14 +554,12 @@ function computeScenarioDynamics(
     const fab = (values.semiconductorCapexGrowthPct ?? 18) / 100;
     const pwr = (values.datacenterPowerConstraintPct ?? 10) / 100;
     baseDrift = country
-      ? 0.012 +
-        (country.technologyProfile.aiReadinessIndex / 100) * 0.01 +
-        (country.technologyProfile.rdSpendPctGdp / 5) * 0.006
+      ? 0.012 + (country.aiReadinessIndex / 100) * 0.01 + (country.rdSpendPctGdp / 5) * 0.006
       : 0.018;
     modDrift = baseDrift + 0.028 * (ai - 0.3) + 0.055 * (fab - 0.1) - 0.032 * (pwr - 0.15);
     sigma = 0.011;
   } else {
-    initialVal = country ? country.environmentProfile.tempAnomalyC : 1.32;
+    initialVal = country ? country.tempAnomalyC : 1.32;
     additiveMode = true;
     const cut = values.annualEmissionsReductionPct ?? 5.5;
     const ch4 = values.methaneAbatementPct ?? 35;
@@ -477,6 +598,7 @@ export function executeWhatIfSimulation(params: {
   horizonYears: number;
   seed?: number;
   countryIso3?: string;
+  countryProfile?: CountryIntelligenceProfile;
   overrides?: Record<string, number>;
 }): SimulationRunOutput {
   const spec =
@@ -484,11 +606,16 @@ export function executeWhatIfSimulation(params: {
       (s) => s.id === params.scenarioId || s.category === params.category
     ) ?? SIMULATION_SCENARIOS[0];
 
+  const normalizedIso = params.countryIso3?.toUpperCase();
   const country =
-    params.countryIso3 && params.countryIso3 !== "GLOBAL"
-      ? COUNTRIES_DATA[params.countryIso3.toUpperCase()]
+    normalizedIso && normalizedIso !== "GLOBAL"
+      ? params.countryProfile ??
+        COUNTRIES_DATA[normalizedIso] ??
+        buildPlaceholderCountryProfile(normalizedIso) ??
+        undefined
       : undefined;
-  const countryCode = country?.iso3;
+  const countryCode = country?.iso3 ?? (normalizedIso && normalizedIso !== "GLOBAL" && WORLD_CATALOG_BY_ISO3[normalizedIso] ? normalizedIso : undefined);
+  const resolvedDynamicsPriors = resolveCountryDynamicsProfile(countryCode, country);
 
   const horizon = Math.min(Math.max(params.horizonYears || 15, 5), 50);
   const seed = params.seed ?? 42;
@@ -514,7 +641,8 @@ export function executeWhatIfSimulation(params: {
   const { initialVal, baseDrift, modDrift, sigma, additiveMode } = computeScenarioDynamics(
     spec.category,
     currentValues,
-    countryCode
+    countryCode,
+    country
   );
 
   const trajectory: SimulationTrajectoryPoint[] = [];
@@ -594,7 +722,8 @@ export function executeWhatIfSimulation(params: {
       const lowRun = computeScenarioDynamics(
         spec.category,
         { ...currentValues, [p.key]: p.min },
-        countryCode
+        countryCode,
+        country
       );
       const lowTerminal = computeExpectedTerminalValue(
         lowRun.initialVal,
@@ -606,7 +735,8 @@ export function executeWhatIfSimulation(params: {
       const highRun = computeScenarioDynamics(
         spec.category,
         { ...currentValues, [p.key]: p.max },
-        countryCode
+        countryCode,
+        country
       );
       const highTerminal = computeExpectedTerminalValue(
         highRun.initialVal,
@@ -644,7 +774,9 @@ export function executeWhatIfSimulation(params: {
 
   const anchoredAssumptions = country
     ? [
-        `Anchored to ${country.officialName} (${country.iso3}): Real growth +${country.gdpGrowthPct}%, Clean Grid ${country.energyProfile.renewableSharePct}%, AI Index ${country.technologyProfile.aiReadinessIndex}, Temp Anomaly +${country.environmentProfile.tempAnomalyC}°C.`,
+        resolvedDynamicsPriors
+          ? `Anchored to ${country.officialName} (${country.iso3}): Real growth +${resolvedDynamicsPriors.gdpGrowthPct}%, Clean Grid ${resolvedDynamicsPriors.renewableSharePct}%, AI Index ${resolvedDynamicsPriors.aiReadinessIndex}, Temp Anomaly +${resolvedDynamicsPriors.tempAnomalyC}°C.`
+          : `Anchored to ${country.officialName} (${country.iso3}) structural baseline.`,
         ...spec.baselineAssumptions,
       ]
     : spec.baselineAssumptions;
@@ -736,6 +868,17 @@ export function parseSimulationQueryPrompt(query: string): ParsedSimulationPromp
         new RegExp(`\\b${country.iso3.toLowerCase()}\\b`).test(lower)
       ) {
         countryIso3 = country.iso3;
+        break;
+      }
+    }
+  }
+  if (!countryIso3) {
+    for (const entry of WORLD_COUNTRIES_CATALOG) {
+      if (
+        lower.includes(entry.name.toLowerCase()) ||
+        new RegExp(`\\b${entry.iso3.toLowerCase()}\\b`).test(lower)
+      ) {
+        countryIso3 = entry.iso3;
         break;
       }
     }

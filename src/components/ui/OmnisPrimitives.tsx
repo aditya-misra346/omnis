@@ -22,7 +22,7 @@ export function OmnisButton({
 }) {
   const variantClasses: Record<ButtonVariant, string> = {
     primary:
-      "bg-[var(--accent-blue-solid)] hover:brightness-110 text-white shadow-sm border border-white/10",
+      "bg-[var(--accent-blue-solid)] hover:brightness-110 text-white shadow-sm border border-transparent",
     secondary:
       "bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)]",
     ghost:

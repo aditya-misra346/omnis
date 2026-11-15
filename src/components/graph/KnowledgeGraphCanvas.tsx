@@ -204,6 +204,7 @@ export function KnowledgeGraphCanvas({
   selectedNodeId,
   onSelectNode,
   onExpandNode,
+  onFocusFilter,
   relationshipFilter = "ALL",
   searchFilter = "",
   highlightedPathNodeIds,
@@ -215,6 +216,7 @@ export function KnowledgeGraphCanvas({
   selectedNodeId: string;
   onSelectNode: (id: string) => void;
   onExpandNode?: (id: string) => void;
+  onFocusFilter?: () => void;
   relationshipFilter?: RelationshipType | "ALL";
   searchFilter?: string;
   highlightedPathNodeIds?: Set<string>;
@@ -223,6 +225,8 @@ export function KnowledgeGraphCanvas({
   const motionPaused = useOmnisStore((s) => s.motionPaused);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const nodeGroupRefs = useRef<Map<string, SVGGElement>>(new Map());
+  const activePointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const pinchStartRef = useRef<{ dist: number; zoom: number } | null>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 920, height: 560 });
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -235,6 +239,39 @@ export function KnowledgeGraphCanvas({
   const [panningCanvas, setPanningCanvas] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [packetPhase, setPacketPhase] = useState(0);
+
+  const rootNodeId = nodes[0]?.id ?? "";
+
+  useEffect(() => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+    setDraggedOffsets({});
+  }, [layoutMode, rootNodeId]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tagName = target?.tagName;
+      if (
+        tagName === "INPUT" ||
+        tagName === "TEXTAREA" ||
+        tagName === "SELECT" ||
+        target?.isContentEditable
+      ) {
+        return;
+      }
+      if (e.key === "/") {
+        e.preventDefault();
+        onFocusFilter?.();
+      } else if (e.key === "0") {
+        setZoom(1);
+        setPan({ x: 0, y: 0 });
+        setDraggedOffsets({});
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onFocusFilter]);
 
   useEffect(() => {
     const el = stageRef.current;
@@ -564,10 +601,31 @@ export function KnowledgeGraphCanvas({
         ref={stageRef}
         className="flex-1 relative omnis-subtle-dots bg-[var(--bg-graphite)] overflow-hidden touch-none"
         onPointerDown={(e) => {
+          activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+          if (activePointersRef.current.size === 2) {
+            const pts = Array.from(activePointersRef.current.values());
+            const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+            pinchStartRef.current = { dist: Math.max(1, dist), zoom };
+            setDraggingNodeId(null);
+            setPanningCanvas(false);
+            return;
+          }
           setPanningCanvas(true);
           setDragStart({ x: e.clientX, y: e.clientY });
         }}
         onPointerMove={(e) => {
+          if (activePointersRef.current.has(e.pointerId)) {
+            activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+          }
+          if (activePointersRef.current.size === 2 && pinchStartRef.current) {
+            const pts = Array.from(activePointersRef.current.values());
+            const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+            const scale = dist / pinchStartRef.current.dist;
+            setZoom(
+              Math.min(2.2, Math.max(0.45, Number((pinchStartRef.current.zoom * scale).toFixed(2))))
+            );
+            return;
+          }
           if (draggingNodeId) {
             const dx = (e.clientX - dragStart.x) / zoom;
             const dy = (e.clientY - dragStart.y) / zoom;
@@ -586,13 +644,27 @@ export function KnowledgeGraphCanvas({
             setDragStart({ x: e.clientX, y: e.clientY });
           }
         }}
-        onPointerUp={() => {
+        onPointerUp={(e) => {
+          activePointersRef.current.delete(e.pointerId);
+          if (activePointersRef.current.size < 2) {
+            pinchStartRef.current = null;
+          }
           setDraggingNodeId(null);
           setPanningCanvas(false);
         }}
-        onPointerCancel={() => {
+        onPointerCancel={(e) => {
+          activePointersRef.current.delete(e.pointerId);
+          if (activePointersRef.current.size < 2) {
+            pinchStartRef.current = null;
+          }
           setDraggingNodeId(null);
           setPanningCanvas(false);
+        }}
+        onPointerLeave={(e) => {
+          activePointersRef.current.delete(e.pointerId);
+          if (activePointersRef.current.size < 2) {
+            pinchStartRef.current = null;
+          }
         }}
       >
         <svg

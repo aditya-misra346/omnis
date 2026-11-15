@@ -27,6 +27,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { COUNTRIES_DATA } from "@/lib/data/global-intelligence";
+import { buildPlaceholderCountryProfile } from "@/lib/data/world-catalog";
 import { InteractiveGlobe3D } from "@/components/globe/InteractiveGlobe3D";
 import { ProvenancePanel } from "@/components/ui/ProvenancePanel";
 import { OmnisParameterSlider } from "@/components/ui/OmnisParameterSlider";
@@ -160,6 +161,7 @@ export default function LandingPage() {
   const [hydratedCountries, setHydratedCountries] = useState<
     Record<string, CountryIntelligenceProfile>
   >({});
+  const [hydratingIso3, setHydratingIso3] = useState<string | null>(null);
   const [activeLayer, setActiveLayer] = useState<IntelligenceLayerId>("economics");
   const [simOilShock, setSimOilShock] = useState(30);
   const [activeGraphNodeIdx, setActiveGraphNodeIdx] = useState(0);
@@ -167,6 +169,7 @@ export default function LandingPage() {
   useEffect(() => {
     if (COUNTRIES_DATA[selectedIso3] || hydratedCountries[selectedIso3]) return;
     let active = true;
+    setHydratingIso3(selectedIso3);
     fetch(`/api/v1/countries/${encodeURIComponent(selectedIso3)}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
@@ -175,7 +178,12 @@ export default function LandingPage() {
         if (!active || !resolved) return;
         setHydratedCountries((prev) => ({ ...prev, [selectedIso3]: resolved }));
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        if (active) {
+          setHydratingIso3((prev) => (prev === selectedIso3 ? null : prev));
+        }
+      });
     return () => {
       active = false;
     };
@@ -186,7 +194,14 @@ export default function LandingPage() {
     [hydratedCountries]
   );
   const activeCountry =
-    COUNTRIES_DATA[selectedIso3] ?? hydratedCountries[selectedIso3] ?? COUNTRIES_DATA.IND;
+    COUNTRIES_DATA[selectedIso3] ??
+    hydratedCountries[selectedIso3] ??
+    buildPlaceholderCountryProfile(selectedIso3) ??
+    COUNTRIES_DATA.IND;
+  const isHydratingSelected =
+    hydratingIso3 === selectedIso3 &&
+    !COUNTRIES_DATA[selectedIso3] &&
+    !hydratedCountries[selectedIso3];
   const formattedCoords = `${Math.abs(activeCountry.lat).toFixed(2)}°${
     activeCountry.lat >= 0 ? "N" : "S"
   }, ${Math.abs(activeCountry.lng).toFixed(2)}°${activeCountry.lng >= 0 ? "E" : "W"}`;
@@ -255,7 +270,7 @@ export default function LandingPage() {
   }, [simOilShock, activeCountry]);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-dvh flex flex-col">
       {/* SECTION 1 & 2: ARCHITECTURAL HERO + LIVE 3D PLANETARY STAGE */}
       <section className="relative py-12 lg:py-20 px-4 sm:px-8 border-b border-[var(--border-subtle)] omnis-grid-bg overflow-hidden">
         {/* Subtle theme-calibrated atmospheric wash */}
@@ -620,6 +635,11 @@ export default function LandingPage() {
                     <span className="px-2 py-0.5 rounded-md bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-xs omnis-mono omnis-tabular text-[var(--text-muted)]">
                       {formattedCoords}
                     </span>
+                    {isHydratingSelected && (
+                      <span className="px-2 py-0.5 rounded-md badge-tone-cyan text-xs omnis-mono animate-pulse">
+                        Syncing Live World Bank WDI Telemetry…
+                      </span>
+                    )}
                   </div>
                 </div>
                 <OmnisSegmentedControl<string>
@@ -641,26 +661,58 @@ export default function LandingPage() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <OmnisStatTile
                   label="Nominal GDP"
-                  value={`$${activeCountry.gdpUsdBn.toLocaleString()}B`}
-                  subValue={`+${activeCountry.gdpGrowthPct}% real/yr`}
+                  value={
+                    isHydratingSelected && activeCountry.gdpUsdBn === 0
+                      ? "Syncing…"
+                      : `$${activeCountry.gdpUsdBn.toLocaleString()}B`
+                  }
+                  subValue={
+                    isHydratingSelected && activeCountry.gdpUsdBn === 0
+                      ? "World Bank WDI"
+                      : `${activeCountry.gdpGrowthPct >= 0 ? "+" : ""}${activeCountry.gdpGrowthPct}% real/yr`
+                  }
                   tone="blue"
                 />
                 <OmnisStatTile
                   label="GDP / Capita"
-                  value={`$${activeCountry.gdpPerCapitaUsd.toLocaleString()}`}
-                  subValue={`CPI: ${activeCountry.inflationPct}%`}
+                  value={
+                    isHydratingSelected && activeCountry.gdpPerCapitaUsd === 0
+                      ? "Syncing…"
+                      : `$${activeCountry.gdpPerCapitaUsd.toLocaleString()}`
+                  }
+                  subValue={
+                    isHydratingSelected && activeCountry.gdpPerCapitaUsd === 0
+                      ? "Querying CPI…"
+                      : `CPI: ${activeCountry.inflationPct}%`
+                  }
                   tone="default"
                 />
                 <OmnisStatTile
                   label="Clean Grid"
-                  value={`${activeCountry.energyProfile.renewableSharePct}%`}
-                  subValue={`Nuclear: ${activeCountry.energyProfile.nuclearSharePct}%`}
+                  value={
+                    isHydratingSelected && activeCountry.energyProfile.renewableSharePct === 0
+                      ? "Syncing…"
+                      : `${activeCountry.energyProfile.renewableSharePct}%`
+                  }
+                  subValue={
+                    isHydratingSelected && activeCountry.energyProfile.renewableSharePct === 0
+                      ? "Energy Mix"
+                      : `Nuclear: ${activeCountry.energyProfile.nuclearSharePct}%`
+                  }
                   tone="verified"
                 />
                 <OmnisStatTile
                   label="Population"
-                  value={`${(activeCountry.population / 1e6).toFixed(1)}M`}
-                  subValue={`Life Exp: ${activeCountry.lifeExpectancyYears}y`}
+                  value={
+                    isHydratingSelected && activeCountry.population === 0
+                      ? "Syncing…"
+                      : `${(activeCountry.population / 1e6).toFixed(1)}M`
+                  }
+                  subValue={
+                    isHydratingSelected && activeCountry.population === 0
+                      ? "Demographics"
+                      : `Life Exp: ${activeCountry.lifeExpectancyYears}y`
+                  }
                   tone="default"
                 />
               </div>

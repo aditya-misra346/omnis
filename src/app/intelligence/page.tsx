@@ -377,10 +377,17 @@ function IntelligenceCompareContent() {
         subtitle="Compare structural macroeconomic, clean energy, R&D, and demographic trajectories side by side with normalised multi-axis profiles."
         icon={<Layers className="w-3.5 h-3.5" />}
         actions={
-          <OmnisButton onClick={handleSaveComparison}>
-            {savedNotice ? <Check className="w-3.5 h-3.5" /> : <Bookmark className="w-3.5 h-3.5" />}
-            <span>{savedNotice ? "Pinned to Workspace" : "Pin to Workspace"}</span>
-          </OmnisButton>
+          <div className="flex flex-wrap items-center gap-2">
+            {hydratingIsoList.length > 0 && (
+              <span className="px-2.5 py-1 rounded-full badge-tone-cyan text-xs font-semibold omnis-mono animate-pulse">
+                Syncing Live WDI Telemetry…
+              </span>
+            )}
+            <OmnisButton onClick={handleSaveComparison}>
+              {savedNotice ? <Check className="w-3.5 h-3.5" /> : <Bookmark className="w-3.5 h-3.5" />}
+              <span>{savedNotice ? "Pinned to Workspace" : "Pin to Workspace"}</span>
+            </OmnisButton>
+          </div>
         }
       >
         {/* Entity Pair Selectors */}
@@ -471,10 +478,34 @@ function IntelligenceCompareContent() {
               </thead>
               <tbody className="divide-y divide-[var(--border-subtle)] omnis-mono text-[var(--text-primary)]">
                 {metricsComparison.map((row) => {
-                  const pctDiff =
-                    ((row.leftVal - row.rightVal) / Math.max(Math.abs(row.rightVal), 0.001)) * 100;
+                  const isHydratingRow =
+                    hydratingIsoList.length > 0 &&
+                    ((hydratingIsoList.includes(leftIso) && row.leftVal === 0) ||
+                      (hydratingIsoList.includes(rightIso) && row.rightVal === 0));
+                  const diffVal = row.leftVal - row.rightVal;
+                  const bothZero = row.leftVal === 0 && row.rightVal === 0;
+                  const rightIsZero = Math.abs(row.rightVal) < 1e-6;
+                  const relPct = !rightIsZero
+                    ? ((row.leftVal - row.rightVal) / Math.abs(row.rightVal)) * 100
+                    : null;
                   const sum = Math.max(1e-6, Math.abs(row.leftVal) + Math.abs(row.rightVal));
-                  const leftShare = Math.min(92, Math.max(8, (Math.abs(row.leftVal) / sum) * 100));
+                  const leftShare = bothZero
+                    ? 50
+                    : Math.min(92, Math.max(8, (Math.abs(row.leftVal) / sum) * 100));
+
+                  let deltaText = "—";
+                  if (isHydratingRow) {
+                    deltaText = "Syncing…";
+                  } else if (bothZero) {
+                    deltaText = "0.0";
+                  } else if (rightIsZero) {
+                    const sign = diffVal >= 0 ? "+" : "";
+                    const unitSuffix = row.unit.includes("%") ? "pp" : row.unit ? ` ${row.unit}` : "";
+                    deltaText = `${sign}${diffVal.toFixed(1)}${unitSuffix}`;
+                  } else if (relPct !== null) {
+                    deltaText = `${relPct >= 0 ? "+" : ""}${relPct.toFixed(1)}%`;
+                  }
+
                   return (
                     <tr key={row.label} className="hover:bg-[var(--bg-slate)]/50 transition-colors">
                       <td className="py-2.5 pr-3 font-sans font-medium text-[var(--text-primary)]">
@@ -485,18 +516,25 @@ function IntelligenceCompareContent() {
                         </div>
                       </td>
                       <td className="py-2.5 pr-3 font-bold">
-                        {row.leftVal.toLocaleString()} {row.unit}
+                        {isHydratingRow && row.leftVal === 0
+                          ? "Syncing…"
+                          : `${row.leftVal.toLocaleString()} ${row.unit}`}
                       </td>
                       <td className="py-2.5 pr-3 font-bold">
-                        {row.rightVal.toLocaleString()} {row.unit}
+                        {isHydratingRow && row.rightVal === 0
+                          ? "Syncing…"
+                          : `${row.rightVal.toLocaleString()} ${row.unit}`}
                       </td>
                       <td
                         className={`py-2.5 font-semibold ${
-                          pctDiff >= 0 ? "tone-verified" : "tone-warning"
+                          isHydratingRow
+                            ? "text-[var(--text-muted)] animate-pulse"
+                            : diffVal >= 0
+                              ? "tone-verified"
+                              : "tone-warning"
                         }`}
                       >
-                        {pctDiff >= 0 ? "+" : ""}
-                        {pctDiff.toFixed(1)}%
+                        {deltaText}
                       </td>
                     </tr>
                   );
@@ -527,7 +565,7 @@ function IntelligenceCompareContent() {
           <TrendingUp className="w-4 h-4 tone-verified" />
           Cross-Sector Technology & Industrial Benchmark Matrix
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 border border-[var(--border-subtle)] rounded-2xl overflow-hidden bg-[var(--bg-obsidian)]/30">
+        <div className="grid grid-cols-1 md:grid-cols-2 border border-[var(--border-subtle)] rounded-2xl overflow-hidden bg-[var(--bg-graphite)]">
           {COMPARABLE_ENTITIES.map((ent, idx) => (
             <div
               key={ent.id}

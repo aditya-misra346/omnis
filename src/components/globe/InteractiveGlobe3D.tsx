@@ -1235,6 +1235,23 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
       setZoomDistance(nextZoom);
     };
 
+    const onContextLost = (e: Event) => {
+      e.preventDefault();
+    };
+    const onContextRestored = () => {
+      handleResize();
+      const handle = sceneHandleRef.current;
+      if (handle) {
+        paintEarthSurfaceAndAtmosphere(
+          handle,
+          themeRef.current,
+          selectedIso3Ref.current
+        );
+      }
+    };
+
+    domElem.addEventListener("webglcontextlost", onContextLost);
+    domElem.addEventListener("webglcontextrestored", onContextRestored);
     domElem.addEventListener("pointerdown", onPointerDown);
     domElem.addEventListener("pointermove", onPointerMove);
     domElem.addEventListener("pointercancel", onPointerCancel);
@@ -1249,6 +1266,8 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
       intersectionObserver?.disconnect();
       document.removeEventListener("visibilitychange", onVisibilityChange);
       window.removeEventListener("resize", handleResize);
+      domElem.removeEventListener("webglcontextlost", onContextLost);
+      domElem.removeEventListener("webglcontextrestored", onContextRestored);
       domElem.removeEventListener("pointerdown", onPointerDown);
       domElem.removeEventListener("pointermove", onPointerMove);
       domElem.removeEventListener("pointercancel", onPointerCancel);

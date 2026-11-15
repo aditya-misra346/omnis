@@ -46,12 +46,27 @@ function ExploreContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const paramQ = searchParams.get("q");
+  const paramCat = searchParams.get("cat");
+  const paramSource = searchParams.get("source");
   const initialQ = paramQ || "Explain India's economic development since 1991";
+  const initialCat =
+    paramCat && RESULT_CATEGORIES.some((c) => c.id === paramCat) ? paramCat : "overview";
+  const validSources: UniversalSearchSourceFilter[] = [
+    "all",
+    "worldbank",
+    "openalex",
+    "wikimedia",
+    "curated",
+  ];
+  const initialSource: UniversalSearchSourceFilter =
+    paramSource && validSources.includes(paramSource as UniversalSearchSourceFilter)
+      ? (paramSource as UniversalSearchSourceFilter)
+      : "all";
 
   const [queryInput, setQueryInput] = useState(initialQ);
   const [activeQuery, setActiveQuery] = useState(initialQ);
-  const [activeTab, setActiveTab] = useState("overview");
-  const [sourceFilter, setSourceFilter] = useState<UniversalSearchSourceFilter>("all");
+  const [activeTab, setActiveTab] = useState(initialCat);
+  const [sourceFilter, setSourceFilter] = useState<UniversalSearchSourceFilter>(initialSource);
   const [openAlexWorks, setOpenAlexWorks] = useState<ResearchSourceItem[]>([]);
   const [liveFetchState, setLiveFetchState] = useState<
     "loading" | "verified" | "offline-fallback"
@@ -71,7 +86,30 @@ function ExploreContent() {
       setQueryInput(paramQ);
       setActiveQuery(paramQ);
     }
-  }, [paramQ]);
+    if (paramCat && RESULT_CATEGORIES.some((c) => c.id === paramCat)) {
+      setActiveTab(paramCat);
+    } else if (paramCat === null) {
+      setActiveTab("overview");
+    }
+    if (paramSource && validSources.includes(paramSource as UniversalSearchSourceFilter)) {
+      setSourceFilter(paramSource as UniversalSearchSourceFilter);
+    } else if (paramSource === null) {
+      setSourceFilter("all");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paramQ, paramCat, paramSource]);
+
+  const syncExploreUrl = (
+    nextQ: string,
+    nextCat: string,
+    nextSource: UniversalSearchSourceFilter
+  ) => {
+    const params = new URLSearchParams();
+    params.set("q", nextQ);
+    if (nextCat && nextCat !== "overview") params.set("cat", nextCat);
+    if (nextSource && nextSource !== "all") params.set("source", nextSource);
+    router.replace(`/explore?${params.toString()}`, { scroll: false });
+  };
 
   useEffect(() => {
     setActiveContext("Universal Search & Knowledge Explorer", activeQuery);
@@ -106,10 +144,11 @@ function ExploreContent() {
     if (!clean) return;
     setQueryInput(clean);
     setActiveQuery(clean);
+    const nextSource = resetSourceFilter ? "all" : sourceFilter;
     if (resetSourceFilter) {
       setSourceFilter("all");
     }
-    router.replace(`/explore?q=${encodeURIComponent(clean)}`, { scroll: false });
+    syncExploreUrl(clean, activeTab, nextSource);
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -157,7 +196,11 @@ function ExploreContent() {
           </div>
           <OmnisSelect
             value={sourceFilter}
-            onChange={(val) => setSourceFilter(val as UniversalSearchSourceFilter)}
+            onChange={(val) => {
+              const nextSource = val as UniversalSearchSourceFilter;
+              setSourceFilter(nextSource);
+              syncExploreUrl(activeQuery, activeTab, nextSource);
+            }}
             ariaLabel="Filter by Data Provider Source"
             size="md"
             options={[
@@ -208,7 +251,10 @@ function ExploreContent() {
             ariaLabel="Universal Search Category Filter"
             size="sm"
             value={activeTab}
-            onChange={setActiveTab}
+            onChange={(val) => {
+              setActiveTab(val);
+              syncExploreUrl(activeQuery, val, sourceFilter);
+            }}
             options={RESULT_CATEGORIES.map((tab) => ({
               value: tab.id,
               label: tab.label,

@@ -495,6 +495,48 @@ describe("OMNIS Elevation & Credibility Regression Suite", () => {
     expect(parsed.countryIso3).toBe("IND");
     expect(parsed.overrides.oilPriceShockPct).toBe(35);
     expect(parsed.overrides.interestRateDeltaBps).toBe(75);
+
+    const canEcon = executeWhatIfSimulation({
+      category: "economics",
+      countryIso3: "CAN",
+      horizonYears: 15,
+      seed: 42,
+    });
+    expect(canEcon.analyticalExplanation).toContain("Canada (CAN) Sovereign Baseline");
+    expect(canEcon.provenance.coverage).toContain("CAN");
+
+    const parsedCan = parseSimulationQueryPrompt("Simulate Canada tariff 15%");
+    expect(parsedCan.countryIso3).toBe("CAN");
+    expect(parsedCan.overrides.tariffRatePct).toBe(15);
+
+    const sgpDemo = executeWhatIfSimulation({
+      category: "demographics",
+      countryIso3: "SGP",
+      horizonYears: 15,
+      seed: 42,
+    });
+    expect(sgpDemo.initialAssumptions[0]).toContain("SGP");
+    expect(Number.isFinite(sgpDemo.summaryMetrics.baselineTerminal)).toBe(true);
+  });
+
+  it("falls back to catalog dossier for valid ISO3 codes when upstream feeds fail while rejecting unknown ISO3 codes", async () => {
+    const { GET } = await import("@/app/api/v1/countries/[iso3]/route");
+    const offlineFetch = vi.fn(async () => new Response("{}", { status: 503 }));
+    vi.stubGlobal("fetch", offlineFetch);
+    clearLiveCountryCacheForTests();
+
+    const canRes = await GET(new Request("http://localhost/api/v1/countries/CAN"), {
+      params: Promise.resolve({ iso3: "CAN" }),
+    });
+    expect(canRes.status).toBe(200);
+    const canBody = (await canRes.json()) as { iso3?: string; name?: string };
+    expect(canBody.iso3).toBe("CAN");
+    expect(canBody.name).toBe("Canada");
+
+    const unknownRes = await GET(new Request("http://localhost/api/v1/countries/ZZZ"), {
+      params: Promise.resolve({ iso3: "ZZZ" }),
+    });
+    expect(unknownRes.status).toBe(404);
   });
 
   it("maps 5,000-year historical coordinates piecewise monotonically and finds nearest events", () => {

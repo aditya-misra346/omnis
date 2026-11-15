@@ -282,7 +282,7 @@ function GlobalAtlasContent() {
         <ProvenancePanel provenance={country.provenance} />
 
         {/* Seamless Architectural 2x3 Sovereign Discipline Grid (De-boxed Hairline Matrix) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 border border-[var(--border-subtle)] rounded-2xl overflow-hidden bg-[var(--bg-obsidian)]/30">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 border border-[var(--border-subtle)] rounded-2xl overflow-hidden bg-[var(--bg-graphite)]">
           {/* 01 / MACROECONOMICS */}
           <div className="p-5 border-b border-[var(--border-subtle)] md:border-r space-y-3">
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider tone-blue omnis-mono">

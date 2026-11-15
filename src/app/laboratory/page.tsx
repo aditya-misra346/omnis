@@ -1,7 +1,7 @@
 "use client";
 
 import React, { Suspense, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   FlaskConical,
   RotateCcw,
@@ -11,6 +11,7 @@ import {
   Pause,
   Info,
   Download,
+  Share2,
 } from "lucide-react";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
@@ -162,6 +163,7 @@ function parseLabParam(
 }
 
 function LaboratoryContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const urlCatParam = (searchParams.get("cat") ?? searchParams.get("module")) as LabCategoryId | null;
   const resolvedUrlCat =
@@ -172,12 +174,15 @@ function LaboratoryContent() {
   const [activeId, setActiveId] = useState<LabCategoryId>(resolvedUrlCat ?? "physics");
   const [running, setRunning] = useState(true);
   const [savedNotice, setSavedNotice] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const exp = LAB_EXPERIMENTS.find((e) => e.id === activeId) ?? LAB_EXPERIMENTS[0];
 
   const [p1, setP1] = useState(() => parseLabParam(searchParams.get("p1"), exp.param1));
   const [p2, setP2] = useState(() => parseLabParam(searchParams.get("p2"), exp.param2));
   const [p3, setP3] = useState(() => parseLabParam(searchParams.get("p3"), exp.param3));
+  const lastSyncedLabQueryRef = useRef<string | null>(null);
+  const hasMountedLabRef = useRef(false);
 
   const { theme, motionPaused, addWorkspaceItem, setActiveContext } = useOmnisStore();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -217,27 +222,104 @@ function LaboratoryContent() {
   const urlP3 = searchParams.get("p3");
 
   useEffect(() => {
-    if (resolvedUrlCat) {
-      setActiveId(resolvedUrlCat);
+    const currentQs = searchParams.toString();
+    if (lastSyncedLabQueryRef.current !== null && currentQs === lastSyncedLabQueryRef.current) {
+      return;
     }
-  }, [resolvedUrlCat]);
+    if (resolvedUrlCat && resolvedUrlCat !== activeId) {
+      const targetExp = LAB_EXPERIMENTS.find((e) => e.id === resolvedUrlCat) ?? LAB_EXPERIMENTS[0];
+      setActiveId(resolvedUrlCat);
+      setP1(parseLabParam(urlP1, targetExp.param1));
+      setP2(parseLabParam(urlP2, targetExp.param2));
+      setP3(parseLabParam(urlP3, targetExp.param3));
+    } else if (urlP1 !== null || urlP2 !== null || urlP3 !== null) {
+      if (urlP1 !== null) setP1(parseLabParam(urlP1, exp.param1));
+      if (urlP2 !== null) setP2(parseLabParam(urlP2, exp.param2));
+      if (urlP3 !== null) setP3(parseLabParam(urlP3, exp.param3));
+    }
+  }, [searchParams, resolvedUrlCat, urlP1, urlP2, urlP3, activeId, exp]);
 
   useEffect(() => {
-    const shouldRestoreUrlParams = !resolvedUrlCat || resolvedUrlCat === exp.id;
-    setP1(
-      shouldRestoreUrlParams ? parseLabParam(urlP1, exp.param1) : exp.param1.defaultVal
-    );
-    setP2(
-      shouldRestoreUrlParams ? parseLabParam(urlP2, exp.param2) : exp.param2.defaultVal
-    );
-    setP3(
-      shouldRestoreUrlParams ? parseLabParam(urlP3, exp.param3) : exp.param3.defaultVal
-    );
+    setActiveContext("Digital World Laboratory", exp.title);
+  }, [exp.title, setActiveContext]);
+
+  useEffect(() => {
+    if (!hasMountedLabRef.current) {
+      hasMountedLabRef.current = true;
+      return;
+    }
+    const params = new URLSearchParams({
+      cat: activeId,
+      p1: String(p1),
+      p2: String(p2),
+      p3: String(p3),
+    });
+    const qs = params.toString();
+    lastSyncedLabQueryRef.current = qs;
+    router.replace(`/laboratory?${qs}`, { scroll: false });
+  }, [activeId, p1, p2, p3, router]);
+
+  const handleSelectDiscipline = (nextId: LabCategoryId) => {
+    const nextExp = LAB_EXPERIMENTS.find((e) => e.id === nextId) ?? LAB_EXPERIMENTS[0];
+    setActiveId(nextId);
+    setP1(nextExp.param1.defaultVal);
+    setP2(nextExp.param2.defaultVal);
+    setP3(nextExp.param3.defaultVal);
     pendulumRef.current = { theta: 0.65, omega: 0, dragging: false };
     orbitDraggingRef.current = false;
     setInteractiveReadout(null);
-    setActiveContext("Digital World Laboratory", exp.title);
-  }, [exp, resolvedUrlCat, urlP1, urlP2, urlP3, setActiveContext]);
+  };
+
+  const handleCopyLabLink = () => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams({
+      cat: activeId,
+      p1: String(p1),
+      p2: String(p2),
+      p3: String(p3),
+    });
+    const shareUrl = `${window.location.origin}/laboratory?${params.toString()}`;
+    navigator.clipboard?.writeText(shareUrl).catch(() => {});
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2200);
+  };
+
+  const handleExportLabPng = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const scale = Math.max(1, canvas.width / Math.max(1, canvasSize.width));
+    const footerH = Math.round(48 * scale);
+    const outCanvas = document.createElement("canvas");
+    outCanvas.width = canvas.width;
+    outCanvas.height = canvas.height + footerH;
+    const oCtx = outCanvas.getContext("2d");
+    if (!oCtx) {
+      const link = document.createElement("a");
+      link.download = `omnis-lab-${activeId}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+      return;
+    }
+    const isLight = theme === "light";
+    oCtx.fillStyle = isLight ? "#FAF8F5" : "#070B14";
+    oCtx.fillRect(0, 0, outCanvas.width, outCanvas.height);
+    oCtx.drawImage(canvas, 0, 0);
+    oCtx.strokeStyle = isLight ? "rgba(15, 23, 42, 0.14)" : "rgba(148, 163, 184, 0.22)";
+    oCtx.lineWidth = Math.max(1, Math.round(scale));
+    oCtx.beginPath();
+    oCtx.moveTo(0, canvas.height);
+    oCtx.lineTo(outCanvas.width, canvas.height);
+    oCtx.stroke();
+    oCtx.fillStyle = isLight ? "#0F172A" : "#E2E8F0";
+    oCtx.font = `600 ${Math.round(11 * scale)}px "JetBrains Mono", ui-monospace, SFMono-Regular, monospace`;
+    const telemetryLine = `OMNIS DIGITAL WORLD LABORATORY • ${exp.category.toUpperCase()} • ${exp.param1.label}=${p1}${exp.param1.unit} | ${exp.param2.label}=${p2}${exp.param2.unit} | ${exp.param3.label}=${p3}${exp.param3.unit}`;
+    oCtx.fillText(telemetryLine, Math.round(14 * scale), canvas.height + Math.round(footerH * 0.62), outCanvas.width - Math.round(28 * scale));
+
+    const link = document.createElement("a");
+    link.download = `omnis-lab-${activeId}.png`;
+    link.href = outCanvas.toDataURL("image/png");
+    link.click();
+  };
 
   // Real-time interactive High-DPI & Dual-Theme Canvas Solver Loop (Motion-Paused Safe)
   useEffect(() => {
@@ -724,17 +806,11 @@ function LaboratoryContent() {
         icon={<FlaskConical className="w-3.5 h-3.5" />}
         actions={
           <>
-            <OmnisButton
-              variant="secondary"
-              onClick={() => {
-                const canvas = canvasRef.current;
-                if (!canvas) return;
-                const link = document.createElement("a");
-                link.download = `omnis-lab-${activeId}.png`;
-                link.href = canvas.toDataURL("image/png");
-                link.click();
-              }}
-            >
+            <OmnisButton variant="secondary" onClick={handleCopyLabLink}>
+              {copiedLink ? <Check className="w-3.5 h-3.5 tone-verified" /> : <Share2 className="w-3.5 h-3.5 tone-blue" />}
+              <span>{copiedLink ? "Link Copied" : "Copy Link"}</span>
+            </OmnisButton>
+            <OmnisButton variant="secondary" onClick={handleExportLabPng}>
               <Download className="w-3.5 h-3.5 tone-cyan" />
               <span>Export PNG</span>
             </OmnisButton>
@@ -751,7 +827,7 @@ function LaboratoryContent() {
             ariaLabel="Digital World Laboratory Discipline"
             size="sm"
             value={activeId}
-            onChange={(val) => setActiveId(val as LabCategoryId)}
+            onChange={(val) => handleSelectDiscipline(val as LabCategoryId)}
             options={LAB_EXPERIMENTS.map((item) => ({
               value: item.id,
               label: item.category,

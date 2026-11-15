@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useEffect, useMemo, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Network,
@@ -103,6 +103,7 @@ function KnowledgeGraphContent() {
   >("loading");
   const [pathTargetId, setPathTargetId] = useState<string>("");
   const [mobileInspectorOpen, setMobileInspectorOpen] = useState(false);
+  const filterInputRef = useRef<HTMLInputElement | null>(null);
 
   const { addWorkspaceItem, setActiveContext } = useOmnisStore();
 
@@ -313,10 +314,11 @@ function KnowledgeGraphContent() {
             />
 
             <input
+              ref={filterInputRef}
               type="text"
               value={nodeSearch}
               onChange={(e) => setNodeSearch(e.target.value)}
-              placeholder="Filter nodes..."
+              placeholder="Filter nodes... (/)"
               className="px-2.5 py-1.5 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-base sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] w-44 sm:w-40 focus:outline-none focus:border-[var(--accent-blue)]"
             />
           </div>
@@ -363,6 +365,7 @@ function KnowledgeGraphContent() {
               setMaxNodes((n) => Math.min(60, n + 4));
               setExpandTargetId(id);
             }}
+            onFocusFilter={() => filterInputRef.current?.focus()}
             relationshipFilter={relFilter}
             searchFilter={nodeSearch}
             highlightedPathNodeIds={highlightedPathNodeIds}

@@ -142,7 +142,7 @@ export default function WorkspacePage() {
         subtitle="Organise saved country dossiers, deep research reports, causal graphs, and laboratory annotations with clean Markdown, CSV, JSON, and print-ready exports."
         icon={<Briefcase className="w-3.5 h-3.5" />}
         actions={
-          <div className="flex flex-wrap items-center gap-2 no-print">
+          <div className="flex flex-wrap items-center gap-2 no-print omnis-no-print">
             <OmnisButton onClick={() => handleExportFormat("md")}>
               <Download className="w-3.5 h-3.5" />
               <span>Export Markdown Brief (.md)</span>
@@ -163,7 +163,7 @@ export default function WorkspacePage() {
         }
       >
         {/* Folder & Type Filters */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-[13px]">
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-[13px] omnis-no-print">
           <OmnisSegmentedControl
             value={selectedFolder}
             onChange={setSelectedFolder}

@@ -1,3 +1,7 @@
+import {
+  buildPlaceholderCountryProfile,
+  WORLD_CATALOG_BY_ISO3,
+} from "@/lib/data/world-catalog";
 import { fetchLiveCountryIntelligence } from "@/lib/providers/live-data";
 
 export async function GET(
@@ -11,10 +15,17 @@ export async function GET(
       { status: 400 }
     );
   }
-  const profile = await fetchLiveCountryIntelligence(iso3);
+  const upperIso = iso3.trim().toUpperCase();
+  const profile = await fetchLiveCountryIntelligence(upperIso);
   if (!profile) {
+    if (WORLD_CATALOG_BY_ISO3[upperIso]) {
+      const catalogFallback = buildPlaceholderCountryProfile(upperIso);
+      if (catalogFallback) {
+        return Response.json(catalogFallback, { status: 200 });
+      }
+    }
     return Response.json(
-      { error: `No verified or live-hydrated sovereign dossier found for ISO3 "${iso3.toUpperCase()}".` },
+      { error: `No verified or live-hydrated sovereign dossier found for ISO3 "${upperIso}".` },
       { status: 404 }
     );
   }

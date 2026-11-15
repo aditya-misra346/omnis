@@ -53,40 +53,109 @@ const ERAS: { id: TimelineEra | "all"; label: string; range: string }[] = [
 function TimelineContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const categories = useMemo(
+    () => ["all", ...Array.from(new Set(TIMELINE_EVENTS.map((e) => e.category)))],
+    []
+  );
+
   const urlEventParam = searchParams.get("event")?.trim() || "";
+  const urlEraParam = searchParams.get("era")?.trim() || "";
+  const urlCatParam = searchParams.get("cat")?.trim() || "";
+  const urlQParam = searchParams.get("q") || "";
+  const urlMilestonesParam = searchParams.get("milestones");
+
   const initialEventId =
     urlEventParam && TIMELINE_EVENTS.some((e) => e.id === urlEventParam)
       ? urlEventParam
       : "evt-india-1991";
+  const initialEra: TimelineEra | "all" = ERAS.some((e) => e.id === urlEraParam)
+    ? (urlEraParam as TimelineEra | "all")
+    : "all";
+  const initialCategory =
+    urlCatParam && categories.includes(urlCatParam) ? urlCatParam : "all";
+  const initialMilestones = urlMilestonesParam === "1" || urlMilestonesParam === "true";
 
-  const [selectedEra, setSelectedEra] = useState<TimelineEra | "all">("all");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [milestonesOnly, setMilestonesOnly] = useState(false);
+  const [selectedEra, setSelectedEra] = useState<TimelineEra | "all">(initialEra);
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
+  const [searchQuery, setSearchQuery] = useState(urlQParam);
+  const [milestonesOnly, setMilestonesOnly] = useState(initialMilestones);
   const [viewOrientation, setViewOrientation] = useState<"vertical" | "horizontal">("vertical");
   const [selectedEventId, setSelectedEventId] = useState(initialEventId);
   const [savedToast, setSavedToast] = useState(false);
   const [scrubbing, setScrubbing] = useState(false);
   const [mobileDossierOpen, setMobileDossierOpen] = useState(false);
   const scrubberRef = React.useRef<HTMLDivElement | null>(null);
+  const lastSyncedTimelineQueryRef = React.useRef<string | null>(null);
+
+  const syncTimelineUrl = (overrides?: {
+    era?: TimelineEra | "all";
+    cat?: string;
+    q?: string;
+    milestones?: boolean;
+    eventId?: string;
+  }) => {
+    const nextEra = overrides?.era ?? selectedEra;
+    const nextCat = overrides?.cat ?? selectedCategory;
+    const nextQ = overrides?.q ?? searchQuery;
+    const nextMilestones = overrides?.milestones ?? milestonesOnly;
+    const nextEvent = overrides?.eventId ?? selectedEventId;
+
+    const params = new URLSearchParams();
+    if (nextEra !== "all") params.set("era", nextEra);
+    if (nextCat !== "all") params.set("cat", nextCat);
+    if (nextQ.trim()) params.set("q", nextQ.trim());
+    if (nextMilestones) params.set("milestones", "1");
+    if (nextEvent) params.set("event", nextEvent);
+
+    const qs = params.toString();
+    lastSyncedTimelineQueryRef.current = qs;
+    router.replace(qs ? `/timeline?${qs}` : "/timeline", { scroll: false });
+  };
 
   const selectEvent = (eventId: string) => {
     setSelectedEventId(eventId);
-    router.replace(`/timeline?event=${encodeURIComponent(eventId)}`, { scroll: false });
+    syncTimelineUrl({ eventId });
   };
 
   useEffect(() => {
+    const currentQs = searchParams.toString();
+    if (
+      lastSyncedTimelineQueryRef.current !== null &&
+      currentQs === lastSyncedTimelineQueryRef.current
+    ) {
+      return;
+    }
+    const nextEra: TimelineEra | "all" = ERAS.some((e) => e.id === urlEraParam)
+      ? (urlEraParam as TimelineEra | "all")
+      : "all";
+    const nextCat = urlCatParam && categories.includes(urlCatParam) ? urlCatParam : "all";
+    const nextMilestones = urlMilestonesParam === "1" || urlMilestonesParam === "true";
+
+    setSelectedEra(nextEra);
+    setSelectedCategory(nextCat);
+    setSearchQuery(urlQParam);
+    setMilestonesOnly(nextMilestones);
+
     if (urlEventParam && TIMELINE_EVENTS.some((e) => e.id === urlEventParam)) {
       setSelectedEventId(urlEventParam);
+      if (!urlEraParam && !urlCatParam && !urlQParam && !urlMilestonesParam) {
+        setSelectedEra("all");
+        setSelectedCategory("all");
+        setSearchQuery("");
+        setMilestonesOnly(false);
+      }
     }
-  }, [urlEventParam]);
+  }, [
+    searchParams,
+    urlEventParam,
+    urlEraParam,
+    urlCatParam,
+    urlQParam,
+    urlMilestonesParam,
+    categories,
+  ]);
 
   const { addWorkspaceItem, setActiveContext } = useOmnisStore();
-
-  const categories = useMemo(
-    () => ["all", ...Array.from(new Set(TIMELINE_EVENTS.map((e) => e.category)))],
-    []
-  );
 
   const filteredEvents = useMemo(() => {
     return TIMELINE_EVENTS.filter((evt) => {
@@ -171,7 +240,11 @@ function TimelineContent() {
                 ariaLabel="Historical Era Filter"
                 size="sm"
                 value={selectedEra}
-                onChange={(val) => setSelectedEra(val as TimelineEra | "all")}
+                onChange={(val) => {
+                  const nextEra = val as TimelineEra | "all";
+                  setSelectedEra(nextEra);
+                  syncTimelineUrl({ era: nextEra });
+                }}
                 options={ERAS.map((era) => ({
                   value: era.id,
                   label: era.label,
@@ -186,7 +259,11 @@ function TimelineContent() {
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    const nextQ = e.target.value;
+                    setSearchQuery(nextQ);
+                    syncTimelineUrl({ q: nextQ });
+                  }}
                   placeholder="Search historical events, participants, or locations..."
                   className="w-full bg-transparent text-base sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
                 />
@@ -195,7 +272,10 @@ function TimelineContent() {
               <div className="flex flex-wrap items-center gap-2">
                 <OmnisSelect
                   value={selectedCategory}
-                  onChange={setSelectedCategory}
+                  onChange={(nextCat) => {
+                    setSelectedCategory(nextCat);
+                    syncTimelineUrl({ cat: nextCat });
+                  }}
                   ariaLabel="Filter by Event Category"
                   options={categories.map((cat) => ({
                     value: cat,
@@ -205,7 +285,11 @@ function TimelineContent() {
 
                 <button
                   type="button"
-                  onClick={() => setMilestonesOnly((m) => !m)}
+                  onClick={() => {
+                    const nextM = !milestonesOnly;
+                    setMilestonesOnly(nextM);
+                    syncTimelineUrl({ milestones: nextM });
+                  }}
                   className={`px-3 py-1.5 rounded-xl border font-semibold transition-colors cursor-pointer ${
                     milestonesOnly
                       ? "badge-tone-warning"
