@@ -2,6 +2,20 @@ import { buildInfiniteKnowledgeGraph } from "@/lib/graph/engine";
 import { checkApiRateLimit, validateAndSanitizeInput } from "@/lib/security/guardrails";
 import { GraphRequestSchema } from "@/types/omnis";
 
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const topic = searchParams.get("topic") ?? "Semiconductors";
+  const check = validateAndSanitizeInput(topic, 200);
+  if (!check.allowed) {
+    return Response.json({ error: check.reason }, { status: 400 });
+  }
+  const graph = buildInfiniteKnowledgeGraph({
+    topic: check.sanitizedText,
+    maxNodes: Number(searchParams.get("maxNodes") ?? 32),
+  });
+  return Response.json(graph);
+}
+
 export async function POST(request: Request) {
   try {
     const ip = request.headers.get("x-forwarded-for") ?? "local";

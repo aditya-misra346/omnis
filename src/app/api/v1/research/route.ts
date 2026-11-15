@@ -1,6 +1,18 @@
 import { orchestrateDeepResearch } from "@/lib/research/engine";
 import { checkApiRateLimit, validateAndSanitizeInput } from "@/lib/security/guardrails";
-import { ResearchRequestSchema } from "@/types/omnis";
+import { ResearchMode, ResearchRequestSchema } from "@/types/omnis";
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const query = searchParams.get("q") ?? searchParams.get("query") ?? "Explain India's economic development since 1991";
+  const mode = (searchParams.get("mode") as ResearchMode) ?? "deep";
+  const check = validateAndSanitizeInput(query, 500);
+  if (!check.allowed) {
+    return Response.json({ error: check.reason }, { status: 400 });
+  }
+  const report = await orchestrateDeepResearch(check.sanitizedText, mode);
+  return Response.json(report);
+}
 
 export async function POST(request: Request) {
   try {

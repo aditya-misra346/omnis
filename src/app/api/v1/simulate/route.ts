@@ -1,6 +1,28 @@
 import { checkApiRateLimit } from "@/lib/security/guardrails";
-import { executeWhatIfSimulation } from "@/lib/simulations/engine";
-import { SimulationRequestSchema } from "@/types/omnis";
+import { executeWhatIfSimulation, SIMULATION_SCENARIOS } from "@/lib/simulations/engine";
+import { SimulationCategory, SimulationRequestSchema } from "@/types/omnis";
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const scenarioId = searchParams.get("scenarioId") ?? "econ-india-2035";
+  const category = (searchParams.get("category") as SimulationCategory) ?? "economic";
+  const result = executeWhatIfSimulation({
+    scenarioId,
+    category,
+    horizonYears: Number(searchParams.get("horizonYears") ?? 10),
+    seed: Number(searchParams.get("seed") ?? 42),
+    overrides: {},
+  });
+  return Response.json({
+    scenarios: SIMULATION_SCENARIOS.map((s) => ({
+      id: s.id,
+      title: s.title,
+      category: s.category,
+      horizonYears: s.horizonYears,
+    })),
+    activeSimulation: result,
+  });
+}
 
 export async function POST(request: Request) {
   try {
