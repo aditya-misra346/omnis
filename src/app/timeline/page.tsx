@@ -14,6 +14,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import { TIMELINE_EVENTS } from "@/lib/data/global-intelligence";
+import { OmnisLoader } from "@/components/brand/OmnisLogo";
+import { OmnisButton, OmnisModuleHeader } from "@/components/ui/OmnisPrimitives";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 import type { TimelineEra } from "@/types/omnis";
 
@@ -87,78 +89,76 @@ function TimelineContent() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* Header & Controls */}
-      <div className="omnis-card p-6 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-blue-400">
-              <Clock className="w-3.5 h-3.5" />
-              <span>MODULE 04 • REALITY TIMELINE & CONNECTED HISTORY ENGINE</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold mt-1">
-              Chronological Causal Chains Across Civilisations, Science & Economics
-            </h1>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
+      <OmnisModuleHeader
+        moduleTag="MODULE 04 • REALITY TIMELINE & CONNECTED HISTORY ENGINE"
+        title="Chronological Causal Chains Across Civilisations, Science & Economics"
+        subtitle="Trace primary historical milestones chronologically or horizontally and jump directly from historical inflection points into interactive causal Knowledge Graphs."
+        icon={<Clock className="w-3.5 h-3.5" />}
+        actions={
+          <>
+            <OmnisButton
+              variant="secondary"
               onClick={() =>
                 setViewOrientation((v) => (v === "vertical" ? "horizontal" : "vertical"))
               }
-              className="px-3 py-2 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-xs font-semibold inline-flex items-center gap-1.5"
             >
               {viewOrientation === "vertical" ? (
                 <>
-                  <Columns className="w-3.5 h-3.5 text-blue-400" />
-                  <span>Switch to Horizontal View</span>
+                  <Columns className="w-3.5 h-3.5 tone-blue" />
+                  <span>Horizontal View</span>
                 </>
               ) : (
                 <>
-                  <Rows className="w-3.5 h-3.5 text-blue-400" />
-                  <span>Switch to Vertical View</span>
+                  <Rows className="w-3.5 h-3.5 tone-blue" />
+                  <span>Vertical View</span>
                 </>
               )}
-            </button>
-            <button
-              type="button"
-              onClick={handleSaveEvent}
-              className="px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold inline-flex items-center gap-1.5"
-            >
+            </OmnisButton>
+            <OmnisButton onClick={handleSaveEvent}>
               {savedToast ? <Check className="w-3.5 h-3.5" /> : <Bookmark className="w-3.5 h-3.5" />}
               <span>{savedToast ? "Saved Event" : "Save Event"}</span>
-            </button>
-          </div>
-        </div>
-
+            </OmnisButton>
+          </>
+        }
+      >
         {/* Era Selector Tabs */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-          {ERAS.map((era) => (
-            <button
-              key={era.id}
-              type="button"
-              onClick={() => setSelectedEra(era.id)}
-              className={`p-2.5 rounded-lg text-left border transition-all ${
-                selectedEra === era.id
-                  ? "bg-blue-600/20 border-blue-500 text-[var(--text-primary)]"
-                  : "bg-[var(--bg-slate)] border-[var(--border-subtle)] text-[var(--text-secondary)]"
-              }`}
-            >
-              <div className="text-xs font-bold">{era.label}</div>
-              <div className="text-[10px] text-[var(--text-muted)] omnis-mono">{era.range}</div>
-            </button>
-          ))}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
+          {ERAS.map((era) => {
+            const active = selectedEra === era.id;
+            return (
+              <button
+                key={era.id}
+                type="button"
+                onClick={() => setSelectedEra(era.id)}
+                className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${
+                  active
+                    ? "bg-[var(--accent-blue-solid)] text-white border-transparent shadow-sm"
+                    : "bg-[var(--bg-slate)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]"
+                }`}
+              >
+                <div className="text-xs font-bold">{era.label}</div>
+                <div
+                  className={`text-[10px] omnis-mono ${
+                    active ? "text-white/80" : "text-[var(--text-muted)]"
+                  }`}
+                >
+                  {era.range}
+                </div>
+              </button>
+            );
+          })}
         </div>
 
         {/* Search, Category & Milestone Filters */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-xs">
-          <div className="flex-1 min-w-[220px] flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)]">
-            <Search className="w-3.5 h-3.5 text-blue-400" />
+          <div className="flex-1 min-w-[220px] flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)]">
+            <Search className="w-3.5 h-3.5 tone-blue shrink-0" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search historical events, participants, or locations..."
-              className="w-full bg-transparent focus:outline-none"
+              className="w-full bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
             />
           </div>
 
@@ -167,7 +167,7 @@ function TimelineContent() {
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
               aria-label="Filter by Event Category"
-              className="px-3 py-1.5 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)]"
+              className="px-3 py-1.5 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-primary)] font-medium cursor-pointer"
             >
               {categories.map((cat) => (
                 <option key={cat} value={cat} className="bg-[var(--bg-graphite)]">
@@ -179,17 +179,17 @@ function TimelineContent() {
             <button
               type="button"
               onClick={() => setMilestonesOnly((m) => !m)}
-              className={`px-3 py-1.5 rounded-lg border font-medium ${
+              className={`px-3 py-1.5 rounded-xl border font-semibold transition-colors cursor-pointer ${
                 milestonesOnly
-                  ? "bg-amber-500/20 border-amber-500/40 text-amber-300"
-                  : "bg-[var(--bg-slate)] border-[var(--border-subtle)] text-[var(--text-secondary)]"
+                  ? "badge-tone-warning"
+                  : "bg-[var(--bg-slate)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
               }`}
             >
               ★ Major Milestones Only
             </button>
           </div>
         </div>
-      </div>
+      </OmnisModuleHeader>
 
       {/* Horizontal Scrollable View (when selected) */}
       {viewOrientation === "horizontal" && (
@@ -202,18 +202,18 @@ function TimelineContent() {
                   key={evt.id}
                   type="button"
                   onClick={() => setSelectedEventId(evt.id)}
-                  className={`w-72 text-left p-4 rounded-xl border transition-all flex flex-col justify-between gap-2 ${
+                  className={`w-72 text-left p-4 rounded-xl border transition-all flex flex-col justify-between gap-2 cursor-pointer ${
                     active
-                      ? "bg-blue-600/20 border-blue-500"
-                      : "bg-[var(--bg-slate)] border-[var(--border-subtle)] hover:border-blue-500/40"
+                      ? "bg-[var(--bg-elevated)] border-[var(--accent-blue)] ring-1 ring-[var(--accent-blue)]"
+                      : "bg-[var(--bg-slate)] border-[var(--border-subtle)] hover:border-[var(--border-strong)]"
                   }`}
                 >
                   <div className="space-y-1">
-                    <div className="flex items-center justify-between text-[10px] omnis-mono text-blue-400">
+                    <div className="flex items-center justify-between text-[10px] omnis-mono tone-blue font-bold">
                       <span>{evt.dateDisplay}</span>
-                      {evt.isMilestone && <span className="text-amber-400">★ MILESTONE</span>}
+                      {evt.isMilestone && <span className="tone-warning">★ MILESTONE</span>}
                     </div>
-                    <div className="font-bold text-sm">{evt.title}</div>
+                    <div className="font-bold text-sm text-[var(--text-primary)]">{evt.title}</div>
                     <p className="text-xs text-[var(--text-secondary)] line-clamp-2">
                       {evt.description}
                     </p>
@@ -232,36 +232,36 @@ function TimelineContent() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Chronological Timeline List */}
         <div className="lg:col-span-5 omnis-card p-5 space-y-3 max-h-[680px] overflow-y-auto">
-          <div className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
+          <div className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
             Chronological Sequence ({filteredEvents.length} Verified Events)
           </div>
-          <div className="relative pl-4 border-l-2 border-blue-500/35 space-y-3">
+          <div className="relative pl-4 border-l-2 border-[var(--accent-blue)]/40 space-y-3">
             {filteredEvents.map((evt) => {
               const active = evt.id === activeEvent.id;
               return (
                 <div
                   key={evt.id}
                   onClick={() => setSelectedEventId(evt.id)}
-                  className={`relative p-3.5 rounded-lg border cursor-pointer transition-all ${
+                  className={`relative p-3.5 rounded-xl border cursor-pointer transition-all ${
                     active
-                      ? "bg-blue-600/20 border-blue-500"
-                      : "bg-[var(--bg-slate)] border-[var(--border-subtle)] hover:border-blue-500/40"
+                      ? "bg-[var(--bg-elevated)] border-[var(--accent-blue)] shadow-sm"
+                      : "bg-[var(--bg-slate)] border-[var(--border-subtle)] hover:border-[var(--border-strong)]"
                   }`}
                 >
                   <span
                     className={`absolute -left-[23px] top-4 w-3 h-3 rounded-full border-2 ${
                       active
-                        ? "bg-blue-400 border-white"
-                        : "bg-[var(--bg-obsidian)] border-blue-500"
+                        ? "bg-[var(--accent-blue)] border-[var(--bg-obsidian)]"
+                        : "bg-[var(--bg-obsidian)] border-[var(--accent-blue)]"
                     }`}
                   />
                   <div className="flex items-center justify-between text-[11px] omnis-mono">
-                    <span className="text-blue-400 font-bold">{evt.dateDisplay}</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-graphite)] text-[var(--text-muted)]">
+                    <span className="tone-blue font-bold">{evt.dateDisplay}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-graphite)] border border-[var(--border-subtle)] text-[var(--text-secondary)]">
                       {evt.category}
                     </span>
                   </div>
-                  <h3 className="text-sm font-bold mt-1">{evt.title}</h3>
+                  <h3 className="text-sm font-bold mt-1 text-[var(--text-primary)]">{evt.title}</h3>
                   <div className="text-[11px] text-[var(--text-muted)] mt-0.5">{evt.location}</div>
                 </div>
               );
@@ -273,19 +273,21 @@ function TimelineContent() {
         <div className="lg:col-span-7 omnis-card p-6 space-y-5">
           <div className="space-y-2 pb-4 border-b border-[var(--border-subtle)]">
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-              <span className="px-2.5 py-0.5 rounded-full bg-blue-500/15 text-blue-400 font-bold omnis-mono">
+              <span className="px-2.5 py-0.5 rounded-full badge-tone-blue font-bold omnis-mono">
                 {activeEvent.dateDisplay} • {activeEvent.era.toUpperCase()} ERA
               </span>
-              <span className="text-[var(--text-muted)]">{activeEvent.location}</span>
+              <span className="text-[var(--text-muted)] font-medium">{activeEvent.location}</span>
             </div>
-            <h2 className="text-2xl font-extrabold">{activeEvent.title}</h2>
+            <h2 className="omnis-display text-2xl font-extrabold text-[var(--text-primary)]">
+              {activeEvent.title}
+            </h2>
             <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
               {activeEvent.description}
             </p>
           </div>
 
           <div className="omnis-surface-slate p-4 space-y-1.5 text-xs">
-            <div className="font-bold uppercase tracking-wider text-blue-400">
+            <div className="font-bold uppercase tracking-wider tone-blue omnis-mono">
               Historical Context & Structural Significance
             </div>
             <p className="text-[var(--text-secondary)] leading-relaxed">
@@ -296,7 +298,7 @@ function TimelineContent() {
           {/* Causes & Consequences */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
             <div className="omnis-surface-slate p-4 space-y-2">
-              <div className="font-bold uppercase tracking-wider text-amber-400">
+              <div className="font-bold uppercase tracking-wider tone-warning omnis-mono">
                 Antecedent Causes
               </div>
               <ul className="space-y-1.5 list-disc pl-4 text-[var(--text-secondary)]">
@@ -306,7 +308,7 @@ function TimelineContent() {
               </ul>
             </div>
             <div className="omnis-surface-slate p-4 space-y-2">
-              <div className="font-bold uppercase tracking-wider text-emerald-400">
+              <div className="font-bold uppercase tracking-wider tone-verified omnis-mono">
                 Systemic Consequences
               </div>
               <ul className="space-y-1.5 list-disc pl-4 text-[var(--text-secondary)]">
@@ -319,14 +321,14 @@ function TimelineContent() {
 
           {/* Major Participants */}
           <div className="space-y-2 text-xs">
-            <div className="font-bold uppercase tracking-wider text-[var(--text-muted)]">
+            <div className="font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
               Major Historical Participants & Institutions
             </div>
             <div className="flex flex-wrap gap-2">
               {activeEvent.majorParticipants.map((p) => (
                 <span
                   key={p}
-                  className="px-2.5 py-1 rounded-md bg-[var(--bg-slate)] border border-[var(--border-subtle)] font-medium"
+                  className="px-2.5 py-1 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-primary)] font-medium"
                 >
                   {p}
                 </span>
@@ -335,14 +337,14 @@ function TimelineContent() {
           </div>
 
           {/* Connected History -> Transition into Infinite Knowledge Graph */}
-          <div className="omnis-surface-slate p-4 space-y-2.5 border-violet-500/35">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-violet-400 flex items-center gap-1.5">
+          <div className="omnis-surface-slate p-4 space-y-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+              <span className="font-bold tone-violet flex items-center gap-1.5">
                 <Network className="w-4 h-4" />
                 Connected History → Knowledge Graph Bridges
               </span>
               <span className="text-[10px] text-[var(--text-muted)]">
-                Click any node to transition into Module 02
+                Click any bridge to transition into Module 02
               </span>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -353,7 +355,7 @@ function TimelineContent() {
                   onClick={() =>
                     router.push(`/knowledge-graph?topic=${encodeURIComponent(topic)}`)
                   }
-                  className="px-3 py-1.5 rounded-lg bg-violet-600/20 hover:bg-violet-600 text-violet-300 hover:text-white border border-violet-500/35 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors"
+                  className="px-3 py-1.5 rounded-lg badge-tone-violet hover:brightness-105 text-xs font-semibold inline-flex items-center gap-1.5 transition-all cursor-pointer"
                 >
                   <Sparkles className="w-3 h-3" />
                   <span>{topic}</span>
@@ -364,7 +366,7 @@ function TimelineContent() {
 
           {/* Primary & Academic Sources */}
           <div className="space-y-2 text-xs">
-            <div className="font-bold uppercase tracking-wider text-[var(--text-muted)]">
+            <div className="font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
               Verified Primary & Academic Sources
             </div>
             {activeEvent.sources.map((src) => (
@@ -373,16 +375,16 @@ function TimelineContent() {
                 href={src.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-between omnis-surface-slate p-3 hover:border-blue-500/40"
+                className="flex items-center justify-between omnis-surface-slate p-3 hover:border-[var(--border-strong)]"
               >
-                <div>
-                  <div className="font-bold text-blue-400">{src.title}</div>
-                  <div className="text-[11px] text-[var(--text-muted)]">
+                <div className="min-w-0 pr-3">
+                  <div className="font-bold tone-blue truncate">{src.title}</div>
+                  <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
                     {src.author ? `${src.author} • ` : ""}
                     {src.publisher} ({src.year}) • {src.sourceType}
                   </div>
                 </div>
-                <ExternalLink className="w-4 h-4 text-blue-400 shrink-0" />
+                <ExternalLink className="w-4 h-4 tone-blue shrink-0" />
               </a>
             ))}
           </div>
@@ -394,7 +396,13 @@ function TimelineContent() {
 
 export default function TimelinePage() {
   return (
-    <Suspense fallback={<div className="p-8 text-sm">Loading Reality Timeline...</div>}>
+    <Suspense
+      fallback={
+        <div className="p-8 max-w-7xl mx-auto">
+          <OmnisLoader label="Loading Reality Timeline & Connected History..." />
+        </div>
+      }
+    >
       <TimelineContent />
     </Suspense>
   );

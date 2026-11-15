@@ -12,6 +12,8 @@ import {
   Info,
 } from "lucide-react";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
+import { OmnisLoader } from "@/components/brand/OmnisLogo";
+import { OmnisButton, OmnisModuleHeader } from "@/components/ui/OmnisPrimitives";
 
 type LabCategoryId =
   | "physics"
@@ -143,7 +145,7 @@ function LaboratoryContent() {
   const [p2, setP2] = useState(exp.param2.defaultVal);
   const [p3, setP3] = useState(exp.param3.defaultVal);
 
-  const { addWorkspaceItem, setActiveContext } = useOmnisStore();
+  const { theme, addWorkspaceItem, setActiveContext } = useOmnisStore();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -153,12 +155,32 @@ function LaboratoryContent() {
     setActiveContext("Digital World Laboratory", exp.title);
   }, [exp, setActiveContext]);
 
-  // Real-time interactive mathematical animation loop
+  // Real-time interactive High-DPI & Dual-Theme Canvas Solver Loop
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+
+    const isLight = theme === "light";
+    const W = 720;
+    const H = 320;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+
+    const palette = {
+      bg: isLight ? "#F8FAFC" : "#060913",
+      grid: isLight ? "rgba(15, 23, 42, 0.08)" : "rgba(148, 163, 184, 0.11)",
+      ink: isLight ? "#0F172A" : "#F8FAFC",
+      muted: isLight ? "#475569" : "#94A3B8",
+      blue: isLight ? "#1D4ED8" : "#3B82F6",
+      cyan: isLight ? "#0284C7" : "#38BDF8",
+      emerald: isLight ? "#059669" : "#10B981",
+      amber: isLight ? "#B45309" : "#F59E0B",
+      danger: isLight ? "#DC2626" : "#EF4444",
+      rod: isLight ? "#334155" : "#94A3B8",
+    };
 
     let frameId = 0;
     let t = 0;
@@ -167,77 +189,95 @@ function LaboratoryContent() {
 
     const render = () => {
       if (running) t += 0.025;
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
 
-      // Subtle laboratory coordinate grid
-      ctx.strokeStyle = "rgba(148, 163, 184, 0.12)";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.fillStyle = palette.bg;
+      ctx.fillRect(0, 0, W, H);
+
+      // Clean laboratory coordinate grid
+      ctx.strokeStyle = palette.grid;
       ctx.lineWidth = 1;
-      for (let x = 0; x < w; x += 40) {
+      for (let x = 0; x < W; x += 40) {
         ctx.beginPath();
         ctx.moveTo(x, 0);
-        ctx.lineTo(x, h);
+        ctx.lineTo(x, H);
         ctx.stroke();
       }
-      for (let y = 0; y < h; y += 40) {
+      for (let y = 0; y < H; y += 40) {
         ctx.beginPath();
         ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
+        ctx.lineTo(W, y);
         ctx.stroke();
       }
 
       if (activeId === "physics") {
-        // Symplectic Euler integration of damped pendulum
         if (running) {
           const alpha = -(p1 / p2) * Math.sin(theta) - p3 * omega;
           omega += alpha * 0.035;
           theta += omega * 0.035;
         }
-        const pivotX = w * 0.35;
-        const pivotY = 55;
+        const pivotX = W * 0.28;
+        const pivotY = 56;
         const rodPx = Math.min(200, p2 * 52);
         const bobX = pivotX + rodPx * Math.sin(theta);
         const bobY = pivotY + rodPx * Math.cos(theta);
 
-        ctx.strokeStyle = "#94a3b8";
+        // Pivot anchor
+        ctx.fillStyle = palette.muted;
+        ctx.fillRect(pivotX - 24, pivotY - 6, 48, 6);
+
+        // Vertical equilibrium guide
+        ctx.strokeStyle = palette.grid;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(pivotX, pivotY);
+        ctx.lineTo(pivotX, pivotY + rodPx + 24);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Rod + Bob
+        ctx.strokeStyle = palette.rod;
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.moveTo(pivotX, pivotY);
         ctx.lineTo(bobX, bobY);
         ctx.stroke();
 
-        ctx.fillStyle = "#3b82f6";
+        ctx.fillStyle = palette.blue;
         ctx.beginPath();
         ctx.arc(bobX, bobY, 18, 0, Math.PI * 2);
         ctx.fill();
 
         // Harmonic wave trace on right side
-        ctx.strokeStyle = "#10b981";
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = palette.emerald;
+        ctx.lineWidth = 2.4;
         ctx.beginPath();
-        for (let i = 0; i < 240; i++) {
-          const wx = w * 0.56 + i;
+        for (let i = 0; i < 270; i++) {
+          const wx = W * 0.52 + i;
           const wy =
-            h / 2 +
+            H / 2 +
             Math.sin(t * Math.sqrt(p1 / p2) - i * 0.04) *
-              65 *
+              68 *
               Math.exp(-p3 * (i / 90));
           if (i === 0) ctx.moveTo(wx, wy);
           else ctx.lineTo(wx, wy);
         }
         ctx.stroke();
+
+        ctx.fillStyle = palette.muted;
+        ctx.font = "600 11px monospace";
+        ctx.fillText("Oscillatory Phase-Wave Envelope", W * 0.52, 34);
       } else if (activeId === "space") {
-        const cx = w / 2 + 30;
-        const cy = h / 2;
+        const cx = W / 2 + 28;
+        const cy = H / 2;
         const aPx = p3 * 95;
         const e = p2;
         const bPx = aPx * Math.sqrt(1 - e * e);
         const cFocus = aPx * e;
 
         // Orbit ellipse
-        ctx.strokeStyle = "rgba(59, 130, 246, 0.45)";
-        ctx.lineWidth = 1.8;
+        ctx.strokeStyle = isLight ? "rgba(29, 78, 216, 0.55)" : "rgba(59, 130, 246, 0.55)";
+        ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.ellipse(cx, cy, aPx, bPx, 0, 0, Math.PI * 2);
         ctx.stroke();
@@ -245,9 +285,9 @@ function LaboratoryContent() {
         // Central star at focus
         const starX = cx - cFocus;
         const starY = cy;
-        ctx.fillStyle = "#fbbf24";
+        ctx.fillStyle = palette.amber;
         ctx.beginPath();
-        ctx.arc(starX, starY, 14 + p1 * 4, 0, Math.PI * 2);
+        ctx.arc(starX, starY, 13 + p1 * 4, 0, Math.PI * 2);
         ctx.fill();
 
         // Orbiting planet
@@ -256,19 +296,24 @@ function LaboratoryContent() {
         const px = cx + aPx * Math.cos(angle);
         const py = cy + bPx * Math.sin(angle);
 
-        ctx.strokeStyle = "rgba(251, 191, 36, 0.3)";
+        ctx.strokeStyle = isLight ? "rgba(180, 83, 9, 0.45)" : "rgba(251, 191, 36, 0.35)";
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.moveTo(starX, starY);
         ctx.lineTo(px, py);
         ctx.stroke();
 
-        ctx.fillStyle = "#38bdf8";
+        ctx.fillStyle = palette.cyan;
         ctx.beginPath();
         ctx.arc(px, py, 10, 0, Math.PI * 2);
         ctx.fill();
+
+        ctx.fillStyle = palette.muted;
+        ctx.font = "600 11px monospace";
+        ctx.fillText(`Focus Star (${p1.toFixed(1)} M☉)`, starX - 42, starY + 34);
       } else if (activeId === "chemistry") {
-        const cx = w / 2;
-        const cy = h / 2 - 15;
+        const cx = W / 2;
+        const cy = H / 2 - 18;
         const halfRad = ((p1 / 2) * Math.PI) / 180;
         const vib = Math.sin(t * 6) * (p2 / 120);
         const bondLen = 115 + vib;
@@ -278,7 +323,7 @@ function LaboratoryContent() {
         const h2x = cx + bondLen * Math.sin(halfRad);
         const h2y = cy + bondLen * Math.cos(halfRad);
 
-        ctx.strokeStyle = "#94a3b8";
+        ctx.strokeStyle = palette.rod;
         ctx.lineWidth = 6;
         ctx.beginPath();
         ctx.moveTo(cx, cy);
@@ -287,21 +332,31 @@ function LaboratoryContent() {
         ctx.lineTo(h2x, h2y);
         ctx.stroke();
 
-        // Central Oxygen/Carbon atom
-        ctx.fillStyle = "#ef4444";
+        // Bond angle arc
+        ctx.strokeStyle = palette.amber;
+        ctx.lineWidth = 1.6;
         ctx.beginPath();
-        ctx.arc(cx, cy, 28, 0, Math.PI * 2);
+        ctx.arc(cx, cy, 46, Math.PI / 2 - halfRad, Math.PI / 2 + halfRad);
+        ctx.stroke();
+
+        // Central Oxygen/Carbon atom
+        ctx.fillStyle = palette.danger;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 26, 0, Math.PI * 2);
         ctx.fill();
 
         // Ligand atoms
-        ctx.fillStyle = "#3b82f6";
+        ctx.fillStyle = palette.blue;
         ctx.beginPath();
-        ctx.arc(h1x, h1y, 18, 0, Math.PI * 2);
-        ctx.arc(h2x, h2y, 18, 0, Math.PI * 2);
+        ctx.arc(h1x, h1y, 17, 0, Math.PI * 2);
+        ctx.arc(h2x, h2y, 17, 0, Math.PI * 2);
         ctx.fill();
+
+        ctx.fillStyle = palette.ink;
+        ctx.font = "700 12px monospace";
+        ctx.fillText(`θ = ${p1.toFixed(1)}°`, cx - 28, cy + 72);
       } else if (activeId === "biology") {
-        // Lotka-Volterra predator-prey curves
-        ctx.lineWidth = 2.4;
+        ctx.lineWidth = 2.6;
         let prey = 40;
         let pred = 15;
         const dt = 0.04;
@@ -312,56 +367,61 @@ function LaboratoryContent() {
           const dPred = 0.02 * p2 * prey * pred - p3 * pred;
           prey = Math.max(2, Math.min(120, prey + dPrey * dt));
           pred = Math.max(2, Math.min(120, pred + dPred * dt));
-          const x = 40 + (i / 260) * (w - 80);
-          preyPts.push([x, h - 35 - prey * 2.1]);
-          predPts.push([x, h - 35 - pred * 2.1]);
+          const x = 44 + (i / 260) * (W - 88);
+          preyPts.push([x, H - 35 - prey * 2.0]);
+          predPts.push([x, H - 35 - pred * 2.0]);
         }
 
-        ctx.strokeStyle = "#10b981";
+        ctx.strokeStyle = palette.emerald;
         ctx.beginPath();
         preyPts.forEach(([x, y], idx) => (idx === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
         ctx.stroke();
 
-        ctx.strokeStyle = "#f59e0b";
+        ctx.strokeStyle = palette.amber;
         ctx.beginPath();
         predPts.forEach(([x, y], idx) => (idx === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
         ctx.stroke();
+
+        ctx.font = "600 11px monospace";
+        ctx.fillStyle = palette.emerald;
+        ctx.fillText("● Prey Population (x)", 44, 28);
+        ctx.fillStyle = palette.amber;
+        ctx.fillText("● Predator Population (y)", 220, 28);
       } else if (activeId === "climate") {
-        // Radiative energy balance visualization
         const forcing = 5.35 * Math.log(p1 / 280);
         const eqTempC = 14.0 + forcing * 0.8 - (p2 - 0.3) * 85 + (p3 - 1361) * 0.07;
 
-        // Earth surface arc
+        // Earth surface layer
         ctx.fillStyle = eqTempC > 16 ? "#b45309" : "#1d4ed8";
-        ctx.fillRect(0, h - 65, w, 65);
+        ctx.fillRect(0, H - 64, W, 64);
 
-        // Solar incoming arrows
-        ctx.strokeStyle = "#fbbf24";
+        // Solar incoming rays
+        ctx.strokeStyle = palette.amber;
         ctx.lineWidth = 3;
-        for (let i = 0; i < 4; i++) {
-          const sx = 90 + i * 110;
+        for (let i = 0; i < 5; i++) {
+          const sx = 80 + i * 130;
           ctx.beginPath();
-          ctx.moveTo(sx, 25);
-          ctx.lineTo(sx + 25, h - 75);
+          ctx.moveTo(sx, 72);
+          ctx.lineTo(sx + 28, H - 74);
           ctx.stroke();
         }
 
-        // Greenhouse infrared trapping halo
-        ctx.fillStyle = `rgba(239, 68, 68, ${Math.min(0.45, Math.max(0.08, (p1 - 260) / 1400))})`;
-        ctx.fillRect(0, h - 165, w, 100);
+        // Greenhouse IR trapping layer
+        ctx.fillStyle = `rgba(220, 38, 38, ${Math.min(0.42, Math.max(0.09, (p1 - 260) / 1400))})`;
+        ctx.fillRect(0, H - 165, W, 101);
 
-        ctx.fillStyle = "#f8fafc";
-        ctx.font = "bold 16px monospace";
+        ctx.fillStyle = palette.ink;
+        ctx.font = "700 14px monospace";
         ctx.fillText(
-          `Equilibrium Global Mean Temp: ${eqTempC.toFixed(2)} °C (ΔF = +${forcing.toFixed(2)} W/m²)`,
-          30,
-          50
+          `Equilibrium Global Mean Temp: ${eqTempC.toFixed(2)} °C  |  ΔF = +${forcing.toFixed(2)} W/m²`,
+          28,
+          44
         );
       } else {
-        // Engineering Pratt Truss Bridge under load
-        const leftX = 70;
-        const rightX = w - 70;
-        const baseY = h * 0.65;
+        // Pratt Truss Bridge Structural Analysis
+        const leftX = 72;
+        const rightX = W - 72;
+        const baseY = H * 0.66;
         const depthPx = p3 * 9;
         const deflection = (p1 * Math.pow(p2, 2)) / (45000 * Math.pow(p3, 2));
 
@@ -375,22 +435,22 @@ function LaboratoryContent() {
           const def1 = Math.sin((i / panels) * Math.PI) * deflection * 14;
           const def2 = Math.sin(((i + 1) / panels) * Math.PI) * deflection * 14;
 
-          // Bottom chord (tension - blue)
-          ctx.strokeStyle = "#3b82f6";
+          // Bottom chord (tension)
+          ctx.strokeStyle = palette.blue;
           ctx.beginPath();
           ctx.moveTo(x1, baseY + def1);
           ctx.lineTo(x2, baseY + def2);
           ctx.stroke();
 
-          // Top chord (compression - amber/red)
-          ctx.strokeStyle = "#f59e0b";
+          // Top chord (compression)
+          ctx.strokeStyle = palette.amber;
           ctx.beginPath();
           ctx.moveTo(x1, baseY - depthPx + def1);
           ctx.lineTo(x2, baseY - depthPx + def2);
           ctx.stroke();
 
           // Verticals & diagonals
-          ctx.strokeStyle = "#94a3b8";
+          ctx.strokeStyle = palette.rod;
           ctx.beginPath();
           ctx.moveTo(x1, baseY + def1);
           ctx.lineTo(x1, baseY - depthPx + def1);
@@ -398,6 +458,12 @@ function LaboratoryContent() {
           ctx.lineTo(x2, baseY + def2);
           ctx.stroke();
         }
+
+        ctx.font = "600 11px monospace";
+        ctx.fillStyle = palette.blue;
+        ctx.fillText("━ Bottom Chord (Tension)", 72, 32);
+        ctx.fillStyle = palette.amber;
+        ctx.fillText("━ Top Chord (Compression)", 290, 32);
       }
 
       frameId = requestAnimationFrame(render);
@@ -405,7 +471,7 @@ function LaboratoryContent() {
 
     frameId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(frameId);
-  }, [activeId, p1, p2, p3, running]);
+  }, [activeId, p1, p2, p3, running, theme]);
 
   const handleSaveLab = () => {
     addWorkspaceItem({
@@ -420,54 +486,44 @@ function LaboratoryContent() {
     setTimeout(() => setSavedNotice(false), 2500);
   };
 
-  // Compute live analytical observation metrics
   const observationText =
     activeId === "physics"
-      ? `Natural Period T = ${(2 * Math.PI * Math.sqrt(p2 / p1)).toFixed(2)} s | Angular Frequency ω₀ = ${Math.sqrt(p1 / p2).toFixed(2)} rad/s`
+      ? `Natural Period T = ${(2 * Math.PI * Math.sqrt(p2 / p1)).toFixed(2)} s | ω₀ = ${Math.sqrt(p1 / p2).toFixed(2)} rad/s`
       : activeId === "space"
-      ? `Orbital Period T = ${Math.sqrt(Math.pow(p3, 3) / p1).toFixed(2)} Earth Years | Perihelion = ${(p3 * (1 - p2)).toFixed(2)} AU | Aphelion = ${(p3 * (1 + p2)).toFixed(2)} AU`
+      ? `Orbital Period T = ${Math.sqrt(Math.pow(p3, 3) / p1).toFixed(2)} yr | Perihelion = ${(p3 * (1 - p2)).toFixed(2)} AU | Aphelion = ${(p3 * (1 + p2)).toFixed(2)} AU`
       : activeId === "chemistry"
-      ? `Bond Angle = ${p1}° | Dipole Moment Index = ${(p3 * Math.cos(((p1 / 2) * Math.PI) / 180) * 2.4).toFixed(2)} Debye`
+      ? `Bond Angle = ${p1}° | Dipole Index = ${(p3 * Math.cos(((p1 / 2) * Math.PI) / 180) * 2.4).toFixed(2)} Debye`
       : activeId === "biology"
-      ? `Equilibrium Prey Density x* = ${(p3 / (0.02 * p2)).toFixed(1)} | Equilibrium Predator Density y* = ${(p1 / (0.05 * p2)).toFixed(1)}`
+      ? `Equilibrium Prey x* = ${(p3 / (0.02 * p2)).toFixed(1)} | Predator y* = ${(p1 / (0.05 * p2)).toFixed(1)}`
       : activeId === "climate"
-      ? `Radiative Forcing ΔF = +${(5.35 * Math.log(p1 / 280)).toFixed(2)} W/m² | Equilibrium Temp = ${(14.0 + 5.35 * Math.log(p1 / 280) * 0.8 - (p2 - 0.3) * 85 + (p3 - 1361) * 0.07).toFixed(2)} °C`
-      : `Mid-Span Deflection δ = ${((p1 * Math.pow(p2, 2)) / (45000 * Math.pow(p3, 2))).toFixed(2)} cm | Structural Safety Factor = ${Math.max(0.8, (350 * p3) / (p1 * 1.4)).toFixed(2)}x`;
+      ? `ΔF = +${(5.35 * Math.log(p1 / 280)).toFixed(2)} W/m² | Eq. Temp = ${(14.0 + 5.35 * Math.log(p1 / 280) * 0.8 - (p2 - 0.3) * 85 + (p3 - 1361) * 0.07).toFixed(2)} °C`
+      : `Mid-Span Deflection δ = ${((p1 * Math.pow(p2, 2)) / (45000 * Math.pow(p3, 2))).toFixed(2)} cm | Safety Factor = ${Math.max(0.8, (350 * p3) / (p1 * 1.4)).toFixed(2)}x`;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* Header & 6 Discipline Switcher */}
-      <div className="omnis-card p-6 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-blue-400">
-              <FlaskConical className="w-3.5 h-3.5" />
-              <span>MODULE 06 • DIGITAL WORLD SCIENTIFIC & ENGINEERING LABORATORY</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold mt-1">{exp.title}</h1>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleSaveLab}
-            className="px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold inline-flex items-center gap-1.5"
-          >
+      <OmnisModuleHeader
+        moduleTag="MODULE 06 • DIGITAL WORLD SCIENTIFIC & ENGINEERING LABORATORY"
+        title={exp.title}
+        subtitle={exp.objective}
+        icon={<FlaskConical className="w-3.5 h-3.5" />}
+        actions={
+          <OmnisButton onClick={handleSaveLab}>
             {savedNotice ? <Check className="w-3.5 h-3.5" /> : <Bookmark className="w-3.5 h-3.5" />}
             <span>{savedNotice ? "Experiment Saved" : "Save Experiment"}</span>
-          </button>
-        </div>
-
-        {/* 6 Laboratory Discipline Tabs */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+          </OmnisButton>
+        }
+      >
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pt-1">
           {LAB_EXPERIMENTS.map((item) => (
             <button
               key={item.id}
               type="button"
               onClick={() => setActiveId(item.id)}
-              className={`p-2.5 rounded-lg text-left border transition-all ${
+              className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${
                 activeId === item.id
-                  ? "bg-blue-600 text-white border-blue-400"
-                  : "bg-[var(--bg-slate)] border-[var(--border-subtle)] text-[var(--text-secondary)]"
+                  ? "bg-[var(--accent-blue-solid)] text-white border-transparent shadow-sm"
+                  : "bg-[var(--bg-slate)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]"
               }`}
             >
               <div className="text-xs font-bold">{item.category}</div>
@@ -475,20 +531,23 @@ function LaboratoryContent() {
             </button>
           ))}
         </div>
-      </div>
+      </OmnisModuleHeader>
 
       {/* Interactive Simulator + Controls */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Controls & Governing Equations */}
         <div className="lg:col-span-4 omnis-card p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
-            <h2 className="text-sm font-bold">Experimental Parameters</h2>
+            <h2 className="text-sm font-bold text-[var(--text-primary)]">
+              Experimental Parameters
+            </h2>
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setRunning((r) => !r)}
-                className="p-1.5 rounded bg-[var(--bg-slate)] border border-[var(--border-subtle)]"
+                className="p-1.5 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[var(--text-primary)] cursor-pointer"
                 title={running ? "Pause Simulation" : "Resume Simulation"}
+                aria-label={running ? "Pause Simulation" : "Resume Simulation"}
               >
                 {running ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
               </button>
@@ -499,8 +558,9 @@ function LaboratoryContent() {
                   setP2(exp.param2.defaultVal);
                   setP3(exp.param3.defaultVal);
                 }}
-                className="p-1.5 rounded bg-[var(--bg-slate)] border border-[var(--border-subtle)]"
+                className="p-1.5 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[var(--text-primary)] cursor-pointer"
                 title="Reset Parameters"
+                aria-label="Reset Parameters"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
               </button>
@@ -513,9 +573,9 @@ function LaboratoryContent() {
             { spec: exp.param3, val: p3, setVal: setP3 },
           ].map(({ spec, val, setVal }) => (
             <div key={spec.label} className="omnis-surface-slate p-3.5 space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="font-semibold">{spec.label}</span>
-                <span className="font-bold omnis-mono text-blue-400">
+              <div className="flex justify-between gap-2">
+                <span className="font-semibold text-[var(--text-primary)]">{spec.label}</span>
+                <span className="font-bold omnis-mono tone-blue shrink-0">
                   {val} {spec.unit}
                 </span>
               </div>
@@ -525,20 +585,23 @@ function LaboratoryContent() {
                 max={spec.max}
                 step={spec.step}
                 value={val}
+                aria-label={spec.label}
                 onChange={(e) => setVal(Number(e.target.value))}
-                className="w-full accent-blue-500"
+                className="w-full accent-[var(--accent-blue)] cursor-pointer"
               />
             </div>
           ))}
 
           <div className="omnis-surface-slate p-3.5 space-y-1.5 text-xs">
-            <div className="text-[10px] uppercase tracking-wider text-violet-400 font-bold">
+            <div className="text-[10px] uppercase tracking-wider tone-violet font-bold omnis-mono">
               Governing Mathematical Equations
             </div>
-            <div className="omnis-mono text-[11px] text-[var(--text-primary)]">{exp.equations}</div>
+            <div className="omnis-mono text-[11px] text-[var(--text-primary)] overflow-x-auto">
+              {exp.equations}
+            </div>
           </div>
 
-          <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-300 flex items-start gap-2">
+          <div className="p-3 rounded-xl badge-tone-warning text-[11px] flex items-start gap-2 leading-relaxed">
             <Info className="w-4 h-4 shrink-0 mt-0.5" />
             <span>{exp.modelDisclosure}</span>
           </div>
@@ -548,26 +611,26 @@ function LaboratoryContent() {
         <div className="lg:col-span-8 space-y-6">
           <div className="omnis-card p-5 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-              <span className="font-bold text-blue-400 uppercase tracking-wider">
+              <span className="font-bold tone-blue uppercase tracking-wider omnis-mono">
                 Live Mathematical Simulation Canvas
               </span>
-              <span className="omnis-mono text-emerald-400 font-semibold">{observationText}</span>
+              <span className="omnis-mono tone-verified font-semibold">{observationText}</span>
             </div>
 
-            <div className="rounded-xl bg-[#070b14] border border-[var(--border-subtle)] overflow-hidden">
-              <canvas ref={canvasRef} width={720} height={320} className="w-full h-72 block" />
+            <div className="rounded-xl border border-[var(--border-subtle)] overflow-hidden">
+              <canvas ref={canvasRef} className="w-full h-72 block" />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
             <div className="omnis-card p-5 space-y-2">
-              <div className="font-bold uppercase tracking-wider text-blue-400">
+              <div className="font-bold uppercase tracking-wider tone-blue omnis-mono">
                 Experimental Objective
               </div>
               <p className="text-[var(--text-secondary)] leading-relaxed">{exp.objective}</p>
             </div>
             <div className="omnis-card p-5 space-y-2">
-              <div className="font-bold uppercase tracking-wider text-emerald-400">
+              <div className="font-bold uppercase tracking-wider tone-verified omnis-mono">
                 Scientific Background & Physical Interpretation
               </div>
               <p className="text-[var(--text-secondary)] leading-relaxed">{exp.background}</p>
@@ -581,7 +644,13 @@ function LaboratoryContent() {
 
 export default function LaboratoryPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-sm">Loading Digital World Laboratory...</div>}>
+    <Suspense
+      fallback={
+        <div className="p-8 max-w-7xl mx-auto">
+          <OmnisLoader label="Initialising Digital World Scientific Laboratory..." />
+        </div>
+      }
+    >
       <LaboratoryContent />
     </Suspense>
   );

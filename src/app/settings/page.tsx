@@ -13,6 +13,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
+import { OmnisButton, OmnisModuleHeader } from "@/components/ui/OmnisPrimitives";
 
 interface ProviderStatus {
   id: string;
@@ -57,19 +58,16 @@ export default function SettingsPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
-      <div className="omnis-card p-6 space-y-2">
-        <div className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-blue-400">
-          <Settings className="w-3.5 h-3.5" />
-          <span>SYSTEM SETTINGS, VISUAL THEME & PRIVACY GOVERNANCE</span>
-        </div>
-        <h1 className="text-2xl sm:text-3xl font-bold">
-          Account Security, Theme Calibration & Data Provider Telemetry
-        </h1>
-      </div>
+      <OmnisModuleHeader
+        moduleTag="SYSTEM SETTINGS, VISUAL THEME & PRIVACY GOVERNANCE"
+        title="Account Security, Theme Calibration & Data Provider Telemetry"
+        subtitle="Calibrate Obsidian Dark vs Alabaster Light interfaces, manage institutional sessions, and audit live upstream API providers."
+        icon={<Settings className="w-3.5 h-3.5" />}
+      />
 
       {statusMessage && (
-        <div className="omnis-card p-4 border-emerald-500/40 text-xs text-emerald-400 flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4" />
+        <div className="omnis-card p-4 border-[var(--status-verified)] text-xs tone-verified flex items-center gap-2 font-semibold">
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
           <span>{statusMessage}</span>
         </div>
       )}
@@ -77,8 +75,8 @@ export default function SettingsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Theme Calibration */}
         <div className="omnis-card p-6 space-y-4">
-          <h2 className="text-base font-bold">Visual Theme Calibration</h2>
-          <p className="text-xs text-[var(--text-secondary)]">
+          <h2 className="text-base font-bold text-[var(--text-primary)]">Visual Theme Calibration</h2>
+          <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
             Switch between OMNIS Obsidian Dark and Alabaster Light themes. Both palettes are
             engineered for WCAG 2.2 AA contrast across charts, 3D overlays, and typography.
           </p>
@@ -86,36 +84,36 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={() => setTheme("dark")}
-              className={`p-4 rounded-xl border text-left space-y-1 transition-all ${
+              className={`p-4 rounded-xl border text-left space-y-1.5 transition-all cursor-pointer ${
                 theme === "dark"
-                  ? "bg-blue-600/20 border-blue-500"
-                  : "bg-[var(--bg-slate)] border-[var(--border-subtle)]"
+                  ? "bg-[var(--bg-elevated)] border-[var(--accent-blue)] ring-1 ring-[var(--accent-blue)]"
+                  : "bg-[var(--bg-slate)] border-[var(--border-subtle)] hover:border-[var(--border-strong)]"
               }`}
             >
-              <div className="flex items-center gap-2 text-xs font-bold">
-                <Moon className="w-4 h-4 text-blue-400" />
+              <div className="flex items-center gap-2 text-xs font-bold text-[var(--text-primary)]">
+                <Moon className="w-4 h-4 tone-blue" />
                 <span>Obsidian Dark</span>
               </div>
               <div className="text-[11px] text-[var(--text-muted)]">
-                Deep obsidian (#07090E) & electric blue
+                Deep obsidian (#07090E) & precision blue
               </div>
             </button>
 
             <button
               type="button"
               onClick={() => setTheme("light")}
-              className={`p-4 rounded-xl border text-left space-y-1 transition-all ${
+              className={`p-4 rounded-xl border text-left space-y-1.5 transition-all cursor-pointer ${
                 theme === "light"
-                  ? "bg-blue-600/20 border-blue-500"
-                  : "bg-[var(--bg-slate)] border-[var(--border-subtle)]"
+                  ? "bg-[var(--bg-elevated)] border-[var(--accent-blue)] ring-1 ring-[var(--accent-blue)]"
+                  : "bg-[var(--bg-slate)] border-[var(--border-subtle)] hover:border-[var(--border-strong)]"
               }`}
             >
-              <div className="flex items-center gap-2 text-xs font-bold">
-                <Sun className="w-4 h-4 text-amber-400" />
+              <div className="flex items-center gap-2 text-xs font-bold text-[var(--text-primary)]">
+                <Sun className="w-4 h-4 tone-warning" />
                 <span>Alabaster Light</span>
               </div>
               <div className="text-[11px] text-[var(--text-muted)]">
-                High-contrast daylight research surfaces
+                High-contrast daylight editorial surfaces
               </div>
             </button>
           </div>
@@ -123,40 +121,35 @@ export default function SettingsPage() {
 
         {/* Authentication & Session Management */}
         <div className="omnis-card p-6 space-y-4">
-          <h2 className="text-base font-bold flex items-center gap-2">
-            <UserCheck className="w-4 h-4 text-emerald-400" />
+          <h2 className="text-base font-bold flex items-center gap-2 text-[var(--text-primary)]">
+            <UserCheck className="w-4 h-4 tone-verified" />
             Researcher Authentication & Session
           </h2>
 
           {user ? (
             <div className="space-y-3 text-xs">
               <div className="omnis-surface-slate p-3.5 space-y-1">
-                <div className="font-bold text-sm">{user.displayName}</div>
+                <div className="font-bold text-sm text-[var(--text-primary)]">{user.displayName}</div>
                 <div className="text-[var(--text-secondary)] omnis-mono">{user.email}</div>
-                <div className="text-[11px] text-emerald-400 pt-1">
+                <div className="text-[11px] tone-verified font-semibold pt-1">
                   ✓ Verified Role: {user.role} • Isolated Workspace Active
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={logout}
-                  className="px-3.5 py-2 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] font-semibold inline-flex items-center gap-1.5"
-                >
+              <div className="flex flex-wrap items-center gap-2">
+                <OmnisButton variant="secondary" onClick={logout}>
                   <LogOut className="w-3.5 h-3.5" />
                   <span>Sign Out</span>
-                </button>
-                <button
-                  type="button"
+                </OmnisButton>
+                <OmnisButton
+                  variant="danger"
                   onClick={() => {
                     deleteAccountAndData();
                     setStatusMessage("Account and all private workspace data permanently deleted.");
                   }}
-                  className="px-3.5 py-2 rounded-lg bg-rose-500/15 text-rose-400 border border-rose-500/30 font-semibold inline-flex items-center gap-1.5"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>Delete Account & Data</span>
-                </button>
+                </OmnisButton>
               </div>
             </div>
           ) : (
@@ -167,7 +160,7 @@ export default function SettingsPage() {
                 value={nameInput}
                 onChange={(e) => setNameInput(e.target.value)}
                 placeholder="Display Name"
-                className="w-full px-3 py-2 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)]"
+                className="w-full px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]"
               />
               <input
                 type="email"
@@ -175,14 +168,11 @@ export default function SettingsPage() {
                 value={emailInput}
                 onChange={(e) => setEmailInput(e.target.value)}
                 placeholder="Institutional Email"
-                className="w-full px-3 py-2 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)]"
+                className="w-full px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]"
               />
-              <button
-                type="submit"
-                className="w-full py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold"
-              >
+              <OmnisButton type="submit" className="w-full">
                 Sign In / Provision Researcher Session
-              </button>
+              </OmnisButton>
             </form>
           )}
         </div>
@@ -190,27 +180,29 @@ export default function SettingsPage() {
 
       {/* Live External Data Provider Health Diagnostics */}
       <div className="omnis-card p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold flex items-center gap-2">
-            <Database className="w-4 h-4 text-blue-400" />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-base font-bold flex items-center gap-2 text-[var(--text-primary)]">
+            <Database className="w-4 h-4 tone-blue" />
             Centralised External Data Provider Telemetry
           </h2>
-          <span className="text-xs text-emerald-400 omnis-mono">All Providers Operational</span>
+          <span className="text-xs px-2.5 py-0.5 rounded-full badge-tone-verified font-semibold omnis-mono">
+            All Providers Operational
+          </span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
           {providers.map((p) => (
-            <div key={p.id} className="omnis-surface-slate p-4 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="font-bold">{p.name}</span>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 text-[10px] omnis-mono uppercase">
+            <div key={p.id} className="omnis-surface-slate p-4 space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-bold text-[var(--text-primary)]">{p.name}</span>
+                <span className="px-2 py-0.5 rounded-full badge-tone-verified text-[10px] font-semibold omnis-mono uppercase">
                   {p.status}
                 </span>
               </div>
               <div className="text-[11px] text-[var(--text-muted)] omnis-mono truncate">
                 {p.endpoint}
               </div>
-              <div className="text-[10px] text-[var(--text-secondary)]">License: {p.license}</div>
+              <div className="text-[10.5px] text-[var(--text-secondary)]">License: {p.license}</div>
             </div>
           ))}
         </div>
@@ -218,7 +210,7 @@ export default function SettingsPage() {
 
       {/* Security & Privacy Policy Summary */}
       <div className="omnis-card p-6 space-y-2 text-xs">
-        <div className="flex items-center gap-2 font-bold text-emerald-400 uppercase tracking-wider">
+        <div className="flex items-center gap-2 font-bold tone-verified uppercase tracking-wider omnis-mono">
           <ShieldCheck className="w-4 h-4" />
           <span>Security, AI Guardrails & Privacy Disclosures</span>
         </div>

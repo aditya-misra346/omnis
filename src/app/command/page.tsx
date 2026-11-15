@@ -24,6 +24,7 @@ import {
   LayoutGrid,
 } from "lucide-react";
 import { COUNTRIES_DATA, TIMELINE_EVENTS } from "@/lib/data/global-intelligence";
+import { OmnisButton, OmnisModuleHeader } from "@/components/ui/OmnisPrimitives";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 
 export default function CommandCenterPage() {
@@ -70,45 +71,34 @@ export default function CommandCenterPage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* Welcome & Universal Natural-Language Command Bar */}
-      <div className="omnis-card p-6 space-y-5 border-blue-500/30">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-blue-400">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Intelligence Command Center</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold mt-1">
-              Global Situation & Knowledge Discovery Matrix
-            </h1>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
+      <OmnisModuleHeader
+        moduleTag="INTELLIGENCE COMMAND CENTER"
+        title="Global Situation & Knowledge Discovery Matrix"
+        subtitle="Route natural language commands directly to the 3D Sovereign Atlas, Infinite Knowledge Graph, Monte Carlo Simulator, or Multi-Step Deep Research Engine."
+        icon={<Sparkles className="w-3.5 h-3.5" />}
+        actions={
+          <>
+            <OmnisButton
+              variant="secondary"
               onClick={() => setCustomizeOpen((prev) => !prev)}
-              className="px-3 py-1.5 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] hover:border-blue-500/40 text-xs font-medium inline-flex items-center gap-1.5"
             >
-              <LayoutGrid className="w-3.5 h-3.5 text-blue-400" />
-              <span>{customizeOpen ? "Close Widget Customiser" : "Customise Widgets"}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setAssistantOpen(true)}
-              className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium inline-flex items-center gap-1.5"
-            >
+              <LayoutGrid className="w-3.5 h-3.5 tone-blue" />
+              <span>{customizeOpen ? "Close Customiser" : "Customise Widgets"}</span>
+            </OmnisButton>
+            <OmnisButton onClick={() => setAssistantOpen(true)}>
               <Sparkles className="w-3.5 h-3.5" />
               <span>Ask AI Assistant</span>
-            </button>
-          </div>
-        </div>
-
+            </OmnisButton>
+          </>
+        }
+      >
         {/* Natural Language Command Input */}
         <form
           onSubmit={handleCommandSubmit}
-          className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-[var(--bg-slate)] p-2 rounded-xl border border-[var(--border-subtle)] focus-within:border-blue-500"
+          className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-[var(--bg-slate)] p-2 rounded-xl border border-[var(--border-subtle)] focus-within:border-[var(--accent-blue)] transition-colors"
         >
           <div className="flex-1 flex items-center gap-2.5 px-3 py-1.5">
-            <Search className="w-4 h-4 text-blue-400 shrink-0" />
+            <Search className="w-4 h-4 tone-blue shrink-0" />
             <input
               type="text"
               value={commandInput}
@@ -117,55 +107,55 @@ export default function CommandCenterPage() {
               className="w-full bg-transparent text-sm focus:outline-none text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
             />
           </div>
-          <button
-            type="submit"
-            className="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold tracking-wide inline-flex items-center justify-center gap-1.5"
-          >
+          <OmnisButton type="submit" size="md">
             <span>Execute Command</span>
             <ArrowRight className="w-3.5 h-3.5" />
-          </button>
+          </OmnisButton>
         </form>
 
         {/* Quick Command Pills */}
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="text-[var(--text-muted)] font-medium">Instant Commands:</span>
+          <span className="text-[var(--text-muted)] font-semibold omnis-mono uppercase tracking-wider text-[10px]">
+            Instant Commands:
+          </span>
           {[
             { label: "🇮🇳 India Country Dossier", href: "/atlas?country=IND" },
             { label: "⚖️ India vs China Economic Compare", href: "/intelligence?left=IND&right=CHN" },
-            { label: "🕸️ Semiconductor & Geopolitics Graph", href: "/knowledge-graph?topic=Semiconductor%20Infrastructure" },
+            {
+              label: "🕸️ Semiconductor & Geopolitics Graph",
+              href: "/knowledge-graph?topic=Semiconductors",
+            },
             { label: "📈 Oil Shock Monte Carlo Simulation", href: "/simulations?category=economics" },
-            { label: "🔬 Orbital Gravity Lab", href: "/laboratory?exp=orbital" },
+            { label: "🔬 Orbital Gravity Lab", href: "/laboratory?cat=space" },
           ].map((pill) => (
             <Link
               key={pill.href}
               href={pill.href}
-              className="px-2.5 py-1 rounded-full bg-[var(--bg-slate)] hover:bg-blue-600/20 hover:text-blue-400 border border-[var(--border-subtle)] text-[var(--text-secondary)] transition-colors"
+              className="px-2.5 py-1 rounded-full bg-[var(--bg-slate)] hover:border-[var(--border-strong)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
             >
               {pill.label}
             </Link>
           ))}
         </div>
-      </div>
+      </OmnisModuleHeader>
 
       {/* Customisable Widget Controller Panel */}
       {customizeOpen && (
-        <div className="omnis-card p-5 space-y-3 border-blue-500/40">
-          <div className="flex items-center justify-between">
+        <div className="omnis-card p-5 space-y-3 border-[var(--border-strong)]">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h2 className="text-sm font-bold">Customise Command Center Widgets</h2>
-              <p className="text-xs text-[var(--text-muted)]">
+              <h2 className="text-sm font-bold text-[var(--text-primary)]">
+                Customise Command Center Widgets
+              </h2>
+              <p className="text-xs text-[var(--text-secondary)]">
                 Rearrange, hide, or restore dashboard intelligence modules. Changes persist
                 automatically across sessions.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={resetWidgets}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-            >
+            <OmnisButton variant="secondary" size="sm" onClick={resetWidgets}>
               <RotateCcw className="w-3.5 h-3.5" />
-              Restore Defaults
-            </button>
+              <span>Restore Defaults</span>
+            </OmnisButton>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
@@ -179,10 +169,8 @@ export default function CommandCenterPage() {
                   <button
                     type="button"
                     onClick={() => toggleWidgetVisibility(w.id)}
-                    className={`inline-flex items-center gap-1 px-2 py-1 rounded ${
-                      w.visible
-                        ? "bg-emerald-500/15 text-emerald-400"
-                        : "bg-rose-500/15 text-rose-400"
+                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-md font-semibold cursor-pointer ${
+                      w.visible ? "badge-tone-verified" : "badge-tone-danger"
                     }`}
                   >
                     {w.visible ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
@@ -193,8 +181,9 @@ export default function CommandCenterPage() {
                       type="button"
                       disabled={idx === 0}
                       onClick={() => moveWidget(w.id, "up")}
-                      className="p-1 rounded border border-[var(--border-subtle)] disabled:opacity-30"
+                      className="p-1 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-graphite)] disabled:opacity-30 cursor-pointer"
                       title="Move Up"
+                      aria-label={`Move ${w.title} Up`}
                     >
                       <ArrowUp className="w-3 h-3" />
                     </button>
@@ -202,8 +191,9 @@ export default function CommandCenterPage() {
                       type="button"
                       disabled={idx === sortedWidgets.length - 1}
                       onClick={() => moveWidget(w.id, "down")}
-                      className="p-1 rounded border border-[var(--border-subtle)] disabled:opacity-30"
+                      className="p-1 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-graphite)] disabled:opacity-30 cursor-pointer"
                       title="Move Down"
+                      aria-label={`Move ${w.title} Down`}
                     >
                       <ArrowDown className="w-3 h-3" />
                     </button>
@@ -223,10 +213,10 @@ export default function CommandCenterPage() {
             if (widget.id === "trending-global") {
               return (
                 <section key={widget.id} className="omnis-card p-6 space-y-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4 text-blue-400" />
-                      <h2 className="text-base font-bold">{widget.title}</h2>
+                      <TrendingUp className="w-4 h-4 tone-blue" />
+                      <h2 className="text-base font-bold text-[var(--text-primary)]">{widget.title}</h2>
                     </div>
                     <span className="text-[11px] text-[var(--text-muted)] omnis-mono">
                       Source: World Bank Open Data (WDI) & IMF WEO 2026
@@ -238,31 +228,33 @@ export default function CommandCenterPage() {
                       <Link
                         key={c.iso3}
                         href={`/atlas?country=${c.iso3}`}
-                        className="omnis-surface-slate p-4 hover:border-blue-500/45 transition-all space-y-2"
+                        className="omnis-surface-slate omnis-card-interactive p-4 space-y-2"
                       >
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-sm">
+                          <span className="font-bold text-sm text-[var(--text-primary)]">
                             {c.flagEmoji} {c.name}
                           </span>
-                          <span className="text-[11px] omnis-mono px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400">
+                          <span className="text-[11px] font-semibold omnis-mono px-1.5 py-0.5 rounded-md badge-tone-blue">
                             {c.iso3}
                           </span>
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-xs pt-1">
                           <div>
                             <div className="text-[10px] text-[var(--text-muted)]">Nominal GDP</div>
-                            <div className="font-bold omnis-mono">${c.gdpUsdBn.toLocaleString()}B</div>
+                            <div className="font-bold omnis-mono text-[var(--text-primary)]">
+                              ${c.gdpUsdBn.toLocaleString()}B
+                            </div>
                           </div>
                           <div>
                             <div className="text-[10px] text-[var(--text-muted)]">Real Growth</div>
-                            <div className="font-bold omnis-mono text-emerald-400">
+                            <div className="font-bold omnis-mono tone-verified">
                               +{c.gdpGrowthPct}%
                             </div>
                           </div>
                         </div>
-                        <div className="text-[11px] text-[var(--text-muted)] flex justify-between pt-1 border-t border-[var(--border-subtle)]">
-                          <span>Clean Grid: {c.energyProfile.renewableSharePct}%</span>
-                          <span>AI Index: {c.technologyProfile.aiReadinessIndex}</span>
+                        <div className="text-[11px] text-[var(--text-secondary)] flex justify-between pt-1 border-t border-[var(--border-subtle)] omnis-mono">
+                          <span>Clean: {c.energyProfile.renewableSharePct}%</span>
+                          <span>AI: {c.technologyProfile.aiReadinessIndex}</span>
                         </div>
                       </Link>
                     ))}
@@ -274,10 +266,10 @@ export default function CommandCenterPage() {
             if (widget.id === "flagship-modules") {
               return (
                 <section key={widget.id} className="omnis-card p-6 space-y-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <Layers className="w-4 h-4 text-violet-400" />
-                      <h2 className="text-base font-bold">{widget.title}</h2>
+                      <Layers className="w-4 h-4 tone-violet" />
+                      <h2 className="text-base font-bold text-[var(--text-primary)]">{widget.title}</h2>
                     </div>
                     <span className="text-xs text-[var(--text-muted)]">
                       Direct Launch into All 6 Core Modules
@@ -294,7 +286,7 @@ export default function CommandCenterPage() {
                       },
                       {
                         title: "02. Infinite Knowledge Graph",
-                        desc: "6 graph layouts, 11 relationship types, progressive expansion & SVG export.",
+                        desc: "6 graph layouts, 11 relationship types, progressive expansion & JSON export.",
                         href: "/knowledge-graph",
                         icon: Network,
                       },
@@ -328,9 +320,9 @@ export default function CommandCenterPage() {
                         <Link
                           key={m.href}
                           href={m.href}
-                          className="omnis-surface-slate p-4 hover:border-blue-500/45 transition-all flex items-start gap-3"
+                          className="omnis-surface-slate omnis-card-interactive p-4 flex items-start gap-3"
                         >
-                          <div className="p-2 rounded-lg bg-blue-500/15 text-blue-400 shrink-0">
+                          <div className="p-2 rounded-xl badge-tone-blue shrink-0">
                             <Icon className="w-4 h-4" />
                           </div>
                           <div className="space-y-1">
@@ -353,8 +345,8 @@ export default function CommandCenterPage() {
               return (
                 <section key={widget.id} className="omnis-card p-6 space-y-4">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-base font-bold">{widget.title}</h2>
-                    <Link href="/timeline" className="text-xs text-blue-400 hover:underline">
+                    <h2 className="text-base font-bold text-[var(--text-primary)]">{widget.title}</h2>
+                    <Link href="/timeline" className="text-xs tone-blue font-semibold hover:underline">
                       Open Reality Timeline →
                     </Link>
                   </div>
@@ -364,13 +356,15 @@ export default function CommandCenterPage() {
                       const dev = c.currentDevelopments[0];
                       return (
                         <div key={c.iso3} className="omnis-surface-slate p-4 space-y-2">
-                          <div className="flex items-center justify-between text-[11px] text-blue-400 font-semibold">
+                          <div className="flex items-center justify-between text-[11px] tone-blue font-bold">
                             <span>
                               {c.flagEmoji} {c.name}
                             </span>
                             <span className="omnis-mono">{dev?.date ?? "2026"}</span>
                           </div>
-                          <h3 className="text-xs font-bold">{dev?.headline}</h3>
+                          <h3 className="text-xs font-bold text-[var(--text-primary)]">
+                            {dev?.headline}
+                          </h3>
                           <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
                             {dev?.summary}
                           </p>
@@ -387,17 +381,14 @@ export default function CommandCenterPage() {
 
             if (widget.id === "recent-explorations") {
               return (
-                <section
-                  key={widget.id}
-                  className="grid grid-cols-1 lg:grid-cols-2 gap-6"
-                >
+                <section key={widget.id} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="omnis-card p-6 space-y-3">
                     <div className="flex items-center justify-between">
-                      <h2 className="text-sm font-bold flex items-center gap-2">
-                        <Bookmark className="w-4 h-4 text-blue-400" />
+                      <h2 className="text-sm font-bold flex items-center gap-2 text-[var(--text-primary)]">
+                        <Bookmark className="w-4 h-4 tone-blue" />
                         Saved Research, Graphs & Simulations
                       </h2>
-                      <Link href="/workspace" className="text-xs text-blue-400 hover:underline">
+                      <Link href="/workspace" className="text-xs tone-blue font-semibold hover:underline">
                         Open Workspace ({workspaceItems.length}) →
                       </Link>
                     </div>
@@ -406,15 +397,15 @@ export default function CommandCenterPage() {
                         <Link
                           key={item.id}
                           href={item.href}
-                          className="block omnis-surface-slate p-3 hover:border-blue-500/40 transition-all"
+                          className="block omnis-surface-slate omnis-card-interactive p-3"
                         >
-                          <div className="flex items-center justify-between text-xs font-semibold">
-                            <span>{item.title}</span>
-                            <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 omnis-mono">
+                          <div className="flex items-center justify-between gap-2 text-xs font-semibold">
+                            <span className="text-[var(--text-primary)] truncate">{item.title}</span>
+                            <span className="text-[10px] uppercase px-1.5 py-0.5 rounded-md badge-tone-blue omnis-mono shrink-0">
                               {item.type}
                             </span>
                           </div>
-                          <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                          <div className="text-[11px] text-[var(--text-secondary)] mt-0.5">
                             {item.subtitle}
                           </div>
                         </Link>
@@ -424,11 +415,11 @@ export default function CommandCenterPage() {
 
                   <div className="omnis-card p-6 space-y-3">
                     <div className="flex items-center justify-between">
-                      <h2 className="text-sm font-bold flex items-center gap-2">
-                        <Search className="w-4 h-4 text-violet-400" />
+                      <h2 className="text-sm font-bold flex items-center gap-2 text-[var(--text-primary)]">
+                        <Search className="w-4 h-4 tone-violet" />
                         Recent Natural-Language Investigations
                       </h2>
-                      <Link href="/explore" className="text-xs text-blue-400 hover:underline">
+                      <Link href="/explore" className="text-xs tone-blue font-semibold hover:underline">
                         Universal Search →
                       </Link>
                     </div>
@@ -437,10 +428,10 @@ export default function CommandCenterPage() {
                         <Link
                           key={q}
                           href={`/explore?q=${encodeURIComponent(q)}`}
-                          className="flex items-center justify-between omnis-surface-slate p-3 text-xs hover:border-blue-500/40"
+                          className="flex items-center justify-between omnis-surface-slate omnis-card-interactive p-3 text-xs text-[var(--text-primary)]"
                         >
-                          <span className="truncate">{q}</span>
-                          <ArrowRight className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                          <span className="truncate font-medium">{q}</span>
+                          <ArrowRight className="w-3.5 h-3.5 tone-blue shrink-0" />
                         </Link>
                       ))}
                     </div>
@@ -451,18 +442,18 @@ export default function CommandCenterPage() {
 
             return (
               <section key={widget.id} className="omnis-card p-6 space-y-3">
-                <h2 className="text-sm font-bold">{widget.title}</h2>
+                <h2 className="text-sm font-bold text-[var(--text-primary)]">{widget.title}</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                   {TIMELINE_EVENTS.slice(-3).map((evt) => (
                     <Link
                       key={evt.id}
                       href={`/timeline?event=${evt.id}`}
-                      className="omnis-surface-slate p-3.5 hover:border-blue-500/40 space-y-1.5"
+                      className="omnis-surface-slate omnis-card-interactive p-3.5 space-y-1.5"
                     >
-                      <div className="text-[10px] text-blue-400 font-semibold omnis-mono">
+                      <div className="text-[10px] tone-blue font-bold omnis-mono">
                         {evt.dateDisplay} • {evt.category}
                       </div>
-                      <div className="font-bold">{evt.title}</div>
+                      <div className="font-bold text-[var(--text-primary)]">{evt.title}</div>
                       <p className="text-[11px] text-[var(--text-secondary)] line-clamp-2">
                         {evt.description}
                       </p>

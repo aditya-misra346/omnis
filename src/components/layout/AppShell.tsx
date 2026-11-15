@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import {
   Compass,
   Globe2,
@@ -14,7 +15,6 @@ import {
   Sliders,
   Briefcase,
   Settings,
-  LayoutDashboard,
   Layers,
   Search,
   Sparkles,
@@ -32,19 +32,20 @@ import {
 } from "lucide-react";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 import { classifyQueryIntent } from "@/lib/research/engine";
+import { OmnisLoader, OmnisWordmark } from "@/components/brand/OmnisLogo";
 
 const NAV_ITEMS = [
-  { label: "Home", href: "/command", icon: Home, badge: "Command" },
-  { label: "Intelligence", href: "/intelligence", icon: Layers, badge: "Compare" },
-  { label: "Explore", href: "/explore", icon: Compass, badge: "Search" },
-  { label: "Knowledge Graph", href: "/knowledge-graph", icon: Network, badge: "Mod 02" },
-  { label: "Global Atlas", href: "/atlas", icon: Globe2, badge: "Mod 01" },
-  { label: "Research", href: "/research", icon: FileSearch, badge: "Mod 05" },
-  { label: "Simulations", href: "/simulations", icon: Sliders, badge: "Mod 03" },
-  { label: "Timeline", href: "/timeline", icon: Clock, badge: "Mod 04" },
-  { label: "Laboratory", href: "/laboratory", icon: FlaskConical, badge: "Mod 06" },
-  { label: "My Workspace", href: "/workspace", icon: Briefcase },
-  { label: "Settings", href: "/settings", icon: Settings },
+  { label: "Home", href: "/command", icon: Home, badge: "Command", group: "core" },
+  { label: "Intelligence", href: "/intelligence", icon: Layers, badge: "Compare", group: "core" },
+  { label: "Explore", href: "/explore", icon: Compass, badge: "Search", group: "core" },
+  { label: "Global Atlas", href: "/atlas", icon: Globe2, badge: "Mod 01", group: "modules" },
+  { label: "Knowledge Graph", href: "/knowledge-graph", icon: Network, badge: "Mod 02", group: "modules" },
+  { label: "Simulations", href: "/simulations", icon: Sliders, badge: "Mod 03", group: "modules" },
+  { label: "Timeline", href: "/timeline", icon: Clock, badge: "Mod 04", group: "modules" },
+  { label: "Research", href: "/research", icon: FileSearch, badge: "Mod 05", group: "modules" },
+  { label: "Laboratory", href: "/laboratory", icon: FlaskConical, badge: "Mod 06", group: "modules" },
+  { label: "My Workspace", href: "/workspace", icon: Briefcase, group: "system" },
+  { label: "Settings", href: "/settings", icon: Settings, group: "system" },
 ];
 
 const QUICK_NATURAL_QUERIES = [
@@ -174,513 +175,543 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen flex flex-col bg-[var(--bg-obsidian)] text-[var(--text-primary)]">
-        {/* Top Global Intelligence Header */}
-        <header className="sticky top-0 z-40 h-14 border-b border-[var(--border-subtle)] bg-[var(--bg-obsidian)]/90 backdrop-blur-md px-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen(true)}
-              aria-label="Open Navigation Menu"
-              className="lg:hidden p-2 rounded-lg border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-            >
-              <Menu className="w-4 h-4" />
-            </button>
+      <MotionConfig reducedMotion="user">
+        <div className="min-h-screen flex flex-col bg-[var(--bg-obsidian)] text-[var(--text-primary)]">
+          {/* Top Global Intelligence Header */}
+          <header
+            className="sticky top-0 z-40 h-14 border-b border-[var(--border-subtle)] backdrop-blur-xl px-3 sm:px-4 flex items-center justify-between gap-2 sm:gap-3 overflow-x-clip"
+            style={{ backgroundColor: "var(--glass-bg)" }}
+          >
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(true)}
+                aria-label="Open Navigation Menu"
+                className="lg:hidden shrink-0 p-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+              >
+                <Menu className="w-4 h-4" />
+              </button>
 
-            <Link href="/" className="flex items-center gap-2.5 group">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center text-white font-bold tracking-wider shadow-sm">
-                Ω
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold tracking-[0.18em] text-sm">OMNIS</span>
-                  <span className="hidden sm:inline-block text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/30 omnis-mono">
-                    v1.0
-                  </span>
-                </div>
-                <p className="hidden xl:block text-[10px] text-[var(--text-muted)] -mt-0.5">
-                  The Intelligence of Everything
-                </p>
-              </div>
-            </Link>
+              <Link
+                href="/"
+                className="group focus:outline-none rounded-lg transition-opacity hover:opacity-90 shrink-0"
+              >
+                <OmnisWordmark />
+              </Link>
 
-            {isLandingPage && (
-              <nav className="hidden md:flex items-center gap-1 ml-4 pl-4 border-l border-[var(--border-subtle)] text-xs">
-                <Link
-                  href="/command"
-                  className="px-2.5 py-1.5 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-slate)]"
-                >
-                  Command Center
-                </Link>
-                <Link
-                  href="/atlas"
-                  className="px-2.5 py-1.5 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-slate)]"
-                >
-                  3D Global Atlas
-                </Link>
-                <Link
-                  href="/knowledge-graph"
-                  className="px-2.5 py-1.5 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-slate)]"
-                >
-                  Knowledge Graph
-                </Link>
-                <Link
-                  href="/simulations"
-                  className="px-2.5 py-1.5 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-slate)]"
-                >
-                  Simulations
-                </Link>
-                <Link
-                  href="/research"
-                  className="px-2.5 py-1.5 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-slate)]"
-                >
-                  Deep Research
-                </Link>
-                <Link
-                  href="/laboratory"
-                  className="px-2.5 py-1.5 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-slate)]"
-                >
-                  Digital Lab
-                </Link>
-              </nav>
-            )}
-          </div>
-
-          {/* Universal Command & Search Trigger */}
-          <div className="flex-1 max-w-xl mx-2">
-            <button
-              type="button"
-              onClick={() => setCommandPaletteOpen(true)}
-              className="w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] hover:border-blue-500/50 text-xs text-[var(--text-secondary)] transition-all"
-            >
-              <span className="flex items-center gap-2 truncate">
-                <Search className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                <span className="truncate">
-                  Ask anything, search countries, compare indicators, or generate a graph...
-                </span>
-              </span>
-              <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] rounded bg-[var(--bg-graphite)] border border-[var(--border-subtle)] omnis-mono">
-                ⌘K
-              </kbd>
-            </button>
-          </div>
-
-          {/* Right Action Controls */}
-          <div className="flex items-center gap-2">
-            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-[11px] text-emerald-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Live Providers</span>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setAssistantOpen(!assistantOpen)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-600/15 hover:bg-blue-600/25 text-blue-400 border border-blue-500/30 text-xs font-medium transition-colors"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">AI Assistant</span>
-              <kbd className="hidden lg:inline text-[10px] opacity-75 omnis-mono">⌘J</kbd>
-            </button>
-
-            <button
-              type="button"
-              onClick={toggleTheme}
-              aria-label="Toggle Light/Dark Theme"
-              title={`Switch to ${theme === "dark" ? "Alabaster Light" : "Obsidian Dark"} Theme`}
-              className="p-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-            >
-              {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </button>
-
-            <Link
-              href="/settings"
-              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] text-xs hover:border-blue-500/40"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="truncate max-w-[110px]">
-                {user ? user.displayName.split(" ")[0] : "Sign In"}
-              </span>
-            </Link>
-          </div>
-        </header>
-
-        {/* Main Workspace Body */}
-        <div className="flex-1 flex">
-          {/* Desktop Collapsible Sidebar (Shown on all routes or toggleable) */}
-          {!isLandingPage && (
-            <aside
-              className={`hidden lg:flex flex-col justify-between border-r border-[var(--border-subtle)] bg-[var(--bg-graphite)] transition-all duration-200 shrink-0 ${
-                sidebarCollapsed ? "w-16" : "w-60"
-              }`}
-            >
-              <div className="p-2.5 space-y-1">
-                <div className="flex items-center justify-between px-2 py-1.5 mb-1">
-                  {!sidebarCollapsed && (
-                    <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                      Navigation Matrix
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                    aria-label="Toggle Sidebar Collapse"
-                    className="p-1 rounded hover:bg-[var(--bg-slate)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                  >
-                    {sidebarCollapsed ? (
-                      <ChevronRight className="w-4 h-4" />
-                    ) : (
-                      <ChevronLeft className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
-
-                {NAV_ITEMS.map((item) => {
-                  const Icon = item.icon;
-                  const active =
-                    pathname === item.href ||
-                    (item.href !== "/command" && pathname.startsWith(item.href));
-                  return (
+              {isLandingPage && (
+                <nav className="hidden xl:flex items-center gap-0.5 ml-2 pl-3 border-l border-[var(--border-subtle)] text-xs font-medium shrink-0">
+                  {[
+                    { label: "Command", href: "/command" },
+                    { label: "3D Atlas", href: "/atlas" },
+                    { label: "Graph", href: "/knowledge-graph" },
+                    { label: "Simulations", href: "/simulations" },
+                    { label: "Research", href: "/research" },
+                    { label: "Lab", href: "/laboratory" },
+                  ].map((item) => (
                     <Link
                       key={item.href}
                       href={item.href}
-                      title={item.label}
-                      className={`flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-all ${
-                        active
-                          ? "bg-blue-600 text-white shadow-sm"
-                          : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-slate)]"
-                      }`}
+                      className="px-2.5 py-1.5 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-slate)] transition-colors whitespace-nowrap"
                     >
-                      <span className="flex items-center gap-2.5 truncate">
-                        <Icon className="w-4 h-4 shrink-0" />
-                        {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
-                      </span>
-                      {!sidebarCollapsed && item.badge && (
-                        <span
-                          className={`text-[10px] px-1.5 py-0.5 rounded omnis-mono ${
-                            active
-                              ? "bg-white/20 text-white"
-                              : "bg-[var(--bg-obsidian)] text-[var(--text-muted)]"
-                          }`}
-                        >
-                          {item.badge}
-                        </span>
-                      )}
+                      {item.label}
                     </Link>
-                  );
-                })}
+                  ))}
+                </nav>
+              )}
+            </div>
+
+            {/* Universal Command & Search Trigger */}
+            <div className="flex-1 min-w-0 max-w-sm xl:max-w-md mx-0.5 sm:mx-2">
+              <button
+                type="button"
+                onClick={() => setCommandPaletteOpen(true)}
+                className="w-full min-w-0 flex items-center justify-between gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-xs text-[var(--text-secondary)] transition-all shadow-2xs"
+              >
+                <span className="flex items-center gap-2 min-w-0 flex-1">
+                  <Search className="w-3.5 h-3.5 tone-blue shrink-0" />
+                  <span className="sm:hidden truncate">Search OMNIS...</span>
+                  <span className="hidden sm:inline truncate">
+                    Ask anything, inspect nations, or open a simulation...
+                  </span>
+                </span>
+                <kbd className="hidden sm:inline-block shrink-0 px-1.5 py-0.5 text-[10px] rounded-md bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-muted)] omnis-mono">
+                  ⌘K
+                </kbd>
+              </button>
+            </div>
+
+            {/* Right Action Controls */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <div className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1 rounded-full badge-tone-verified text-[11px] font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--status-verified)] animate-pulse" />
+                <span>Live Providers</span>
               </div>
 
-              {!sidebarCollapsed && (
-                <div className="p-3 m-2.5 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[11px] space-y-1.5">
-                  <div className="flex items-center justify-between text-[var(--text-primary)] font-semibold">
-                    <span className="flex items-center gap-1.5">
-                      <Terminal className="w-3.5 h-3.5 text-blue-400" />
-                      Epistemic Mode
-                    </span>
-                    <span className="text-emerald-400 omnis-mono">STRICT</span>
+              <button
+                type="button"
+                onClick={() => setAssistantOpen(!assistantOpen)}
+                aria-label="Toggle OMNIS AI Assistant"
+                className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-2 sm:py-1.5 rounded-lg badge-tone-blue hover:brightness-105 text-xs font-semibold transition-all cursor-pointer shrink-0"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">AI Assistant</span>
+                <kbd className="hidden lg:inline text-[10px] opacity-80 omnis-mono">⌘J</kbd>
+              </button>
+
+              <button
+                type="button"
+                onClick={toggleTheme}
+                aria-label="Toggle Light/Dark Theme"
+                title={`Switch to ${theme === "dark" ? "Alabaster Light" : "Obsidian Dark"} Theme`}
+                className="p-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-all cursor-pointer shrink-0"
+              >
+                {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </button>
+
+              <Link
+                href="/settings"
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:border-[var(--border-strong)] text-xs font-medium text-[var(--text-primary)] transition-colors shrink-0"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 tone-verified shrink-0" />
+                <span className="truncate max-w-[100px]">
+                  {user
+                    ? user.displayName.replace(/^Dr\.\s*/i, "").split(" ")[0] ||
+                      user.displayName.split(" ")[0]
+                    : "Sign In"}
+                </span>
+              </Link>
+            </div>
+          </header>
+
+          {/* Main Workspace Body */}
+          <div className="flex-1 flex">
+            {/* Desktop Collapsible Sidebar (Shown on all app routes) */}
+            {!isLandingPage && (
+              <aside
+                className={`hidden lg:flex flex-col justify-between border-r border-[var(--border-subtle)] bg-[var(--bg-graphite)] transition-all duration-200 shrink-0 ${
+                  sidebarCollapsed ? "w-[68px]" : "w-64"
+                }`}
+              >
+                <div className="p-3 space-y-1">
+                  <div className="flex items-center justify-between px-2 py-1.5 mb-2">
+                    {!sidebarCollapsed && (
+                      <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--text-muted)] omnis-mono">
+                        Navigation Matrix
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                      aria-label="Toggle Sidebar Collapse"
+                      className="p-1.5 rounded-lg hover:bg-[var(--bg-slate)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                    >
+                      {sidebarCollapsed ? (
+                        <ChevronRight className="w-4 h-4" />
+                      ) : (
+                        <ChevronLeft className="w-4 h-4" />
+                      )}
+                    </button>
                   </div>
-                  <p className="text-[var(--text-muted)] leading-relaxed">
-                    Every indicator displays live source provenance. Zero unlabelled synthetic statistics.
-                  </p>
-                  <Link
-                    href="/"
-                    className="inline-flex items-center gap-1 text-blue-400 hover:underline font-medium pt-0.5"
-                  >
-                    Platform Overview <ArrowUpRight className="w-3 h-3" />
-                  </Link>
-                </div>
-              )}
-            </aside>
-          )}
 
-          {/* Main Route Viewport */}
-          <main className="flex-1 min-w-0 overflow-x-hidden">{children}</main>
-        </div>
-
-        {/* Mobile Accessible Navigation Drawer */}
-        {mobileMenuOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden flex">
-            <div
-              className="fixed inset-0 bg-black/60 backdrop-blur-xs"
-              onClick={() => setMobileMenuOpen(false)}
-            />
-            <div className="relative z-10 w-72 max-w-[85vw] bg-[var(--bg-graphite)] border-r border-[var(--border-subtle)] h-full flex flex-col justify-between p-4 overflow-y-auto">
-              <div>
-                <div className="flex items-center justify-between pb-4 border-b border-[var(--border-subtle)]">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-md bg-blue-600 text-white flex items-center justify-center font-bold">
-                      Ω
-                    </div>
-                    <span className="font-bold tracking-widest text-sm">OMNIS</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="p-1.5 rounded-lg border border-[var(--border-subtle)]"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="mt-4 space-y-1">
-                  {NAV_ITEMS.map((item) => {
+                  {NAV_ITEMS.map((item, idx) => {
                     const Icon = item.icon;
-                    const active = pathname === item.href;
+                    const active =
+                      pathname === item.href ||
+                      (item.href !== "/command" && pathname.startsWith(item.href));
+                    const prevGroup = idx > 0 ? NAV_ITEMS[idx - 1].group : item.group;
+                    const showDivider = idx > 0 && item.group !== prevGroup && !sidebarCollapsed;
+
                     return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        onClick={() => setMobileMenuOpen(false)}
-                        className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium ${
-                          active
-                            ? "bg-blue-600 text-white"
-                            : "text-[var(--text-secondary)] hover:bg-[var(--bg-slate)]"
-                        }`}
-                      >
-                        <span className="flex items-center gap-3">
-                          <Icon className="w-4 h-4" />
-                          {item.label}
-                        </span>
-                        {item.badge && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/20 omnis-mono">
-                            {item.badge}
-                          </span>
+                      <React.Fragment key={item.href}>
+                        {showDivider && (
+                          <div className="pt-2.5 pb-1 px-2">
+                            <div className="border-t border-[var(--border-subtle)] pt-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)] omnis-mono">
+                              {item.group === "modules" ? "Intelligence Modules" : "Workspace & Governance"}
+                            </div>
+                          </div>
                         )}
-                      </Link>
+                        <Link
+                          href={item.href}
+                          title={item.label}
+                          className={`group relative flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium transition-all ${
+                            active
+                              ? "bg-[var(--accent-blue-solid)] text-white shadow-sm"
+                              : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-slate)]"
+                          }`}
+                        >
+                          <span className="flex items-center gap-2.5 truncate">
+                            <Icon className="w-4 h-4 shrink-0" />
+                            {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
+                          </span>
+                          {!sidebarCollapsed && item.badge && (
+                            <span
+                              className={`text-[10px] px-1.5 py-0.5 rounded-md omnis-mono ${
+                                active
+                                  ? "bg-white/20 text-white"
+                                  : "bg-[var(--bg-slate)] text-[var(--text-muted)] border border-[var(--border-subtle)]"
+                              }`}
+                            >
+                              {item.badge}
+                            </span>
+                          )}
+                        </Link>
+                      </React.Fragment>
                     );
                   })}
                 </div>
-              </div>
 
-              <div className="pt-4 border-t border-[var(--border-subtle)] text-xs text-[var(--text-muted)]">
-                <Link
-                  href="/"
+                {!sidebarCollapsed && (
+                  <div className="p-3.5 m-3 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[11px] space-y-2">
+                    <div className="flex items-center justify-between text-[var(--text-primary)] font-semibold">
+                      <span className="flex items-center gap-1.5">
+                        <Terminal className="w-3.5 h-3.5 tone-blue" />
+                        Epistemic Mode
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold badge-tone-verified omnis-mono">
+                        STRICT
+                      </span>
+                    </div>
+                    <p className="text-[var(--text-secondary)] leading-relaxed">
+                      Every indicator displays source provenance. Zero unlabelled synthetic statistics.
+                    </p>
+                    <Link
+                      href="/"
+                      className="inline-flex items-center gap-1 tone-blue hover:underline font-semibold pt-0.5"
+                    >
+                      Platform Overview <ArrowUpRight className="w-3 h-3" />
+                    </Link>
+                  </div>
+                )}
+              </aside>
+            )}
+
+            {/* Main Route Viewport */}
+            <main className="flex-1 min-w-0 overflow-x-hidden">{children}</main>
+          </div>
+
+          {/* Mobile Accessible Navigation Drawer */}
+          <AnimatePresence>
+            {mobileMenuOpen && (
+              <div className="fixed inset-0 z-50 lg:hidden flex">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.18 }}
+                  className="fixed inset-0 bg-black/55 backdrop-blur-xs"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block py-1.5 text-blue-400 font-medium"
-                >
-                  ← Return to Landing Presentation
-                </Link>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Universal Search & Natural-Language Command Palette (Cmd+K) */}
-        {commandPaletteOpen && (
-          <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 px-4">
-            <div
-              className="fixed inset-0 bg-black/65 backdrop-blur-xs"
-              onClick={() => setCommandPaletteOpen(false)}
-            />
-            <div className="relative z-10 w-full max-w-2xl omnis-card overflow-hidden">
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleUniversalSearchSubmit(paletteQuery);
-                }}
-                className="flex items-center gap-3 px-4 py-3.5 border-b border-[var(--border-subtle)]"
-              >
-                <Search className="w-5 h-5 text-blue-400 shrink-0" />
-                <input
-                  type="text"
-                  autoFocus
-                  value={paletteQuery}
-                  onChange={(e) => setPaletteQuery(e.target.value)}
-                  placeholder="Enter a natural language question, country, concept, or scenario..."
-                  className="w-full bg-transparent text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
                 />
-                <button
-                  type="button"
-                  onClick={() => setCommandPaletteOpen(false)}
-                  className="px-2 py-1 text-xs rounded border border-[var(--border-subtle)] text-[var(--text-muted)]"
+                <motion.div
+                  initial={{ x: "-100%" }}
+                  animate={{ x: 0 }}
+                  exit={{ x: "-100%" }}
+                  transition={{ type: "spring", damping: 30, stiffness: 320 }}
+                  className="relative z-10 w-72 max-w-[85vw] bg-[var(--bg-graphite)] border-r border-[var(--border-subtle)] h-full flex flex-col justify-between p-4 overflow-y-auto shadow-2xl"
                 >
-                  ESC
-                </button>
-              </form>
-
-              {liveIntent && (
-                <div className="px-4 py-2.5 bg-blue-500/10 border-b border-[var(--border-subtle)] flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-                    <span>
-                      Classified Intent:{" "}
-                      <strong className="uppercase tracking-wider text-blue-400">
-                        {liveIntent.intent.replace(/_/g, " ")}
-                      </strong>
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCommandPaletteOpen(false);
-                      router.push(liveIntent.suggestedModule);
-                    }}
-                    className="text-blue-400 hover:underline font-medium inline-flex items-center gap-1"
-                  >
-                    Route directly to module <ArrowUpRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
-
-              <div className="p-4 space-y-4 max-h-[65vh] overflow-y-auto">
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">
-                    Natural Language Intelligence Queries
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                    {QUICK_NATURAL_QUERIES.map((q) => (
+                  <div>
+                    <div className="flex items-center justify-between pb-4 border-b border-[var(--border-subtle)]">
+                      <OmnisWordmark compact />
                       <button
-                        key={q}
                         type="button"
-                        onClick={() => handleUniversalSearchSubmit(q)}
-                        className="text-left px-3 py-2 rounded-lg bg-[var(--bg-slate)] hover:border-blue-500/40 border border-transparent text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all flex items-center justify-between gap-2"
+                        onClick={() => setMobileMenuOpen(false)}
+                        aria-label="Close Navigation Menu"
+                        className="p-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)]"
                       >
-                        <span className="truncate">{q}</span>
-                        <ArrowUpRight className="w-3.5 h-3.5 shrink-0 text-blue-400" />
+                        <X className="w-4 h-4" />
                       </button>
-                    ))}
-                  </div>
-                </div>
+                    </div>
 
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">
-                    Direct Module Launchers
+                    <div className="mt-4 space-y-1">
+                      {NAV_ITEMS.map((item) => {
+                        const Icon = item.icon;
+                        const active = pathname === item.href;
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                              active
+                                ? "bg-[var(--accent-blue-solid)] text-white shadow-sm"
+                                : "text-[var(--text-secondary)] hover:bg-[var(--bg-slate)] hover:text-[var(--text-primary)]"
+                            }`}
+                          >
+                            <span className="flex items-center gap-3">
+                              <Icon className="w-4 h-4" />
+                              {item.label}
+                            </span>
+                            {item.badge && (
+                              <span
+                                className={`text-[10px] px-1.5 py-0.5 rounded omnis-mono ${
+                                  active
+                                    ? "bg-white/20 text-white"
+                                    : "bg-[var(--bg-slate)] text-[var(--text-muted)]"
+                                }`}
+                              >
+                                {item.badge}
+                              </span>
+                            )}
+                          </Link>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {NAV_ITEMS.slice(0, 8).map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <button
-                          key={item.href}
-                          type="button"
-                          onClick={() => {
-                            setCommandPaletteOpen(false);
-                            router.push(item.href);
-                          }}
-                          className="flex items-center gap-2 p-2.5 rounded-lg bg-[var(--bg-slate)] hover:bg-blue-600/20 border border-[var(--border-subtle)] text-xs font-medium"
-                        >
-                          <Icon className="w-4 h-4 text-blue-400 shrink-0" />
-                          <span className="truncate">{item.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* Persistent Context-Aware Universal AI Assistant Drawer (Cmd+J) */}
-        {assistantOpen && (
-          <div className="fixed right-4 bottom-4 z-50 w-96 max-w-[calc(100vw-2rem)] h-[540px] max-h-[82vh] omnis-card flex flex-col overflow-hidden border-blue-500/40">
-            <div className="px-4 py-3 bg-gradient-to-r from-blue-600/20 to-violet-600/20 border-b border-[var(--border-subtle)] flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-blue-400" />
-                <div>
-                  <div className="text-xs font-bold tracking-wide">
-                    OMNIS Universal AI Assistant
+                  <div className="pt-4 border-t border-[var(--border-subtle)] text-xs">
+                    <Link
+                      href="/"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block py-1.5 tone-blue font-semibold hover:underline"
+                    >
+                      ← Return to Landing Presentation
+                    </Link>
                   </div>
-                  <div className="text-[10px] text-[var(--text-secondary)] truncate max-w-[230px]">
-                    Context: {activeContextLabel} ({activeContextTopic})
-                  </div>
-                </div>
+                </motion.div>
               </div>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={clearAssistantMessages}
-                  className="text-[10px] px-2 py-1 rounded border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                >
-                  Reset
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAssistantOpen(false)}
-                  aria-label="Close AI Assistant"
-                  className="p-1 rounded hover:bg-[var(--bg-slate)]"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
+            )}
+          </AnimatePresence>
 
-            <div className="flex-1 p-3.5 overflow-y-auto space-y-3 text-xs">
-              {assistantMessages.map((m) => (
-                <div
-                  key={m.id}
-                  className={`p-3 rounded-lg ${
-                    m.role === "user"
-                      ? "bg-blue-600 text-white ml-6"
-                      : "bg-[var(--bg-slate)] text-[var(--text-primary)] mr-4 border border-[var(--border-subtle)]"
-                  }`}
+          {/* Universal Search & Natural-Language Command Palette (Cmd+K) */}
+          <AnimatePresence>
+            {commandPaletteOpen && (
+              <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 px-4">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.16 }}
+                  className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+                  onClick={() => setCommandPaletteOpen(false)}
+                />
+                <motion.div
+                  initial={{ opacity: 0, y: -10, scale: 0.985 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.985 }}
+                  transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                  className="relative z-10 w-full max-w-2xl omnis-card overflow-hidden shadow-2xl"
                 >
-                  <div className="whitespace-pre-line leading-relaxed">{m.content}</div>
-                  {m.citations && m.citations.length > 0 && (
-                    <div className="mt-2 pt-2 border-t border-[var(--border-subtle)] space-y-1">
-                      <div className="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
-                        Verified Sources:
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleUniversalSearchSubmit(paletteQuery);
+                    }}
+                    className="flex items-center gap-3 px-4 py-3.5 border-b border-[var(--border-subtle)] bg-[var(--bg-graphite)]"
+                  >
+                    <Search className="w-5 h-5 tone-blue shrink-0" />
+                    <input
+                      type="text"
+                      autoFocus
+                      value={paletteQuery}
+                      onChange={(e) => setPaletteQuery(e.target.value)}
+                      placeholder="Enter a natural language question, country, concept, or scenario..."
+                      className="w-full bg-transparent text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setCommandPaletteOpen(false)}
+                      className="px-2 py-1 text-[11px] font-medium rounded-md border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)] omnis-mono"
+                    >
+                      ESC
+                    </button>
+                  </form>
+
+                  {liveIntent && (
+                    <div className="px-4 py-2.5 bg-[var(--bg-slate)] border-b border-[var(--border-subtle)] flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-3.5 h-3.5 tone-blue" />
+                        <span className="text-[var(--text-secondary)]">
+                          Classified Intent:{" "}
+                          <strong className="uppercase tracking-wider tone-blue font-semibold">
+                            {liveIntent.intent.replace(/_/g, " ")}
+                          </strong>
+                        </span>
                       </div>
-                      {m.citations.map((c) => (
-                        <a
-                          key={c.url}
-                          href={c.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block text-[11px] text-blue-400 hover:underline truncate"
-                        >
-                          • {c.label}
-                        </a>
-                      ))}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCommandPaletteOpen(false);
+                          router.push(liveIntent.suggestedModule);
+                        }}
+                        className="tone-blue hover:underline font-semibold inline-flex items-center gap-1"
+                      >
+                        Route directly to module <ArrowUpRight className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   )}
-                  {m.suggestedActions && m.suggestedActions.length > 0 && (
-                    <div className="mt-2 pt-2 border-t border-[var(--border-subtle)] flex flex-wrap gap-1.5">
-                      {m.suggestedActions.map((act) => (
-                        <button
-                          key={act.href}
-                          type="button"
-                          onClick={() => {
-                            router.push(act.href);
-                          }}
-                          className="px-2 py-1 rounded bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 text-[11px] font-medium"
-                        >
-                          {act.label} →
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-              {assistantLoading && (
-                <div className="p-3 rounded-lg bg-[var(--bg-slate)] text-xs text-[var(--text-muted)] animate-pulse">
-                  Verifying indicators across World Bank & OpenAlex providers...
-                </div>
-              )}
-            </div>
 
-            <form
-              onSubmit={handleAssistantSend}
-              className="p-2.5 border-t border-[var(--border-subtle)] bg-[var(--bg-graphite)] flex items-center gap-2"
-            >
-              <input
-                type="text"
-                value={assistantInput}
-                onChange={(e) => setAssistantInput(e.target.value)}
-                placeholder={`Ask about ${activeContextTopic}...`}
-                className="flex-1 px-3 py-2 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-xs focus:outline-none focus:border-blue-500"
-              />
-              <button
-                type="submit"
-                disabled={assistantLoading}
-                className="p-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50"
+                  <div className="p-4 space-y-4 max-h-[65vh] overflow-y-auto">
+                    <div>
+                      <div className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-[var(--text-muted)] mb-2 omnis-mono">
+                        Natural Language Intelligence Queries
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        {QUICK_NATURAL_QUERIES.map((q) => (
+                          <button
+                            key={q}
+                            type="button"
+                            onClick={() => handleUniversalSearchSubmit(q)}
+                            className="text-left px-3 py-2 rounded-xl bg-[var(--bg-slate)] hover:border-[var(--border-strong)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all flex items-center justify-between gap-2"
+                          >
+                            <span className="truncate">{q}</span>
+                            <ArrowUpRight className="w-3.5 h-3.5 shrink-0 tone-blue" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-[var(--text-muted)] mb-2 omnis-mono">
+                        Direct Module Launchers
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {NAV_ITEMS.slice(0, 8).map((item) => {
+                          const Icon = item.icon;
+                          return (
+                            <button
+                              key={item.href}
+                              type="button"
+                              onClick={() => {
+                                setCommandPaletteOpen(false);
+                                router.push(item.href);
+                              }}
+                              className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-slate)] hover:border-[var(--border-strong)] border border-[var(--border-subtle)] text-xs font-medium text-[var(--text-primary)] transition-colors"
+                            >
+                              <Icon className="w-4 h-4 tone-blue shrink-0" />
+                              <span className="truncate">{item.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+
+          {/* Persistent Context-Aware Universal AI Assistant Drawer (Cmd+J) */}
+          <AnimatePresence>
+            {assistantOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 12, scale: 0.98 }}
+                transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                className="fixed right-4 bottom-4 z-50 w-96 max-w-[calc(100vw-2rem)] h-[540px] max-h-[82vh] omnis-card flex flex-col overflow-hidden shadow-2xl border-[var(--border-strong)]"
               >
-                <Send className="w-3.5 h-3.5" />
-              </button>
-            </form>
-          </div>
-        )}
-      </div>
+                <div className="px-4 py-3 bg-[var(--bg-slate)] border-b border-[var(--border-subtle)] flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg badge-tone-blue flex items-center justify-center shrink-0">
+                      <Sparkles className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold tracking-wide text-[var(--text-primary)]">
+                        OMNIS Universal AI Assistant
+                      </div>
+                      <div className="text-[10px] text-[var(--text-secondary)] truncate max-w-[215px]">
+                        Context: {activeContextLabel} ({activeContextTopic})
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={clearAssistantMessages}
+                      className="text-[10px] px-2 py-1 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-graphite)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium"
+                    >
+                      Reset
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAssistantOpen(false)}
+                      aria-label="Close AI Assistant"
+                      className="p-1.5 rounded-lg hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)]"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex-1 p-3.5 overflow-y-auto space-y-3 text-xs bg-[var(--bg-obsidian)]/40">
+                  {assistantMessages.map((m) => (
+                    <div
+                      key={m.id}
+                      className={`p-3 rounded-xl ${
+                        m.role === "user"
+                          ? "bg-[var(--accent-blue-solid)] text-white ml-6 shadow-xs"
+                          : "bg-[var(--bg-slate)] text-[var(--text-primary)] mr-4 border border-[var(--border-subtle)]"
+                      }`}
+                    >
+                      <div className="whitespace-pre-line leading-relaxed">{m.content}</div>
+                      {m.citations && m.citations.length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-[var(--border-subtle)] space-y-1">
+                          <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
+                            Verified Sources
+                          </div>
+                          {m.citations.map((c) => (
+                            <a
+                              key={c.url}
+                              href={c.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block text-[11px] tone-blue hover:underline truncate font-medium"
+                            >
+                              • {c.label}
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                      {m.suggestedActions && m.suggestedActions.length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-[var(--border-subtle)] flex flex-wrap gap-1.5">
+                          {m.suggestedActions.map((act) => (
+                            <button
+                              key={act.href}
+                              type="button"
+                              onClick={() => {
+                                router.push(act.href);
+                              }}
+                              className="px-2 py-1 rounded-md badge-tone-blue hover:brightness-105 text-[11px] font-semibold"
+                            >
+                              {act.label} →
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {assistantLoading && (
+                    <div className="p-3 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)]">
+                      <OmnisLoader label="Verifying indicators across live providers..." />
+                    </div>
+                  )}
+                </div>
+
+                <form
+                  onSubmit={handleAssistantSend}
+                  className="p-2.5 border-t border-[var(--border-subtle)] bg-[var(--bg-graphite)] flex items-center gap-2"
+                >
+                  <input
+                    type="text"
+                    value={assistantInput}
+                    onChange={(e) => setAssistantInput(e.target.value)}
+                    placeholder={`Ask about ${activeContextTopic}...`}
+                    className="flex-1 px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-blue)]"
+                  />
+                  <button
+                    type="submit"
+                    disabled={assistantLoading}
+                    aria-label="Send Assistant Message"
+                    className="p-2 rounded-xl bg-[var(--accent-blue-solid)] hover:brightness-110 text-white disabled:opacity-50 transition-all cursor-pointer"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                  </button>
+                </form>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </MotionConfig>
     </QueryClientProvider>
   );
 }

@@ -20,34 +20,33 @@ export function VerificationBadge({ status }: { status: VerificationStatus }) {
   > = {
     verified: {
       label: "Verified Multi-Source",
-      className:
-        "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-      icon: <CheckCircle2 className="w-3.5 h-3.5" />,
+      className: "badge-tone-verified",
+      icon: <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />,
     },
     single_source: {
       label: "Single Primary Source",
-      className: "bg-sky-500/15 text-sky-400 border-sky-500/30",
-      icon: <Database className="w-3.5 h-3.5" />,
+      className: "badge-tone-blue",
+      icon: <Database className="w-3.5 h-3.5 shrink-0" />,
     },
     conflicting: {
       label: "Conflicting Evidence",
-      className: "bg-amber-500/15 text-amber-400 border-amber-500/30",
-      icon: <AlertTriangle className="w-3.5 h-3.5" />,
+      className: "badge-tone-warning",
+      icon: <AlertTriangle className="w-3.5 h-3.5 shrink-0" />,
     },
     interpretation: {
       label: "Model / Analytical Output",
-      className: "bg-blue-500/15 text-blue-400 border-blue-500/30",
-      icon: <Info className="w-3.5 h-3.5" />,
+      className: "badge-tone-blue",
+      icon: <Info className="w-3.5 h-3.5 shrink-0" />,
     },
     unverified: {
       label: "Unverified Claim",
-      className: "bg-rose-500/15 text-rose-400 border-rose-500/30",
-      icon: <AlertTriangle className="w-3.5 h-3.5" />,
+      className: "badge-tone-danger",
+      icon: <AlertTriangle className="w-3.5 h-3.5 shrink-0" />,
     },
     ai_hypothesis: {
       label: "AI-Generated Hypothesis",
-      className: "bg-violet-500/15 text-violet-400 border-violet-500/30",
-      icon: <Sparkles className="w-3.5 h-3.5" />,
+      className: "badge-tone-violet",
+      icon: <Sparkles className="w-3.5 h-3.5 shrink-0" />,
     },
   };
 
@@ -55,10 +54,10 @@ export function VerificationBadge({ status }: { status: VerificationStatus }) {
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${current.className}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-tight ${current.className}`}
     >
       {current.icon}
-      {current.label}
+      <span>{current.label}</span>
     </span>
   );
 }
@@ -74,37 +73,41 @@ export function ProvenancePanel({
 
   return (
     <div className="omnis-surface-slate p-3.5 text-xs transition-all">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
           <VerificationBadge status={provenance.verificationStatus} />
-          <span className="font-medium text-[var(--text-primary)]">
+          <span className="font-medium text-[var(--text-primary)] truncate max-w-full">
             Source: {provenance.source}
           </span>
-          <span className="text-[var(--text-muted)] omnis-mono">
-            • Updated: {provenance.lastUpdated}
+          <span className="text-[var(--text-muted)] omnis-mono text-[11px]">
+            • Updated {provenance.lastUpdated}
           </span>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex items-center gap-2 shrink-0">
           <a
             href={provenance.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 font-medium underline-offset-2 hover:underline"
+            className="inline-flex items-center gap-1 tone-blue font-semibold underline-offset-2 hover:underline"
           >
-            Inspect Source <ExternalLink className="w-3 h-3" />
+            <span>Inspect Source</span>
+            <ExternalLink className="w-3 h-3" />
           </a>
           <button
             type="button"
             onClick={() => setExpanded((prev) => !prev)}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-[var(--bg-graphite)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors cursor-pointer"
           >
             {expanded ? (
               <>
-                Hide Provenance <ChevronUp className="w-3.5 h-3.5" />
+                <span>Hide Details</span>
+                <ChevronUp className="w-3.5 h-3.5" />
               </>
             ) : (
               <>
-                Methodology & Units <ChevronDown className="w-3.5 h-3.5" />
+                <span>Methodology & Units</span>
+                <ChevronDown className="w-3.5 h-3.5" />
               </>
             )}
           </button>
@@ -114,39 +117,39 @@ export function ProvenancePanel({
       {expanded && (
         <div className="mt-3 pt-3 border-t border-[var(--border-subtle)] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-[var(--text-secondary)]">
           <div>
-            <div className="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
               Publisher / Agency
             </div>
-            <div className="font-medium text-[var(--text-primary)] mt-0.5">
+            <div className="font-medium text-[var(--text-primary)] mt-0.5 leading-snug">
               {provenance.publisher}
             </div>
           </div>
           <div>
-            <div className="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
               Units & Coverage
             </div>
-            <div className="font-medium text-[var(--text-primary)] mt-0.5">
+            <div className="font-medium text-[var(--text-primary)] mt-0.5 leading-snug">
               {provenance.units} • {provenance.coverage}
             </div>
           </div>
           <div>
-            <div className="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
               Methodology
             </div>
-            <div className="font-medium text-[var(--text-primary)] mt-0.5">
+            <div className="font-medium text-[var(--text-primary)] mt-0.5 leading-snug">
               {provenance.methodology ?? "Standardised Institutional Series"}
             </div>
           </div>
           <div>
-            <div className="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
               Data Integrity Status
             </div>
-            <div className="font-medium mt-0.5 omnis-mono">
+            <div className="font-semibold mt-0.5 omnis-mono">
               {provenance.missingData ? (
-                <span className="text-amber-400">Partial / Missing Values Flagged</span>
+                <span className="tone-warning">Partial / Missing Values Flagged</span>
               ) : (
-                <span className="text-emerald-400">
-                  Complete • Retrieved {provenance.retrievedAt.slice(0, 10)}
+                <span className="tone-verified">
+                  Complete • {provenance.retrievedAt.slice(0, 10)}
                 </span>
               )}
             </div>
