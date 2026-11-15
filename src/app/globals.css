@@ -18,6 +18,8 @@
   --accent-blue: #60a5fa;
   --accent-blue-solid: #2563eb;
   --accent-violet: #a78bfa;
+  --accent-cyan: #22d3ee;
+  --accent-amber: #fbbf24;
   --status-verified: #34d399;
   --status-warning: #fbbf24;
   --status-danger: #fb7185;
@@ -73,6 +75,8 @@
   --accent-blue: #1D4ED8;
   --accent-blue-solid: #1D4ED8;
   --accent-violet: #6D28D9;
+  --accent-cyan: #0891b2;
+  --accent-amber: #b45309;
   --status-verified: #047857;
   --status-warning: #B45309;
   --status-danger: #BE123C;

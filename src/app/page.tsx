@@ -170,8 +170,10 @@ export default function LandingPage() {
     fetch(`/api/v1/countries/${encodeURIComponent(selectedIso3)}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (!active || !data?.country) return;
-        setHydratedCountries((prev) => ({ ...prev, [selectedIso3]: data.country }));
+        const resolved: CountryIntelligenceProfile | null =
+          data?.country ?? (data?.iso3 ? data : null);
+        if (!active || !resolved) return;
+        setHydratedCountries((prev) => ({ ...prev, [selectedIso3]: resolved }));
       })
       .catch(() => {});
     return () => {

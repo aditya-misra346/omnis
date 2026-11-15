@@ -64,14 +64,22 @@ function SimulationsContent() {
         ? parsedPrompt.overrides.oilPriceShockPct
         : null;
 
+  const paramHorizon = Number(searchParams.get("horizon"));
+  const initialHorizon =
+    Number.isFinite(paramHorizon) && paramHorizon >= 5 && paramHorizon <= 35
+      ? Math.round(paramHorizon)
+      : 15;
+  const paramSeed = Number(searchParams.get("seed"));
+  const initialSeed = Number.isFinite(paramSeed) ? Math.round(paramSeed) : 42;
+
   const [category, setCategory] = useState<SimulationCategory>(
     CATEGORIES.some((c) => c.id === initialCat) ? initialCat : "economics"
   );
   const [countryBaselineIso3, setCountryBaselineIso3] = useState<string>(
     paramCountry && COUNTRIES_DATA[paramCountry] ? paramCountry : "GLOBAL"
   );
-  const [horizonYears, setHorizonYears] = useState(15);
-  const [seed, setSeed] = useState(42);
+  const [horizonYears, setHorizonYears] = useState(initialHorizon);
+  const [seed, setSeed] = useState(initialSeed);
   const [overrides, setOverrides] = useState<Record<string, number>>({});
   const [savedNotice, setSavedNotice] = useState(false);
 
@@ -82,7 +90,26 @@ function SimulationsContent() {
     SIMULATION_SCENARIOS.find((s) => s.category === category) ??
     SIMULATION_SCENARIOS[0];
 
-  // Reset overrides when category changes, honouring URL sandbox oilShock / prompt presets
+  useEffect(() => {
+    const urlCat = searchParams.get("category") as SimulationCategory | null;
+    if (urlCat && CATEGORIES.some((c) => c.id === urlCat)) {
+      setCategory(urlCat);
+    }
+    const urlCountry = searchParams.get("country")?.toUpperCase();
+    if (urlCountry && (COUNTRIES_DATA[urlCountry] || urlCountry === "GLOBAL")) {
+      setCountryBaselineIso3(urlCountry);
+    }
+    const urlHorizon = Number(searchParams.get("horizon"));
+    if (searchParams.get("horizon") !== null && Number.isFinite(urlHorizon)) {
+      setHorizonYears(Math.max(5, Math.min(35, Math.round(urlHorizon))));
+    }
+    const urlSeed = Number(searchParams.get("seed"));
+    if (searchParams.get("seed") !== null && Number.isFinite(urlSeed)) {
+      setSeed(Math.round(urlSeed));
+    }
+  }, [searchParams]);
+
+  // Reset overrides when category changes, honouring URL sandbox/deep-link presets
   useEffect(() => {
     const defaults: Record<string, number> = {};
     for (const p of activeSpec.parameters) {
@@ -94,8 +121,14 @@ function SimulationsContent() {
     for (const [k, v] of Object.entries(parsedPrompt.overrides)) {
       if (k in defaults) defaults[k] = v;
     }
+    for (const p of activeSpec.parameters) {
+      const raw = searchParams.get(p.key);
+      if (raw !== null && Number.isFinite(Number(raw))) {
+        defaults[p.key] = Math.max(p.min, Math.min(p.max, Number(raw)));
+      }
+    }
     setOverrides(defaults);
-  }, [activeSpec, parsedOilShock, parsedPrompt.overrides]);
+  }, [activeSpec, parsedOilShock, parsedPrompt.overrides, searchParams]);
 
   useEffect(() => {
     setActiveContext(
@@ -131,15 +164,24 @@ function SimulationsContent() {
   };
 
   const handleSaveExperiment = () => {
+    const params = new URLSearchParams({
+      category,
+      country: countryBaselineIso3,
+      horizon: String(horizonYears),
+      seed: String(seed),
+    });
+    for (const p of activeSpec.parameters) {
+      params.set(p.key, String(overrides[p.key] ?? p.defaultModifiedValue));
+    }
     addWorkspaceItem({
       type: "simulation",
       title: `Simulation: ${activeSpec.title}`,
-      subtitle: `Horizon ${horizonYears}y • Delta ${
+      subtitle: `Horizon ${horizonYears}y (${countryBaselineIso3}) • Delta ${
         simulationOutput.summaryMetrics.percentageDelta >= 0 ? "+" : ""
       }${simulationOutput.summaryMetrics.percentageDelta}% (${simulationOutput.units})`,
       folder: "Scenario Simulations",
-      tags: [category, "Monte Carlo", activeSpec.modelVersion],
-      href: `/simulations?category=${category}`,
+      tags: [category, countryBaselineIso3, "Monte Carlo", activeSpec.modelVersion],
+      href: `/simulations?${params.toString()}`,
     });
     setSavedNotice(true);
     setTimeout(() => setSavedNotice(false), 2500);

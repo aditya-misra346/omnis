@@ -150,21 +150,33 @@ const LAB_EXPERIMENTS: LabExperimentSpec[] = [
   },
 ];
 
+function parseLabParam(
+  raw: string | null,
+  spec: { min: number; max: number; defaultVal: number }
+): number {
+  if (raw === null || raw.trim() === "") return spec.defaultVal;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) return spec.defaultVal;
+  return Math.min(spec.max, Math.max(spec.min, parsed));
+}
+
 function LaboratoryContent() {
   const searchParams = useSearchParams();
-  const initialCat = (searchParams.get("cat") as LabCategoryId) || "physics";
+  const urlCatParam = (searchParams.get("cat") ?? searchParams.get("module")) as LabCategoryId | null;
+  const resolvedUrlCat =
+    urlCatParam && LAB_EXPERIMENTS.some((e) => e.id === urlCatParam)
+      ? urlCatParam
+      : null;
 
-  const [activeId, setActiveId] = useState<LabCategoryId>(
-    LAB_EXPERIMENTS.some((e) => e.id === initialCat) ? initialCat : "physics"
-  );
+  const [activeId, setActiveId] = useState<LabCategoryId>(resolvedUrlCat ?? "physics");
   const [running, setRunning] = useState(true);
   const [savedNotice, setSavedNotice] = useState(false);
 
   const exp = LAB_EXPERIMENTS.find((e) => e.id === activeId) ?? LAB_EXPERIMENTS[0];
 
-  const [p1, setP1] = useState(exp.param1.defaultVal);
-  const [p2, setP2] = useState(exp.param2.defaultVal);
-  const [p3, setP3] = useState(exp.param3.defaultVal);
+  const [p1, setP1] = useState(() => parseLabParam(searchParams.get("p1"), exp.param1));
+  const [p2, setP2] = useState(() => parseLabParam(searchParams.get("p2"), exp.param2));
+  const [p3, setP3] = useState(() => parseLabParam(searchParams.get("p3"), exp.param3));
 
   const { theme, motionPaused, addWorkspaceItem, setActiveContext } = useOmnisStore();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -199,15 +211,32 @@ function LaboratoryContent() {
     };
   }, []);
 
+  const urlP1 = searchParams.get("p1");
+  const urlP2 = searchParams.get("p2");
+  const urlP3 = searchParams.get("p3");
+
   useEffect(() => {
-    setP1(exp.param1.defaultVal);
-    setP2(exp.param2.defaultVal);
-    setP3(exp.param3.defaultVal);
+    if (resolvedUrlCat) {
+      setActiveId(resolvedUrlCat);
+    }
+  }, [resolvedUrlCat]);
+
+  useEffect(() => {
+    const shouldRestoreUrlParams = !resolvedUrlCat || resolvedUrlCat === exp.id;
+    setP1(
+      shouldRestoreUrlParams ? parseLabParam(urlP1, exp.param1) : exp.param1.defaultVal
+    );
+    setP2(
+      shouldRestoreUrlParams ? parseLabParam(urlP2, exp.param2) : exp.param2.defaultVal
+    );
+    setP3(
+      shouldRestoreUrlParams ? parseLabParam(urlP3, exp.param3) : exp.param3.defaultVal
+    );
     pendulumRef.current = { theta: 0.65, omega: 0, dragging: false };
     orbitDraggingRef.current = false;
     setInteractiveReadout(null);
     setActiveContext("Digital World Laboratory", exp.title);
-  }, [exp, setActiveContext]);
+  }, [exp, resolvedUrlCat, urlP1, urlP2, urlP3, setActiveContext]);
 
   // Real-time interactive High-DPI & Dual-Theme Canvas Solver Loop (Motion-Paused Safe)
   useEffect(() => {
@@ -662,7 +691,7 @@ function LaboratoryContent() {
       subtitle: `${exp.category} • Params: [${p1}, ${p2}, ${p3}]`,
       folder: "Scenario Simulations",
       tags: ["Digital Lab", exp.category],
-      href: `/laboratory?cat=${exp.id}`,
+      href: `/laboratory?cat=${encodeURIComponent(exp.id)}&p1=${p1}&p2=${p2}&p3=${p3}`,
     });
     setSavedNotice(true);
     setTimeout(() => setSavedNotice(false), 2500);

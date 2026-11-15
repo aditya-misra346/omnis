@@ -126,7 +126,7 @@ function ResearchContent() {
       subtitle: `${report.sources.length} Verified Sources • Generated ${report.generatedAt.slice(0, 10)}`,
       folder: "Geopolitics & Macro",
       tags: ["Research Report", report.mode, "OpenAlex", "World Bank"],
-      href: `/research?q=${encodeURIComponent(report.query)}`,
+      href: `/research?q=${encodeURIComponent(report.query)}&mode=${encodeURIComponent(report.mode)}`,
     });
     setSavedToast(true);
     setTimeout(() => setSavedToast(false), 2500);
@@ -446,7 +446,7 @@ ${report.sources
                               {isOpen && matchedSource ? (
                                 <div
                                   role="tooltip"
-                                  className="absolute bottom-full left-0 mb-2 w-72 sm:w-80 p-3 rounded-xl omnis-hud-pill z-30 text-left space-y-1 pointer-events-none"
+                                  className="fixed inset-x-4 bottom-4 sm:inset-auto sm:absolute sm:bottom-full sm:left-1/2 sm:-translate-x-1/2 sm:mb-2 sm:w-80 p-3.5 rounded-xl bg-[var(--bg-graphite)] border border-[var(--border-strong)] shadow-2xl z-50 text-left space-y-1.5 pointer-events-none"
                                 >
                                   <div className="flex items-center justify-between text-[11px] omnis-mono tone-cyan font-bold">
                                     <span>{matchedSource.sourceType}</span>
@@ -554,7 +554,7 @@ ${report.sources
                               {isOpen && matchedSource ? (
                                 <div
                                   role="tooltip"
-                                  className="absolute bottom-full left-0 mb-2 w-64 p-3 rounded-xl omnis-hud-pill z-30 text-left space-y-1 pointer-events-none"
+                                  className="fixed inset-x-4 bottom-4 sm:inset-auto sm:absolute sm:bottom-full sm:left-1/2 sm:-translate-x-1/2 sm:mb-2 sm:w-72 p-3.5 rounded-xl bg-[var(--bg-graphite)] border border-[var(--border-strong)] shadow-2xl z-50 text-left space-y-1.5 pointer-events-none"
                                 >
                                   <div className="font-bold text-xs text-[var(--text-primary)] line-clamp-2">
                                     {matchedSource.title}

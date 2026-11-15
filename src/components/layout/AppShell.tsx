@@ -142,6 +142,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     document.documentElement.setAttribute("data-motion-paused", String(motionPaused));
   }, [motionPaused]);
 
+  // Auto-dismiss transient global overlays on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+    setCommandPaletteOpen(false);
+    setShortcutsOpen(false);
+  }, [pathname, setCommandPaletteOpen]);
+
+  // Prevent background page scroll while modal overlays/drawers are open
+  useEffect(() => {
+    if (!(mobileMenuOpen || commandPaletteOpen || shortcutsOpen)) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [mobileMenuOpen, commandPaletteOpen, shortcutsOpen]);
+
   // Keyboard shortcuts: Cmd+K Search Palette, Cmd+J Assistant, ? Cheatsheet, Esc Close
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -501,7 +518,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 type="button"
                 onClick={toggleTheme}
                 aria-label="Toggle Light/Dark Theme"
-                title={`Switch to ${theme === "dark" ? "Alabaster Light" : "Obsidian Dark"} Theme`}
+                title={
+                  theme === "dark"
+                    ? "Switch to Archival Pearl Light Theme"
+                    : "Switch to Obsidian Dark Theme"
+                }
                 className="min-h-[40px] min-w-[40px] sm:min-h-[34px] sm:min-w-[34px] flex items-center justify-center p-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-all cursor-pointer shrink-0"
               >
                 {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -640,7 +661,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {/* Mobile Accessible Navigation Drawer */}
           <AnimatePresence>
             {mobileMenuOpen && (
-              <div className="fixed inset-0 z-50 lg:hidden flex">
+              <div className="fixed inset-0 z-[60] lg:hidden flex">
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -741,7 +762,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {/* Universal Search & Natural-Language Command Palette (Cmd+K) */}
           <AnimatePresence>
             {commandPaletteOpen && (
-              <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 px-4">
+              <div className="fixed inset-0 z-[60] flex items-start justify-center pt-16 px-4">
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -919,7 +940,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.16 }}
                   onClick={() => setAssistantOpen(false)}
-                  className="fixed inset-0 top-14 z-40 omnis-modal-scrim backdrop-blur-md"
+                  className="fixed inset-0 top-14 z-[55] omnis-modal-scrim backdrop-blur-md"
                 />
                 <motion.div
                   initial={{ x: "100%" }}
@@ -928,7 +949,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   transition={{ type: "spring", damping: 30, stiffness: 320 }}
                   role="dialog"
                   aria-label="OMNIS Contextual AI Assistant Drawer"
-                  className="fixed top-14 bottom-0 right-0 z-50 w-full sm:w-[400px] bg-[var(--bg-graphite)] border-l border-[var(--border-subtle)] flex flex-col shadow-2xl"
+                  className="fixed top-14 bottom-0 right-0 z-[60] w-full sm:w-[400px] bg-[var(--bg-graphite)] border-l border-[var(--border-subtle)] flex flex-col shadow-2xl"
                 >
                 <div className="px-4 py-3 bg-[var(--bg-slate)] border-b border-[var(--border-subtle)] flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
@@ -999,6 +1020,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                               key={act.href}
                               type="button"
                               onClick={() => {
+                                if (typeof window !== "undefined" && window.innerWidth < 640) {
+                                  setAssistantOpen(false);
+                                }
                                 router.push(act.href);
                               }}
                               className="px-2 py-1 rounded-md badge-tone-blue hover:brightness-105 text-xs font-semibold"
@@ -1045,7 +1069,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {/* Keyboard Shortcuts Cheatsheet Modal (?) */}
           <AnimatePresence>
             {shortcutsOpen && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+              <div className="fixed inset-0 z-[60] flex items-center justify-center px-4">
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}

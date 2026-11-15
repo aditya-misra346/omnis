@@ -201,7 +201,9 @@ export default function CommandCenterPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Primary Analytical Pane (8 Cols) */}
         <div className="lg:col-span-8 space-y-6">
-          {isWidgetVisible("trending-global") ? (
+          {(() => {
+            const widgetMap: Record<string, React.ReactNode> = {
+              "trending-global": (
             <section className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[var(--border-subtle)]">
                 <div className="flex items-center gap-2">
@@ -284,9 +286,8 @@ export default function CommandCenterPage() {
                 })}
               </div>
             </section>
-          ) : null}
-
-          {isWidgetVisible("flagship-modules") ? (
+              ),
+              "flagship-modules": (
             <section className="space-y-3">
               <div className="flex items-center justify-between pb-2 border-b border-[var(--border-subtle)]">
                 <div className="flex items-center gap-2">
@@ -362,9 +363,8 @@ export default function CommandCenterPage() {
                 })}
               </div>
             </section>
-          ) : null}
-
-          {isWidgetVisible("global-developments") ? (
+              ),
+              "global-developments": (
             <section className="space-y-3">
               <div className="flex items-center justify-between pb-2 border-b border-[var(--border-subtle)]">
                 <h2 className="text-[15px] font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono">
@@ -407,7 +407,88 @@ export default function CommandCenterPage() {
                 })}
               </div>
             </section>
-          ) : null}
+              ),
+              "recommended-paths": (
+                <section className="omnis-card p-5 space-y-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-[var(--accent-blue)]" />
+                      <h2 className="text-[13px] font-semibold tracking-tight text-[var(--text-primary)]">
+                        Recommended Cross-Disciplinary Explorations
+                      </h2>
+                    </div>
+                    <span className="text-[11px] font-mono text-[var(--text-muted)]">
+                      MULTI-MODULE WORKFLOWS
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {[
+                      {
+                        title: "Submarine Cable & Sovereign AI Compute",
+                        chain: "Atlas → Knowledge Graph → Research",
+                        detail:
+                          "Compare submarine cable bottlenecks, semiconductor fabs, and sovereign AI infrastructure readiness across key corridor nations.",
+                        href: "/atlas",
+                        accent: "text-[var(--accent-blue)]",
+                      },
+                      {
+                        title: "Atmospheric Carbon & Clean Transition Risk",
+                        chain: "Knowledge Graph → Simulations → Report",
+                        detail:
+                          "Trace causal pathways from emissions intensity to grid decarbonization, industrial output, and policy shock sensitivity.",
+                        href: "/knowledge-graph",
+                        accent: "text-[var(--accent-cyan)]",
+                      },
+                      {
+                        title: "Macro Monetary Tightening & EM Resilience",
+                        chain: "Simulations → Atlas → Timeline",
+                        detail:
+                          "Stress-test reserve adequacy, trade openness, and external debt vulnerability under high-rate macro regimes.",
+                        href: "/simulations",
+                        accent: "text-[var(--accent-amber)]",
+                      },
+                      {
+                        title: "Orbital Launch Cadence & Space Infrastructure",
+                        chain: "Research → Digital Lab → Workspace",
+                        detail:
+                          "Synthesize multi-source dossiers on LEO constellations, orbital mechanics, and launch economics into saved briefs.",
+                        href: "/research",
+                        accent: "text-[var(--accent-blue)]",
+                      },
+                    ].map((path) => (
+                      <Link
+                        key={path.title}
+                        href={path.href}
+                        className="group rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] p-3.5 hover:border-[var(--border-strong)] transition-colors flex flex-col justify-between gap-2.5"
+                      >
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span
+                              className={`text-[10px] font-mono uppercase tracking-[0.12em] ${path.accent}`}
+                            >
+                              {path.chain}
+                            </span>
+                            <ArrowRight className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover:translate-x-0.5 group-hover:text-[var(--text-primary)] transition-transform" />
+                          </div>
+                          <h3 className="text-[13px] font-semibold text-[var(--text-primary)] leading-snug">
+                            {path.title}
+                          </h3>
+                          <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">
+                            {path.detail}
+                          </p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </section>
+              ),
+            };
+            return sortedWidgets
+              .filter((w) => w.visible && widgetMap[w.id])
+              .map((w) => (
+                <React.Fragment key={w.id}>{widgetMap[w.id]}</React.Fragment>
+              ));
+          })()}
         </div>
 
         {/* Right Telemetry & Pinned Workspace Hairline Rail (4 Cols) */}

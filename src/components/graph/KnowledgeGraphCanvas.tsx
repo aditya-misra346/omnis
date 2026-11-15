@@ -549,7 +549,7 @@ export function KnowledgeGraphCanvas({
       {/* Responsive Interactive SVG Canvas */}
       <div
         ref={stageRef}
-        className="flex-1 relative omnis-subtle-dots bg-[var(--bg-graphite)] overflow-hidden"
+        className="flex-1 relative omnis-subtle-dots bg-[var(--bg-graphite)] overflow-hidden touch-none"
         onPointerDown={(e) => {
           setPanningCanvas(true);
           setDragStart({ x: e.clientX, y: e.clientY });
@@ -574,6 +574,10 @@ export function KnowledgeGraphCanvas({
           }
         }}
         onPointerUp={() => {
+          setDraggingNodeId(null);
+          setPanningCanvas(false);
+        }}
+        onPointerCancel={() => {
           setDraggingNodeId(null);
           setPanningCanvas(false);
         }}

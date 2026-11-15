@@ -1,7 +1,7 @@
 "use client";
 
 import React, { Suspense, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Compass,
@@ -43,6 +43,7 @@ const RESULT_CATEGORIES = [
 ];
 
 function ExploreContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const paramQ = searchParams.get("q");
   const initialQ = paramQ || "Explain India's economic development since 1991";
@@ -100,12 +101,23 @@ function ExploreContent() {
     [activeQuery, activeTab, sourceFilter]
   );
 
+  const runSearchQuery = (raw: string, resetSourceFilter = false) => {
+    const clean = raw.trim();
+    if (!clean) return;
+    setQueryInput(clean);
+    setActiveQuery(clean);
+    if (resetSourceFilter) {
+      setSourceFilter("all");
+    }
+    router.replace(`/explore?q=${encodeURIComponent(clean)}`, { scroll: false });
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const clean = queryInput.trim();
     if (!clean) return;
     addSearchQuery(clean);
-    setActiveQuery(clean);
+    runSearchQuery(clean);
   };
 
   const isSaved = savedSearches.includes(activeQuery);
@@ -245,11 +257,7 @@ function ExploreContent() {
                     <button
                       key={sample}
                       type="button"
-                      onClick={() => {
-                        setQueryInput(sample);
-                        setActiveQuery(sample);
-                        setSourceFilter("all");
-                      }}
+                      onClick={() => runSearchQuery(sample, true)}
                       className="px-2.5 py-1.5 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] hover:border-[var(--accent-blue)] text-[13px] font-medium text-[var(--text-primary)] transition-colors cursor-pointer"
                     >
                       {sample}
@@ -475,10 +483,7 @@ function ExploreContent() {
                 <button
                   key={concept}
                   type="button"
-                  onClick={() => {
-                    setQueryInput(concept);
-                    setActiveQuery(concept);
-                  }}
+                  onClick={() => runSearchQuery(concept)}
                   className="omnis-magnetic-arrow w-full text-left py-2.5 px-1 text-[13.5px] text-[var(--text-primary)] flex items-center justify-between cursor-pointer hover:bg-[var(--bg-slate)]/50 transition-colors"
                 >
                   <span className="font-medium truncate pr-2">{concept}</span>
@@ -497,10 +502,7 @@ function ExploreContent() {
                 <button
                   key={sq}
                   type="button"
-                  onClick={() => {
-                    setQueryInput(sq);
-                    setActiveQuery(sq);
-                  }}
+                  onClick={() => runSearchQuery(sq)}
                   className="w-full text-left py-2.5 px-1 text-[13.5px] text-[var(--text-primary)] truncate cursor-pointer hover:bg-[var(--bg-slate)]/50 transition-colors"
                 >
                   ★ {sq}
@@ -525,10 +527,7 @@ function ExploreContent() {
                 <button
                   key={hq}
                   type="button"
-                  onClick={() => {
-                    setQueryInput(hq);
-                    setActiveQuery(hq);
-                  }}
+                  onClick={() => runSearchQuery(hq)}
                   className="w-full text-left py-2.5 px-1 text-[13.5px] text-[var(--text-primary)] truncate cursor-pointer hover:bg-[var(--bg-slate)]/50 transition-colors"
                 >
                   {hq}

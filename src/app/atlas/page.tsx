@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useEffect, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -58,19 +58,27 @@ function GlobalAtlasContent() {
     }
   }, [urlCountryParam]);
   const [activeLayer, setActiveLayer] = useState<IntelligenceLayerId>("economics");
+  const [hydratedCountries, setHydratedCountries] = useState<
+    Record<string, CountryIntelligenceProfile>
+  >({});
   const [liveProfile, setLiveProfile] = useState<CountryIntelligenceProfile | null>(null);
   const [countryLookupStatus, setCountryLookupStatus] = useState<"idle" | "loading" | "missing">("idle");
   const [savedNotice, setSavedNotice] = useState(false);
 
   const { addWorkspaceItem, setActiveContext } = useOmnisStore();
 
-  const countriesList = Object.values(COUNTRIES_DATA);
+  const countriesList = useMemo(
+    () => Object.values({ ...COUNTRIES_DATA, ...hydratedCountries }),
+    [hydratedCountries]
+  );
   const resolvedCountry =
-    liveProfile && liveProfile.iso3 === selectedIso3
-      ? liveProfile
-      : COUNTRIES_DATA[selectedIso3] ?? null;
+    (liveProfile && liveProfile.iso3 === selectedIso3 ? liveProfile : null) ??
+    COUNTRIES_DATA[selectedIso3] ??
+    hydratedCountries[selectedIso3] ??
+    null;
   const country = resolvedCountry ?? COUNTRIES_DATA.IND;
-  const compareCountry = COUNTRIES_DATA[compareIso3] ?? COUNTRIES_DATA.CHN;
+  const compareCountry =
+    COUNTRIES_DATA[compareIso3] ?? hydratedCountries[compareIso3] ?? COUNTRIES_DATA.CHN;
 
   useEffect(() => {
     setActiveContext("Global Atlas & Country Intelligence", `${country.name} (${country.iso3})`);
@@ -78,7 +86,9 @@ function GlobalAtlasContent() {
 
   useEffect(() => {
     let cancelled = false;
-    setCountryLookupStatus(COUNTRIES_DATA[selectedIso3] ? "idle" : "loading");
+    setCountryLookupStatus(
+      COUNTRIES_DATA[selectedIso3] || hydratedCountries[selectedIso3] ? "idle" : "loading"
+    );
     fetch(`/api/v1/countries/${selectedIso3}`)
       .then((r) => {
         if (r.status === 404) {
@@ -87,14 +97,15 @@ function GlobalAtlasContent() {
         }
         return r.ok ? r.json() : null;
       })
-      .then((data) => {
+      .then((data: CountryIntelligenceProfile | null) => {
         if (!cancelled && data && data.iso3 === selectedIso3) {
           setLiveProfile(data);
+          setHydratedCountries((prev) => ({ ...prev, [selectedIso3]: data }));
           setCountryLookupStatus("idle");
         }
       })
       .catch(() => {
-        if (!cancelled && !COUNTRIES_DATA[selectedIso3]) {
+        if (!cancelled && !COUNTRIES_DATA[selectedIso3] && !hydratedCountries[selectedIso3]) {
           setCountryLookupStatus("missing");
         }
       });
@@ -102,6 +113,22 @@ function GlobalAtlasContent() {
       cancelled = true;
     };
   }, [selectedIso3]);
+
+  useEffect(() => {
+    if (COUNTRIES_DATA[compareIso3] || hydratedCountries[compareIso3]) return;
+    let cancelled = false;
+    fetch(`/api/v1/countries/${compareIso3}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: CountryIntelligenceProfile | null) => {
+        if (!cancelled && data && data.iso3 === compareIso3) {
+          setHydratedCountries((prev) => ({ ...prev, [compareIso3]: data }));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [compareIso3, hydratedCountries]);
 
   const handleSaveCountry = () => {
     addWorkspaceItem({

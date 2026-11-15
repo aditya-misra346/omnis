@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { geoEquirectangular, geoGraticule10, geoPath } from "d3-geo";
+import { geoCentroid, geoEquirectangular, geoGraticule10, geoPath } from "d3-geo";
 import { feature } from "topojson-client";
 import worldAtlas from "world-atlas/countries-110m.json";
 import {
@@ -391,10 +391,42 @@ export function InteractiveGlobe3D({
   activeLayerRef.current = activeLayer;
   countriesRef.current = countries;
 
-  const selectedCountry = useMemo(
-    () => countries.find((c) => c.iso3 === selectedIso3) ?? countries[0],
+  const geoCentroids = useMemo(() => {
+    const atlas = feature(
+      worldAtlas as unknown as Parameters<typeof feature>[0],
+      (worldAtlas as unknown as { objects: { countries: Parameters<typeof feature>[1] } }).objects
+        .countries
+    ) as unknown as GeoJSON.FeatureCollection<GeoJSON.Geometry, { name?: string }>;
+    const map: Record<string, { lat: number; lng: number; name: string }> = {};
+    for (const feat of atlas.features) {
+      const numId = String(feat.id ?? "").padStart(3, "0");
+      const iso3 = NUMERIC_TO_ISO3[numId];
+      if (!iso3) continue;
+      const [lng, lat] = geoCentroid(feat);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        map[iso3] = { lat, lng, name: feat.properties?.name || iso3 };
+      }
+    }
+    return map;
+  }, []);
+
+  const matchedCountry = useMemo(
+    () => countries.find((c) => c.iso3 === selectedIso3) ?? null,
     [countries, selectedIso3]
   );
+
+  const selectedCountry = useMemo(
+    () => matchedCountry ?? (geoCentroids[selectedIso3] ? null : countries[0]),
+    [matchedCountry, geoCentroids, selectedIso3, countries]
+  );
+
+  const selectedCoords = useMemo(() => {
+    if (matchedCountry) return { iso3: matchedCountry.iso3, lat: matchedCountry.lat, lng: matchedCountry.lng };
+    const centroid = geoCentroids[selectedIso3];
+    if (centroid) return { iso3: selectedIso3, lat: centroid.lat, lng: centroid.lng };
+    const fallback = countries[0];
+    return fallback ? { iso3: fallback.iso3, lat: fallback.lat, lng: fallback.lng } : null;
+  }, [matchedCountry, geoCentroids, selectedIso3, countries]);
 
   useEffect(() => {
     const mq = window.matchMedia?.("(prefers-reduced-motion: reduce)");
@@ -433,7 +465,7 @@ export function InteractiveGlobe3D({
   }, [onSelectCountry]);
 
   useEffect(() => {
-    const target = countries.find((c) => c.iso3 === selectedIso3);
+    const target = countries.find((c) => c.iso3 === selectedIso3) ?? geoCentroids[selectedIso3];
     if (target) {
       const nextX = Math.max(-0.85, Math.min(0.85, (target.lat * Math.PI) / 180 * 0.65));
       const rawY = -((target.lng + 90) * Math.PI) / 180;
@@ -442,7 +474,7 @@ export function InteractiveGlobe3D({
       const handle = sceneHandleRef.current;
       flightTotalAngleRef.current = handle ? handle.globeGroup.quaternion.angleTo(q) : 0.8;
     }
-  }, [selectedIso3, countries]);
+  }, [selectedIso3, countries, geoCentroids]);
 
   // Monitor rail horizontal scroll state for overflow chevrons & masks
   const updateRailScrollState = useCallback(() => {
@@ -1128,6 +1160,7 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
     domElem.addEventListener("pointermove", onPointerMove);
     domElem.addEventListener("wheel", onWheel, { passive: false });
     window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
 
     return () => {
       sceneHandleRef.current = null;
@@ -1138,6 +1171,7 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
       domElem.removeEventListener("pointermove", onPointerMove);
       domElem.removeEventListener("wheel", onWheel);
       window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
       disposeGroupChildren(markersGroup);
       disposeGroupChildren(arcsGroup);
       hitMeshesRef.current = [];
@@ -1219,11 +1253,11 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
     hitMeshesRef.current = newHits;
 
     const newPulses: { curve: THREE.QuadraticBezierCurve3; mesh: THREE.Mesh; offset: number }[] = [];
-    if (selectedCountry) {
-      const startVec = latLngToVector3(selectedCountry.lat, selectedCountry.lng, 1.015);
+    if (selectedCoords) {
+      const startVec = latLngToVector3(selectedCoords.lat, selectedCoords.lng, 1.015);
       let idx = 0;
       for (const other of countries) {
-        if (other.iso3 === selectedCountry.iso3) continue;
+        if (other.iso3 === selectedCoords.iso3) continue;
         const endVec = latLngToVector3(other.lat, other.lng, 1.015);
         const arcHeight = 1.14 + Math.min(0.24, startVec.distanceTo(endVec) * 0.14);
         const midVec = startVec
@@ -1252,7 +1286,7 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
       }
     }
     arcPulsesRef.current = newPulses;
-  }, [countries, selectedIso3, activeLayer, selectedCountry, theme]);
+  }, [countries, selectedIso3, activeLayer, selectedCoords, theme]);
 
   const activeLayerMeta = selectedCountry
     ? getLayerMetricForCountry(selectedCountry, activeLayer)
@@ -1267,7 +1301,7 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
 
   const handleResetView = () => {
     setZoomDistance(DEFAULT_ZOOM);
-    const target = countries.find((c) => c.iso3 === selectedIso3);
+    const target = selectedCoords;
     if (target) {
       const nextX = Math.max(-0.85, Math.min(0.85, (target.lat * Math.PI) / 180 * 0.65));
       const rawY = -((target.lng + 90) * Math.PI) / 180;
@@ -1283,7 +1317,7 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
       ref={stageRef}
       data-globe-stage="true"
       className={`${
-        isFullscreen ? "fixed inset-4 z-50 h-[calc(100vh-2rem)]" : `relative w-full ${heightClass}`
+        isFullscreen ? "fixed inset-4 z-50 h-[calc(100dvh-2rem)]" : `relative w-full ${heightClass}`
       } omnis-card overflow-hidden select-none`}
       style={{
         background:
@@ -1295,7 +1329,7 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
       {webglSupported ? (
         <div
           ref={mountRef}
-          className="w-full h-full cursor-grab active:cursor-grabbing"
+          className="w-full h-full touch-none cursor-grab active:cursor-grabbing"
           aria-label="Interactive 3D Global Intelligence Globe"
         />
       ) : (
@@ -1343,6 +1377,19 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
                   </span>
                 </div>
               ) : null}
+            </div>
+          ) : geoCentroids[selectedIso3] ? (
+            <div className="text-[13px] space-y-0.5 min-w-0">
+              <div className="font-bold text-[var(--text-primary)] flex items-center gap-1 truncate">
+                <span className="shrink-0">🌐</span>
+                <span className="truncate">{geoCentroids[selectedIso3].name}</span>
+                <span className="text-[11px] omnis-mono text-[var(--text-muted)] shrink-0">
+                  ({selectedIso3})
+                </span>
+              </div>
+              <div className="text-[11.5px] sm:text-xs text-[var(--text-secondary)] omnis-mono truncate">
+                Hydrating World Bank telemetry…
+              </div>
             </div>
           ) : null}
         </div>

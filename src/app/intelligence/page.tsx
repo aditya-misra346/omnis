@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useEffect, useState } from "react";
+import React, { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -192,6 +192,7 @@ function IntelligenceCompareContent() {
   const [savedNotice, setSavedNotice] = useState(false);
   const [pinnedTopics, setPinnedTopics] = useState<Record<string, boolean>>({});
   const [liveBriefings, setLiveBriefings] = useState<Record<string, ResearchSourceItem | null>>({});
+  const fetchedTopicsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const q = searchParams.get("q") || "";
@@ -220,15 +221,21 @@ function IntelligenceCompareContent() {
 
   useEffect(() => {
     let active = true;
-    const missing = followedTopics.filter((t) => !(t in liveBriefings));
+    let settled = false;
+    const missing = followedTopics.filter((t) => !fetchedTopicsRef.current.has(t));
     if (missing.length === 0) return;
 
+    for (const topic of missing) {
+      fetchedTopicsRef.current.add(topic);
+    }
+
     Promise.all(
-      missing.slice(0, 6).map(async (topic) => {
+      missing.map(async (topic) => {
         const works = await fetchOpenAlexSources(topic, 1).catch(() => []);
         return [topic, works[0] ?? null] as const;
       })
     ).then((entries) => {
+      settled = true;
       if (!active) return;
       setLiveBriefings((prev) => {
         const next = { ...prev };
@@ -241,8 +248,13 @@ function IntelligenceCompareContent() {
 
     return () => {
       active = false;
+      if (!settled) {
+        for (const topic of missing) {
+          fetchedTopicsRef.current.delete(topic);
+        }
+      }
     };
-  }, [followedTopics, liveBriefings]);
+  }, [followedTopics]);
 
   const metricsComparison = buildSovereignComparisonMatrix(leftCountry, rightCountry);
 
@@ -541,7 +553,7 @@ function IntelligenceCompareContent() {
                         type: "report",
                         title: `Briefing: ${topic}`,
                         subtitle: title,
-                        folder: "AI & Frontier Tech",
+                        folder: "Technology & Compute",
                         tags: [topic, isLive ? "OpenAlex" : "Curated"],
                         href: `/research?q=${encodeURIComponent(topic)}`,
                       });
