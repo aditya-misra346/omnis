@@ -154,7 +154,7 @@ export function InteractiveGlobe3D({
   compact?: boolean;
 }) {
   const mountRef = useRef<HTMLDivElement | null>(null);
-  const { theme } = useOmnisStore();
+  const { theme, motionPaused } = useOmnisStore();
 
   const [autoRotate, setAutoRotate] = useState(true);
   const [dayLightAngle, setDayLightAngle] = useState(35);
@@ -178,6 +178,7 @@ export function InteractiveGlobe3D({
   const targetZoomRef = useRef(zoomDistance);
   const lightAngleRef = useRef(dayLightAngle);
   const reducedMotionRef = useRef(false);
+  const motionPausedRef = useRef(motionPaused);
 
   const selectedCountry = useMemo(
     () => countries.find((c) => c.iso3 === selectedIso3) ?? countries[0],
@@ -192,6 +193,10 @@ export function InteractiveGlobe3D({
       setAutoRotate(false);
     }
   }, []);
+
+  useEffect(() => {
+    motionPausedRef.current = motionPaused;
+  }, [motionPaused]);
 
   useEffect(() => {
     autoRotateRef.current = autoRotate;
@@ -555,7 +560,8 @@ export function InteractiveGlobe3D({
     let clockTime = 0;
     const animate = () => {
       animFrameId = requestAnimationFrame(animate);
-      clockTime += reducedMotionRef.current ? 0 : 0.004;
+      const motionIdle = reducedMotionRef.current || motionPausedRef.current;
+      clockTime += motionIdle ? 0 : 0.004;
 
       // Smooth damped camera target glide toward selected country
       if (targetRotationRef.current && !isDraggingRef.current) {
@@ -568,7 +574,7 @@ export function InteractiveGlobe3D({
         if (Math.abs(dx) < 0.002 && Math.abs(dy) < 0.002) {
           targetRotationRef.current = null;
         }
-      } else if (autoRotateRef.current && !isDraggingRef.current) {
+      } else if (autoRotateRef.current && !isDraggingRef.current && !motionIdle) {
         rotationRef.current.y += 0.0014;
       }
 
@@ -695,6 +701,7 @@ export function InteractiveGlobe3D({
 
   return (
     <div
+      data-globe-stage="true"
       className={`${
         isFullscreen ? "fixed inset-4 z-50 h-[calc(100vh-2rem)]" : `relative w-full ${heightClass}`
       } omnis-card overflow-hidden select-none`}

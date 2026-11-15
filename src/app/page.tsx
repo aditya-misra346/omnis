@@ -22,12 +22,20 @@ import {
   BookOpen,
   BarChart3,
   Cpu,
+  Pause,
+  Play,
 } from "lucide-react";
 import { COUNTRIES_DATA } from "@/lib/data/global-intelligence";
 import { InteractiveGlobe3D } from "@/components/globe/InteractiveGlobe3D";
 import { ProvenancePanel } from "@/components/ui/ProvenancePanel";
 import { OmnisWordmark } from "@/components/brand/OmnisLogo";
 import { OmnisStatTile } from "@/components/ui/OmnisPrimitives";
+import { ElasticMagneticText } from "@/components/typography/ElasticMagneticText";
+import { ClipMaskHeading } from "@/components/typography/ClipMaskHeading";
+import { ScrollFocusNarrative } from "@/components/typography/ScrollFocusNarrative";
+import { IntelligenceSpecimenTicker } from "@/components/typography/IntelligenceSpecimenTicker";
+import { InteractiveQueryComposer } from "@/components/typography/InteractiveQueryComposer";
+import { useOmnisStore } from "@/lib/store/use-omnis-store";
 import type { IntelligenceLayerId } from "@/types/omnis";
 
 const FLAGSHIP_MODULES = [
@@ -99,12 +107,8 @@ const FLAGSHIP_MODULES = [
   },
 ];
 
-const HERO_PRESET_CHIPS = [
-  "Explain India's economic development since 1991",
-  "Compare India and China economically",
-  "Semiconductor geopolitics",
-  "Nuclear energy fusion vs fission",
-];
+const ARCHITECTURAL_NARRATIVE =
+  "Conventional search engines return fragmented links; generic chatbots return unverified prose. OMNIS transforms inquiry into source-traceable intelligence—uniting a 3D Natural Earth Atlas, Infinite Knowledge Graphs, Monte Carlo Scenario Simulations, Deep Research, and a Digital Scientific Laboratory with rigorous provenance.";
 
 const DISCIPLINES = [
   {
@@ -147,6 +151,7 @@ const DISCIPLINES = [
 
 export default function LandingPage() {
   const router = useRouter();
+  const { motionPaused, toggleMotionPaused } = useOmnisStore();
   const [heroQuery, setHeroQuery] = useState("");
   const [selectedIso3, setSelectedIso3] = useState("IND");
   const [activeLayer, setActiveLayer] = useState<IntelligenceLayerId>("economics");
@@ -155,10 +160,15 @@ export default function LandingPage() {
   const countriesList = Object.values(COUNTRIES_DATA);
   const activeCountry = COUNTRIES_DATA[selectedIso3] ?? COUNTRIES_DATA.IND;
 
+  const submitHeroExplore = (rawQuery: string) => {
+    const q = rawQuery.trim() || "Explain India's economic development since 1991";
+    setHeroQuery(q);
+    router.push(`/explore?q=${encodeURIComponent(q)}`);
+  };
+
   const handleHeroSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    const q = heroQuery.trim() || "Explain India's economic development since 1991";
-    router.push(`/explore?q=${encodeURIComponent(q)}`);
+    submitHeroExplore(heroQuery);
   };
 
   // Compute responsive SVG curve paths for the live interactive Oil Shock Simulation demo
@@ -237,12 +247,14 @@ export default function LandingPage() {
             </div>
 
             <div className="space-y-3.5">
-              <h1 className="omnis-display text-4xl sm:text-5xl lg:text-[54px] font-extrabold tracking-tight leading-[1.06] text-[var(--text-primary)]">
-                Understand Anything.{" "}
-                <span className="omnis-gradient-text">
-                  Connect Everything.
-                </span>
-              </h1>
+              <ElasticMagneticText
+                as="h1"
+                className="omnis-display text-4xl sm:text-5xl lg:text-[54px] font-extrabold tracking-tight leading-[1.06] text-[var(--text-primary)]"
+                segments={[
+                  { text: "Understand Anything." },
+                  { text: "Connect Everything.", editorial: true, fluidInk: true },
+                ]}
+              />
               <p className="text-base sm:text-lg text-[var(--text-secondary)] leading-relaxed max-w-xl">
                 OMNIS transforms static walls of text into interactive, source-traceable global
                 intelligence—unifying a 3D Natural Earth Atlas, Infinite Knowledge Graphs, Monte
@@ -251,7 +263,7 @@ export default function LandingPage() {
             </div>
 
             {/* Universal Natural Language Search Bar */}
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               <form
                 onSubmit={handleHeroSearch}
                 className="omnis-card p-1.5 sm:p-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 border-[var(--border-strong)]"
@@ -275,21 +287,10 @@ export default function LandingPage() {
                 </button>
               </form>
 
-              <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-                <span className="text-[var(--text-muted)] omnis-mono uppercase tracking-wider text-[10px]">
-                  Explore:
-                </span>
-                {HERO_PRESET_CHIPS.map((chip) => (
-                  <button
-                    key={chip}
-                    type="button"
-                    onClick={() => router.push(`/explore?q=${encodeURIComponent(chip)}`)}
-                    className="px-2.5 py-1 rounded-full bg-[var(--bg-slate)] hover:border-[var(--border-strong)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-                  >
-                    {chip}
-                  </button>
-                ))}
-              </div>
+              <InteractiveQueryComposer
+                onSubmitQuery={submitHeroExplore}
+                onSyncDraftQuery={setHeroQuery}
+              />
             </div>
 
             {/* Primary & Secondary CTAs */}
@@ -379,18 +380,17 @@ export default function LandingPage() {
       {/* SECTION 3: PRODUCT INTRODUCTION — SIX DISCIPLINES UNIFIED */}
       <section className="py-16 px-4 sm:px-8 border-b border-[var(--border-subtle)] bg-[var(--bg-graphite)]">
         <div className="max-w-7xl mx-auto space-y-8">
-          <div className="max-w-3xl space-y-2">
+          <div className="max-w-3xl space-y-3">
             <div className="text-xs font-bold uppercase tracking-widest tone-blue omnis-mono">
               01 / Architectural Vision
             </div>
-            <h2 className="omnis-display text-2xl sm:text-3xl font-bold text-[var(--text-primary)]">
-              Six Major Disciplines Integrated Into One Cohesive System
-            </h2>
-            <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
-              Conventional search engines return fragmented links; generic chatbots return unverified
-              prose. OMNIS synthesizes structured sovereign statistics, peer-reviewed literature,
-              causal graphs, and mathematical simulations with full source provenance.
-            </p>
+            <ClipMaskHeading className="omnis-display text-2xl sm:text-3xl font-bold text-[var(--text-primary)]">
+              Six Major Disciplines Integrated Into{" "}
+              <span className="omnis-editorial font-normal text-[1.12em]">
+                One Cohesive System
+              </span>
+            </ClipMaskHeading>
+            <ScrollFocusNarrative text={ARCHITECTURAL_NARRATIVE} />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -415,6 +415,8 @@ export default function LandingPage() {
               );
             })}
           </div>
+
+          <IntelligenceSpecimenTicker />
         </div>
       </section>
 
@@ -426,9 +428,12 @@ export default function LandingPage() {
               <div className="text-xs font-bold uppercase tracking-widest tone-blue omnis-mono">
                 02 / Flagship Modules
               </div>
-              <h2 className="omnis-display text-2xl sm:text-3xl font-bold mt-1 text-[var(--text-primary)]">
-                Explore the Six Flagship Intelligence Environments
-              </h2>
+              <ClipMaskHeading className="omnis-display text-2xl sm:text-3xl font-bold mt-1 text-[var(--text-primary)]">
+                Explore the Six Flagship{" "}
+                <span className="omnis-editorial font-normal text-[1.12em]">
+                  Intelligence Environments
+                </span>
+              </ClipMaskHeading>
             </div>
             <Link
               href="/command"
@@ -482,9 +487,13 @@ export default function LandingPage() {
             <div className="text-xs font-bold uppercase tracking-widest tone-blue omnis-mono">
               03 / Live Interactive Demonstrations
             </div>
-            <h2 className="omnis-display text-2xl sm:text-3xl font-bold text-[var(--text-primary)]">
-              Country Intelligence, Knowledge Graph, Research & Scenario Simulation Preview
-            </h2>
+            <ClipMaskHeading className="omnis-display text-2xl sm:text-3xl font-bold text-[var(--text-primary)]">
+              Country Intelligence, Knowledge Graph, Research &{" "}
+              <span className="omnis-editorial font-normal text-[1.12em]">
+                Scenario Simulation
+              </span>{" "}
+              Preview
+            </ClipMaskHeading>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -711,9 +720,9 @@ export default function LandingPage() {
               <Terminal className="w-4 h-4" />
               <span>04 / Technology & Polyglot Architecture</span>
             </div>
-            <h3 className="text-xl font-bold text-[var(--text-primary)]">
+            <ClipMaskHeading as="h3" className="text-xl font-bold text-[var(--text-primary)]">
               Engineered for Precision, Speed & Reproducibility
-            </h3>
+            </ClipMaskHeading>
             <ul className="space-y-3 text-xs text-[var(--text-secondary)]">
               <li className="flex items-start gap-2.5">
                 <CheckCircle2 className="w-4 h-4 tone-verified shrink-0 mt-0.5" />
@@ -751,9 +760,9 @@ export default function LandingPage() {
               <ShieldCheck className="w-4 h-4" />
               <span>05 / Trust, Provenance & Epistemic Integrity</span>
             </div>
-            <h3 className="text-xl font-bold text-[var(--text-primary)]">
+            <ClipMaskHeading as="h3" className="text-xl font-bold text-[var(--text-primary)]">
               Non-Negotiable Separation of Verified Data and Hypotheses
-            </h3>
+            </ClipMaskHeading>
             <ul className="space-y-3 text-xs text-[var(--text-secondary)]">
               <li className="flex items-start gap-2.5">
                 <Database className="w-4 h-4 tone-blue shrink-0 mt-0.5" />
@@ -790,9 +799,12 @@ export default function LandingPage() {
       {/* SECTION 11: FINAL CALL TO ACTION */}
       <section className="py-16 px-4 sm:px-8 border-b border-[var(--border-subtle)] bg-gradient-to-b from-[var(--bg-obsidian)] to-[var(--bg-graphite)] text-center">
         <div className="max-w-3xl mx-auto space-y-5">
-          <h2 className="omnis-display text-3xl sm:text-4xl font-extrabold tracking-tight text-[var(--text-primary)]">
-            Ready to Explore an Entirely New Way of Understanding the World?
-          </h2>
+          <ClipMaskHeading className="omnis-display text-3xl sm:text-4xl font-extrabold tracking-tight text-[var(--text-primary)]">
+            Ready to Explore an Entirely New Way of{" "}
+            <span className="omnis-editorial font-normal text-[1.12em]">
+              Understanding the World?
+            </span>
+          </ClipMaskHeading>
           <p className="text-sm sm:text-base text-[var(--text-secondary)] leading-relaxed">
             Enter the OMNIS Intelligence Command Center to investigate sovereign economies, expand
             infinite knowledge graphs, run Monte Carlo simulations, and organize your research.
@@ -867,11 +879,26 @@ export default function LandingPage() {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto pt-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-[var(--text-muted)]">
+        <div className="max-w-7xl mx-auto pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[var(--text-muted)]">
           <span>© 2026 OMNIS Global Intelligence Platform. All rights reserved.</span>
-          <span className="omnis-mono text-[11px]">
-            Epistemic Integrity Verified • Dual-Theme Contrast Engineered
-          </span>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={toggleMotionPaused}
+              aria-pressed={motionPaused}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[11px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors cursor-pointer omnis-mono"
+            >
+              {motionPaused ? (
+                <Play className="w-3 h-3 tone-blue" />
+              ) : (
+                <Pause className="w-3 h-3 tone-blue" />
+              )}
+              <span>{motionPaused ? "Resume motion" : "Pause motion"}</span>
+            </button>
+            <span className="omnis-mono text-[11px]">
+              Epistemic Integrity Verified • Dual-Theme Contrast Engineered
+            </span>
+          </div>
         </div>
       </footer>
     </div>

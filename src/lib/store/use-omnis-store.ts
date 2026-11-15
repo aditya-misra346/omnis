@@ -53,6 +53,10 @@ interface OmnisState {
   setTheme: (theme: "dark" | "light") => void;
   toggleTheme: () => void;
 
+  motionPaused: boolean;
+  setMotionPaused: (paused: boolean) => void;
+  toggleMotionPaused: () => void;
+
   sidebarCollapsed: boolean;
   setSidebarCollapsed: (collapsed: boolean) => void;
 
@@ -154,6 +158,11 @@ export const useOmnisStore = create<OmnisState>()(
       setTheme: (theme) => set({ theme }),
       toggleTheme: () =>
         set((state) => ({ theme: state.theme === "dark" ? "light" : "dark" })),
+
+      motionPaused: false,
+      setMotionPaused: (motionPaused) => set({ motionPaused }),
+      toggleMotionPaused: () =>
+        set((state) => ({ motionPaused: !state.motionPaused })),
 
       sidebarCollapsed: false,
       setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),

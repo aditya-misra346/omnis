@@ -29,6 +29,8 @@ import {
   ShieldCheck,
   Terminal,
   Home,
+  Pause,
+  Play,
 } from "lucide-react";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 import { classifyQueryIntent } from "@/lib/research/engine";
@@ -65,6 +67,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const {
     theme,
     toggleTheme,
+    motionPaused,
+    toggleMotionPaused,
     sidebarCollapsed,
     setSidebarCollapsed,
     commandPaletteOpen,
@@ -85,10 +89,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [assistantInput, setAssistantInput] = useState("");
   const [assistantLoading, setAssistantLoading] = useState(false);
 
-  // Sync theme attribute on <html>
+  // Sync theme and motion preference attributes on <html>
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-motion-paused", String(motionPaused));
+  }, [motionPaused]);
 
   // Keyboard shortcuts: Cmd+K for Universal Search Palette, Cmd+J for Universal AI Assistant
   useEffect(() => {
@@ -257,6 +265,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <Sparkles className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">AI Assistant</span>
                 <kbd className="hidden lg:inline text-[10px] opacity-80 omnis-mono">⌘J</kbd>
+              </button>
+
+              <button
+                type="button"
+                onClick={toggleMotionPaused}
+                aria-label={motionPaused ? "Resume motion" : "Pause motion"}
+                aria-pressed={motionPaused}
+                title={
+                  motionPaused
+                    ? "Resume kinetic typography & ambient motion"
+                    : "Pause kinetic typography & ambient motion"
+                }
+                className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-xs font-medium transition-all cursor-pointer shrink-0 ${
+                  motionPaused
+                    ? "badge-tone-warning"
+                    : "border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]"
+                }`}
+              >
+                {motionPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
+                <span className="hidden 2xl:inline">
+                  {motionPaused ? "Resume motion" : "Pause motion"}
+                </span>
               </button>
 
               <button
@@ -458,7 +488,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t border-[var(--border-subtle)] text-xs">
+                  <div className="pt-4 border-t border-[var(--border-subtle)] text-xs space-y-2.5">
+                    <button
+                      type="button"
+                      onClick={toggleMotionPaused}
+                      aria-label={motionPaused ? "Resume motion" : "Pause motion"}
+                      aria-pressed={motionPaused}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium transition-colors"
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        {motionPaused ? (
+                          <Play className="w-3.5 h-3.5 tone-blue" />
+                        ) : (
+                          <Pause className="w-3.5 h-3.5 tone-blue" />
+                        )}
+                        <span>{motionPaused ? "Resume motion" : "Pause motion"}</span>
+                      </span>
+                      <span className="omnis-mono text-[10px] text-[var(--text-muted)]">
+                        {motionPaused ? "OFF" : "ON"}
+                      </span>
+                    </button>
                     <Link
                       href="/"
                       onClick={() => setMobileMenuOpen(false)}
