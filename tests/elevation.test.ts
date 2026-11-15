@@ -7,7 +7,20 @@ import { COUNTRIES_DATA } from "@/lib/data/global-intelligence";
 import { buildSovereignComparisonMatrix } from "@/lib/research/compare";
 import { buildInfiniteKnowledgeGraph, findShortestCausalPath } from "@/lib/graph/engine";
 import { executeWhatIfSimulation, parseSimulationQueryPrompt } from "@/lib/simulations/engine";
-import { mapYearToTimelinePercent, findNearestEventByPercent } from "@/lib/timeline/scale";
+import {
+  mapYearToTimelinePercent,
+  findNearestEventByPercent,
+} from "@/lib/timeline/scale";
+import { ISO3_TO_NUMERIC } from "@/lib/data/world-catalog";
+import {
+  getSubsolarPoint,
+  getSunVectorInEarthFrame,
+  latLngToEarthVector,
+  getCountrySolarState,
+  getTimeZoneForCountry,
+  wrapLongitude,
+  ISO3_TIMEZONES,
+} from "@/lib/solarTime";
 import {
   clearLiveCountryCacheForTests,
   fetchLiveCountryIntelligence,
@@ -580,5 +593,71 @@ describe("OMNIS Elevation & Credibility Regression Suite", () => {
     expect(layoutSrc).toContain("secureUrl:");
     expect(layoutSrc).toContain("/apple-touch-icon.png");
     expect(layoutSrc).not.toContain('url: "/opengraph-image"');
+  });
+
+  it("computes accurate NOAA solar declinations, subsolar longitudes, and Earth-frame unit vectors", () => {
+    const juneSolstice = new Date("2026-06-21T12:00:00Z");
+    const decSolstice = new Date("2026-12-21T12:00:00Z");
+    const equinox = new Date("2026-03-20T15:00:00Z");
+
+    const junePt = getSubsolarPoint(juneSolstice);
+    expect(junePt.latDeg).toBeGreaterThan(23.0);
+    expect(junePt.latDeg).toBeLessThan(23.6);
+    expect(Math.abs(junePt.lngDeg)).toBeLessThan(2.0);
+
+    const decPt = getSubsolarPoint(decSolstice);
+    expect(decPt.latDeg).toBeLessThan(-23.0);
+    expect(decPt.latDeg).toBeGreaterThan(-23.6);
+    expect(Math.abs(decPt.lngDeg)).toBeLessThan(2.0);
+
+    const eqPt = getSubsolarPoint(equinox);
+    expect(Math.abs(eqPt.latDeg)).toBeLessThan(1.0);
+
+    // Subsolar longitude remains strictly within [-180, 180] across 24 hours
+    for (let h = 0; h < 24; h++) {
+      const d = new Date(Date.UTC(2026, 5, 21, h, 30, 0));
+      const p = getSubsolarPoint(d);
+      expect(p.lngDeg).toBeGreaterThanOrEqual(-180);
+      expect(p.lngDeg).toBeLessThanOrEqual(180);
+      expect(wrapLongitude(p.lngDeg + 720)).toBeCloseTo(p.lngDeg, 8);
+    }
+
+    // Spherical sun vector aligns with solar elevation dot product sin(altitude)
+    const indSolar = getCountrySolarState(28.61, 77.2, "Asia/Kolkata", new Date("2026-06-21T06:30:00Z"));
+    const sunVec = getSunVectorInEarthFrame(new Date("2026-06-21T06:30:00Z"));
+    const indNorm = latLngToEarthVector(28.61, 77.2, 1);
+    const dot = sunVec.x * indNorm.x + sunVec.y * indNorm.y + sunVec.z * indNorm.z;
+    const sunMag = Math.hypot(sunVec.x, sunVec.y, sunVec.z);
+    expect(sunMag).toBeCloseTo(1.0, 6);
+    expect(dot).toBeCloseTo(Math.sin((indSolar.altitudeDeg * Math.PI) / 180), 5);
+  });
+
+  it("maps every country in ISO3_TO_NUMERIC to a valid IANA zone with DST-aware local solar clocks", () => {
+    for (const iso3 of Object.keys(ISO3_TO_NUMERIC)) {
+      const tz = ISO3_TIMEZONES[iso3];
+      expect(tz, `Missing ISO3_TIMEZONES mapping for ${iso3}`).toBeTruthy();
+      expect(() => new Intl.DateTimeFormat("en-GB", { timeZone: tz })).not.toThrow();
+    }
+    expect(getTimeZoneForCountry("IND")).toBe("Asia/Kolkata");
+
+    // 18:30 UTC in June -> 00:00 IST (Night) in India, 14:30 EDT (Daylight) in Washington D.C.
+    const summerNightUtc = new Date("2026-06-21T18:30:00Z");
+    const indNight = getCountrySolarState(20.59, 78.96, "Asia/Kolkata", summerNightUtc);
+    const usaDay = getCountrySolarState(38.9, -77.03, "America/New_York", summerNightUtc);
+    expect(indNight.formattedTime).toBe("00:00");
+    expect(indNight.utcOffsetLabel).toBe("UTC+5:30");
+    expect(indNight.phase).toBe("Night");
+    expect(indNight.altitudeDeg).toBeLessThan(-18);
+
+    expect(usaDay.formattedTime).toBe("14:30");
+    expect(usaDay.utcOffsetLabel).toBe("UTC-4");
+    expect(usaDay.phase).toBe("Daylight");
+    expect(usaDay.altitudeDeg).toBeGreaterThan(40);
+
+    // Winter DST regression: January 15 shifts New York from UTC-4 (EDT) to UTC-5 (EST) -> 13:30
+    const winterUtc = new Date("2026-01-15T18:30:00Z");
+    const usaWinter = getCountrySolarState(38.9, -77.03, "America/New_York", winterUtc);
+    expect(usaWinter.formattedTime).toBe("13:30");
+    expect(usaWinter.utcOffsetLabel).toBe("UTC-5");
   });
 });

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { COUNTRIES_DATA } from "@/lib/data/global-intelligence";
 import { InteractiveGlobe3D } from "@/components/globe/InteractiveGlobe3D";
+import { CountrySolarClockBadge } from "@/components/solar/SolarBadges";
 import { HistoricalTrajectoryChart } from "@/components/charts/OmnisCharts";
 import { ProvenancePanel } from "@/components/ui/ProvenancePanel";
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
@@ -265,7 +266,14 @@ function GlobalAtlasContent() {
                   <span className="omnis-mono omnis-tabular text-[var(--text-muted)]">
                     {Math.abs(country.lat).toFixed(2)}°{country.lat >= 0 ? "N" : "S"},{" "}
                     {Math.abs(country.lng).toFixed(2)}°{country.lng >= 0 ? "E" : "W"}
-                  </span>
+                  </span>{" "}
+                  <CountrySolarClockBadge
+                    iso3={country.iso3}
+                    lat={country.lat}
+                    lng={country.lng}
+                    variant="pill"
+                    className="mt-1 sm:mt-0 sm:ml-1 align-middle"
+                  />
                 </p>
               </div>
             </div>

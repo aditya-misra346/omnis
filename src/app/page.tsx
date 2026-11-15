@@ -29,6 +29,7 @@ import {
 import { COUNTRIES_DATA } from "@/lib/data/global-intelligence";
 import { buildPlaceholderCountryProfile } from "@/lib/data/world-catalog";
 import { InteractiveGlobe3D } from "@/components/globe/InteractiveGlobe3D";
+import { CountrySolarClockBadge } from "@/components/solar/SolarBadges";
 import { ProvenancePanel } from "@/components/ui/ProvenancePanel";
 import { OmnisParameterSlider } from "@/components/ui/OmnisParameterSlider";
 import { OmnisWordmark } from "@/components/brand/OmnisLogo";
@@ -635,6 +636,12 @@ export default function LandingPage() {
                     <span className="px-2 py-0.5 rounded-md bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-xs omnis-mono omnis-tabular text-[var(--text-muted)]">
                       {formattedCoords}
                     </span>
+                    <CountrySolarClockBadge
+                      iso3={activeCountry.iso3}
+                      lat={activeCountry.lat}
+                      lng={activeCountry.lng}
+                      variant="pill"
+                    />
                     {isHydratingSelected && (
                       <span className="px-2 py-0.5 rounded-md badge-tone-cyan text-xs omnis-mono animate-pulse">
                         Syncing Live World Bank WDI Telemetry…

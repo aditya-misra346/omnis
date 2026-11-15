@@ -7,7 +7,6 @@ import { feature } from "topojson-client";
 import worldAtlas from "world-atlas/countries-110m.json";
 import {
   RotateCcw,
-  Sun,
   ZoomIn,
   ZoomOut,
   Layers,
@@ -21,11 +20,14 @@ import {
 } from "lucide-react";
 import { ISO3_TO_NUMERIC, NUMERIC_TO_ISO3 } from "@/lib/data/world-catalog";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
+import { dateFromUtcMinutes, getSunVectorInEarthFrame } from "@/lib/solarTime";
+import { CountrySolarClockBadge, SolarSyncHudControl } from "@/components/solar/SolarBadges";
 import type { CountryIntelligenceProfile, IntelligenceLayerId } from "@/types/omnis";
 
 const MIN_ZOOM = 1.85;
 const MAX_ZOOM = 4.1;
 const DEFAULT_ZOOM = 2.68;
+const SCRATCH_SUN_VEC = new THREE.Vector3();
 
 interface PickCountryEntry {
   iso3: string;
@@ -43,23 +45,33 @@ const CITY_NIGHT_CLUSTERS: [number, number, number][] = [
   [34.05, -118.24, 0.95],
   [41.87, -87.62, 0.85],
   [37.77, -122.41, 0.85],
+  [29.76, -95.36, 0.85],
+  [43.65, -79.38, 0.85],
+  [19.43, -99.13, 0.9],
   [51.5, -0.12, 1.0],
   [48.85, 2.35, 0.95],
   [52.52, 13.4, 0.9],
   [50.11, 8.68, 0.85],
   [45.46, 9.19, 0.8],
+  [40.41, -3.7, 0.85],
+  [41.01, 28.97, 0.9],
   [35.67, 139.65, 1.0],
   [34.69, 135.5, 0.9],
   [39.9, 116.4, 1.0],
   [31.23, 121.47, 1.0],
   [22.54, 114.05, 0.95],
+  [25.03, 121.56, 0.9],
   [37.56, 126.97, 0.95],
+  [13.75, 100.5, 0.85],
+  [3.13, 101.68, 0.8],
   [1.35, 103.82, 0.95],
+  [-6.2, 106.84, 0.9],
   [-23.55, -46.63, 0.95],
   [-22.9, -43.17, 0.85],
   [-33.86, 151.2, 0.85],
   [30.04, 31.23, 0.9],
   [25.2, 55.27, 0.85],
+  [24.71, 46.67, 0.85],
   [55.75, 37.61, 0.85],
   [-26.2, 28.04, 0.75],
   [6.52, 3.37, 0.8],
@@ -220,7 +232,7 @@ export function InteractiveGlobe3D({
   const { theme, motionPaused } = useOmnisStore();
 
   const [autoRotate, setAutoRotate] = useState(true);
-  const [dayLightAngle, setDayLightAngle] = useState(35);
+  const [scrubUtcMinutes, setScrubUtcMinutes] = useState<number | null>(null);
   const [utcScrubberOpen, setUtcScrubberOpen] = useState(false);
   const [zoomDistance, setZoomDistance] = useState(DEFAULT_ZOOM);
   const [webglSupported, setWebglSupported] = useState(true);
@@ -229,6 +241,7 @@ export function InteractiveGlobe3D({
   const [railScrollState, setRailScrollState] = useState({ left: false, right: false });
   const [stageDims, setStageDims] = useState({ width: 720, height: 480 });
   const [hoveredCountry, setHoveredCountry] = useState<{
+    iso3: string;
     name: string;
     metric: string;
     x: number;
@@ -275,7 +288,8 @@ export function InteractiveGlobe3D({
   const autoRotateRef = useRef(autoRotate);
   const zoomRef = useRef(zoomDistance);
   const targetZoomRef = useRef(zoomDistance);
-  const lightAngleRef = useRef(dayLightAngle);
+  const solarModeRef = useRef<"live" | "scrub">("live");
+  const scrubMinutesRef = useRef(720);
   const reducedMotionRef = useRef(false);
   const motionPausedRef = useRef(motionPaused);
   const wheelZoomModeRef = useRef(wheelZoomMode);
@@ -352,9 +366,10 @@ export function InteractiveGlobe3D({
     targetZoomRef.current = zoomDistance;
   }, [zoomDistance]);
 
-  useEffect(() => {
-    lightAngleRef.current = dayLightAngle;
-  }, [dayLightAngle]);
+  const scrubOverrideDate = useMemo(
+    () => (scrubUtcMinutes !== null ? dateFromUtcMinutes(scrubUtcMinutes) : null),
+    [scrubUtcMinutes]
+  );
 
   useEffect(() => {
     wheelZoomModeRef.current = wheelZoomMode;
@@ -522,18 +537,48 @@ export function InteractiveGlobe3D({
       if (nightCtx) {
         nightCtx.fillStyle = "#000000";
         nightCtx.fillRect(0, 0, nightCanvas.width, nightCanvas.height);
-        for (const [lat, lng, intensity] of CITY_NIGHT_CLUSTERS) {
+        for (let idx = 0; idx < CITY_NIGHT_CLUSTERS.length; idx++) {
+          const [lat, lng, intensity] = CITY_NIGHT_CLUSTERS[idx];
           const px = ((lng + 180) / 360) * nightCanvas.width;
           const py = ((90 - lat) / 180) * nightCanvas.height;
-          const rad = 11 * intensity;
-          const glow = nightCtx.createRadialGradient(px, py, 0.5, px, py, rad);
-          glow.addColorStop(0, `rgba(253, 224, 130, ${0.88 * intensity})`);
-          glow.addColorStop(0.4, `rgba(245, 158, 11, ${0.38 * intensity})`);
-          glow.addColorStop(1, "rgba(0, 0, 0, 0)");
-          nightCtx.fillStyle = glow;
+
+          // Wide atmospheric metro bloom (subtle) + sharp illuminated urban core
+          const haloRad = 9.0 * intensity;
+          const halo = nightCtx.createRadialGradient(px, py, 0.5, px, py, haloRad);
+          halo.addColorStop(0, `rgba(255, 240, 180, ${0.88 * intensity})`);
+          halo.addColorStop(0.24, `rgba(251, 191, 36, ${0.42 * intensity})`);
+          halo.addColorStop(0.6, `rgba(245, 158, 11, ${0.14 * intensity})`);
+          halo.addColorStop(1, "rgba(0, 0, 0, 0)");
+          nightCtx.fillStyle = halo;
           nightCtx.beginPath();
-          nightCtx.arc(px, py, rad, 0, Math.PI * 2);
+          nightCtx.arc(px, py, haloRad, 0, Math.PI * 2);
           nightCtx.fill();
+
+          // Sharp white-gold city core pinpoint
+          const coreRad = 2.6 * intensity;
+          const core = nightCtx.createRadialGradient(px, py, 0, px, py, coreRad);
+          core.addColorStop(0, `rgba(255, 250, 224, ${Math.min(1, 0.98 * intensity)})`);
+          core.addColorStop(1, "rgba(255, 240, 180, 0)");
+          nightCtx.fillStyle = core;
+          nightCtx.beginPath();
+          nightCtx.arc(px, py, coreRad, 0, Math.PI * 2);
+          nightCtx.fill();
+
+          // Deterministic satellite urban corridor sparks around each megacity
+          for (let s = 1; s <= 5; s++) {
+            const angle = idx * 1.9 + s * 1.27;
+            const dist = (3.2 + (s % 3) * 2.4) * intensity;
+            const sx = px + Math.cos(angle) * dist * 1.35;
+            const sy = py + Math.sin(angle) * dist * 0.85;
+            const sr = 1.65 * intensity;
+            const sg = nightCtx.createRadialGradient(sx, sy, 0, sx, sy, sr);
+            sg.addColorStop(0, `rgba(253, 224, 130, ${0.65 * intensity})`);
+            sg.addColorStop(1, "rgba(0, 0, 0, 0)");
+            nightCtx.fillStyle = sg;
+            nightCtx.beginPath();
+            nightCtx.arc(sx, sy, sr, 0, Math.PI * 2);
+            nightCtx.fill();
+          }
         }
         nightTexture.needsUpdate = true;
       }
@@ -626,8 +671,8 @@ export function InteractiveGlobe3D({
     roughnessCanvas.width = 1024;
     roughnessCanvas.height = 512;
     const nightCanvas = document.createElement("canvas");
-    nightCanvas.width = 1024;
-    nightCanvas.height = 512;
+    nightCanvas.width = 2048;
+    nightCanvas.height = 1024;
     const cloudCanvas = document.createElement("canvas");
     cloudCanvas.width = 512;
     cloudCanvas.height = 256;
@@ -703,7 +748,7 @@ export function InteractiveGlobe3D({
       emissiveMap: nightTexture,
       emissiveIntensity: 0.92,
     });
-    sphereMat.customProgramCacheKey = () => "omnis-solar-terminator-v2";
+    sphereMat.customProgramCacheKey = () => "omnis-solar-terminator-v3";
     sphereMat.onBeforeCompile = (shader) => {
       shader.uniforms.uSunDirection = sunUniforms.uSunDirection;
       shader.uniforms.uCityLightsEnabled = sunUniforms.uCityLightsEnabled;
@@ -732,18 +777,28 @@ varying vec3 vWorldNormal;`
           "#include <map_fragment>",
           `#include <map_fragment>
 float omnisLightDot = dot(normalize(vWorldNormal), normalize(uSunDirection));
-float omnisDayFactor = clamp((omnisLightDot + 0.22) / 0.57, 0.0, 1.0);
-if (uIsLightMode > 0.5 && omnisDayFactor < 0.999) {
-  vec3 twilightTint = mix(vec3(0.18, 0.24, 0.35), vec3(1.0), smoothstep(0.0, 0.35, omnisDayFactor));
-  diffuseColor.rgb *= mix(twilightTint, vec3(1.0), 0.18);
+float omnisDayFactor = smoothstep(-0.10, 0.16, omnisLightDot);
+float omnisTwilightBand = smoothstep(-0.15, -0.01, omnisLightDot) * (1.0 - smoothstep(-0.01, 0.17, omnisLightDot));
+if (uIsLightMode > 0.5) {
+  vec3 nightTintLight = vec3(0.28, 0.36, 0.54);
+  vec3 shadedLight = diffuseColor.rgb * mix(nightTintLight, vec3(1.0), 0.22 + 0.78 * omnisDayFactor);
+  shadedLight = mix(shadedLight, shadedLight + vec3(0.22, 0.11, 0.03), omnisTwilightBand * 0.55);
+  diffuseColor.rgb = shadedLight;
+} else {
+  vec3 nightTintDark = vec3(0.36, 0.44, 0.62);
+  vec3 shadedDark = diffuseColor.rgb * mix(nightTintDark, vec3(1.0), omnisDayFactor);
+  shadedDark = mix(shadedDark, shadedDark + vec3(0.18, 0.09, 0.02), omnisTwilightBand * 0.48);
+  diffuseColor.rgb = shadedDark;
 }`
         )
         .replace(
           "#include <emissivemap_fragment>",
           `#include <emissivemap_fragment>
 float omnisSunDot = dot(normalize(vWorldNormal), normalize(uSunDirection));
-float omnisNightMask = smoothstep(0.18, -0.22, omnisSunDot);
-totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
+float omnisEmissiveDay = smoothstep(-0.08, 0.14, omnisSunDot);
+float omnisNightMask = pow(1.0 - omnisEmissiveDay, 1.65);
+float omnisEmissiveGain = uIsLightMode > 0.5 ? 0.92 : 1.55;
+totalEmissiveRadiance *= omnisNightMask * omnisEmissiveGain * uCityLightsEnabled;`
         );
     };
     const earthMesh = new THREE.Mesh(sphereGeo, sphereMat);
@@ -763,23 +818,36 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
     const atmosMat = new THREE.ShaderMaterial({
       vertexShader: `
         varying vec3 vNormal;
+        varying vec3 vWorldNormal;
         void main() {
           vNormal = normalize(normalMatrix * normal);
+          vWorldNormal = normalize(mat3(modelMatrix) * normal);
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }
       `,
       fragmentShader: `
         varying vec3 vNormal;
+        varying vec3 vWorldNormal;
         uniform vec3 glowColor;
         uniform float intensityFactor;
+        uniform vec3 uSunDirection;
+        uniform float uIsLightMode;
         void main() {
-          float intensity = pow(0.68 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 3.2);
-          gl_FragColor = vec4(glowColor, 1.0) * intensity * intensityFactor;
+          float fresnel = pow(clamp(0.68 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 0.0, 1.2), 3.2);
+          float sunDot = dot(normalize(vWorldNormal), normalize(uSunDirection));
+          float dayLimb = smoothstep(-0.22, 0.38, sunDot);
+          float twilightLimb = exp(-pow(sunDot * 4.5, 2.0));
+          vec3 twilightTint = uIsLightMode > 0.5 ? vec3(0.90, 0.48, 0.20) : vec3(0.98, 0.52, 0.22);
+          vec3 limbColor = mix(glowColor * (0.24 + 0.76 * dayLimb), twilightTint, twilightLimb * 0.52);
+          float limbGain = 0.35 + 0.65 * dayLimb + 0.28 * twilightLimb;
+          gl_FragColor = vec4(limbColor, 1.0) * fresnel * intensityFactor * limbGain;
         }
       `,
       uniforms: {
         glowColor: { value: new THREE.Color(0x3b82f6) },
         intensityFactor: { value: 0.92 },
+        uSunDirection: sunUniforms.uSunDirection,
+        uIsLightMode: sunUniforms.uIsLightMode,
       },
       blending: THREE.AdditiveBlending,
       side: THREE.BackSide,
@@ -959,9 +1027,16 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
       cloudMesh.rotation.y = clockTime * 0.18;
       camera.position.z = zoomRef.current + cameraFlightLift;
 
-      const rad = (lightAngleRef.current * Math.PI) / 180;
-      sunLight.position.set(Math.cos(rad) * 5, 1.9, Math.sin(rad) * 5);
-      sunUniforms.uSunDirection.value.copy(sunLight.position).normalize();
+      const effectiveSolarDate =
+        solarModeRef.current === "scrub"
+          ? dateFromUtcMinutes(scrubMinutesRef.current)
+          : new Date();
+      const sunEarthVec = getSunVectorInEarthFrame(effectiveSolarDate);
+      SCRATCH_SUN_VEC.set(sunEarthVec.x, sunEarthVec.y, sunEarthVec.z)
+        .applyQuaternion(globeGroup.quaternion)
+        .normalize();
+      sunUniforms.uSunDirection.value.copy(SCRATCH_SUN_VEC);
+      sunLight.position.copy(SCRATCH_SUN_VEC).multiplyScalar(5.0);
 
       for (const p of arcPulsesRef.current) {
         const t = (clockTime * 0.35 + p.offset) % 1;
@@ -1116,6 +1191,7 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
       const hit = hits.find((h) => h.object.userData?.iso3);
       if (hit) {
         setHoveredCountry({
+          iso3: String(hit.object.userData.iso3),
           name: hit.object.userData.name,
           metric: hit.object.userData.metric,
           x: e.clientX - rect.left,
@@ -1136,6 +1212,7 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
           ? getLayerMetricForCountry(matchedProfile, activeLayerRef.current)
           : null;
         setHoveredCountry({
+          iso3: picked.iso3,
           name: matchedProfile ? `${matchedProfile.flagEmoji} ${matchedProfile.name}` : `${picked.name} (${picked.iso3})`,
           metric: layerMeta ? layerMeta.value : `Sovereign Dossier • Click to inspect ${picked.iso3}`,
           x: e.clientX - rect.left,
@@ -1448,19 +1525,33 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
 
       {hoveredCountry ? (
         <div
-          className="pointer-events-none absolute z-20 max-w-[236px] omnis-hud-pill px-3 py-2 rounded-lg text-[13px]"
+          className="pointer-events-none absolute z-20 max-w-[252px] omnis-hud-pill px-3 py-2 rounded-lg text-[13px] space-y-0.5"
           style={{ left: tooltipLeft, top: tooltipTop }}
         >
           <div className="font-bold text-[var(--text-primary)] truncate">{hoveredCountry.name}</div>
           <div className="text-[11.5px] tone-blue omnis-mono omnis-tabular truncate">
             {hoveredCountry.metric}
           </div>
+          {(() => {
+            const c =
+              countries.find((item) => item.iso3 === hoveredCountry.iso3) ??
+              geoCentroids[hoveredCountry.iso3];
+            return c ? (
+              <CountrySolarClockBadge
+                iso3={hoveredCountry.iso3}
+                lat={c.lat}
+                lng={c.lng}
+                overrideDate={scrubOverrideDate}
+                variant="compact"
+              />
+            ) : null;
+          })()}
         </div>
       ) : null}
 
       {/* Top HUD Bar */}
-      <div className="absolute top-2.5 sm:top-3.5 inset-x-2.5 sm:inset-x-3.5 flex items-start justify-between gap-2 pointer-events-none">
-        <div className="min-w-0 max-w-[186px] sm:max-w-[280px] omnis-hud-pill px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl space-y-1">
+      <div className="@container absolute top-2.5 sm:top-3.5 inset-x-2.5 sm:inset-x-3.5 flex items-start justify-between gap-2 pointer-events-none">
+        <div className="shrink-0 min-w-[144px] sm:min-w-[186px] max-w-[46%] sm:max-w-[235px] @[820px]:max-w-[290px] omnis-hud-pill px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl space-y-1">
           <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold uppercase tracking-wider tone-blue omnis-mono truncate">
             <Layers className="w-3.5 h-3.5 shrink-0" />
             <span className="truncate">Layer: {activeLayer}</span>
@@ -1477,6 +1568,13 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
               <div className="text-[11.5px] sm:text-xs text-[var(--text-secondary)] omnis-mono omnis-tabular truncate">
                 {activeLayerMeta.value}
               </div>
+              <CountrySolarClockBadge
+                iso3={selectedCountry.iso3}
+                lat={selectedCountry.lat}
+                lng={selectedCountry.lng}
+                overrideDate={scrubOverrideDate}
+                variant="compact"
+              />
               {!compact ? (
                 <div className="hidden sm:flex text-xs text-[var(--text-muted)] items-center gap-1 truncate omnis-tabular">
                   <MapPin className="w-3 h-3 shrink-0" />
@@ -1498,11 +1596,18 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
               <div className="text-[11.5px] sm:text-xs text-[var(--text-secondary)] omnis-mono truncate">
                 Hydrating World Bank telemetry…
               </div>
+              <CountrySolarClockBadge
+                iso3={selectedIso3}
+                lat={geoCentroids[selectedIso3].lat}
+                lng={geoCentroids[selectedIso3].lng}
+                overrideDate={scrubOverrideDate}
+                variant="compact"
+              />
             </div>
           ) : null}
         </div>
 
-        <div className="pointer-events-auto shrink-0 flex flex-wrap justify-end items-center gap-0.5 sm:gap-1 omnis-hud-pill p-1 sm:p-1.5 rounded-xl text-[13px] max-w-[58%] sm:max-w-none">
+        <div className="pointer-events-auto min-w-0 max-w-[52%] @[780px]:max-w-none flex flex-wrap justify-end items-center gap-0.5 sm:gap-1 omnis-hud-pill p-1 sm:p-1.5 rounded-xl text-[13px]">
           <button
             type="button"
             onClick={() => setAutoRotate((prev) => !prev)}
@@ -1534,41 +1639,21 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
           >
             <ZoomOut className="w-3.5 h-3.5" />
           </button>
-          <div className="flex items-center gap-1.5 px-1 sm:px-2 py-0.5 rounded-lg bg-[var(--bg-slate)]/75 border border-[var(--border-subtle)]">
-            <button
-              type="button"
-              onClick={() => {
-                setDayLightAngle((a) => (a + 45) % 360);
-                setUtcScrubberOpen((prev) => !prev);
-              }}
-              title="Orbital UTC Solar Terminator Time (Click to cycle / scrub)"
-              aria-label="Orbital UTC Solar Terminator Scrubber"
-              className="min-h-[38px] sm:min-h-[30px] inline-flex items-center gap-1 px-1 rounded-md hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
-            >
-              <Sun className="w-3.5 h-3.5 tone-warning shrink-0" />
-              <span className="text-xs omnis-mono omnis-tabular font-semibold whitespace-nowrap">
-                {(() => {
-                  const totalMins = Math.round((((dayLightAngle % 360) + 360) % 360) * 4) % 1440;
-                  const hh = String(Math.floor(totalMins / 60)).padStart(2, "0");
-                  const mm = String(totalMins % 60).padStart(2, "0");
-                  return `${hh}:${mm} UTC`;
-                })()}
-              </span>
-            </button>
-            <input
-              type="range"
-              min={0}
-              max={360}
-              step={5}
-              value={dayLightAngle}
-              onChange={(e) => setDayLightAngle(Number(e.target.value))}
-              aria-label="Orbital UTC Time Angle"
-              title={`Solar longitude angle: ${dayLightAngle}°`}
-              className={`${
-                utcScrubberOpen ? "block w-20" : "hidden md:block w-16 lg:w-20"
-              } h-1.5 cursor-pointer`}
-            />
-          </div>
+          <SolarSyncHudControl
+            isScrubbing={scrubUtcMinutes !== null}
+            scrubMinutes={scrubUtcMinutes ?? 720}
+            utcScrubberOpen={utcScrubberOpen}
+            onToggleExpand={() => setUtcScrubberOpen((prev) => !prev)}
+            onScrubMinutes={(mins) => {
+              solarModeRef.current = "scrub";
+              scrubMinutesRef.current = mins;
+              setScrubUtcMinutes(mins);
+            }}
+            onResetToLive={() => {
+              solarModeRef.current = "live";
+              setScrubUtcMinutes(null);
+            }}
+          />
           <button
             type="button"
             onClick={handleResetView}
