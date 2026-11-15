@@ -35,10 +35,58 @@ const editorial = Instrument_Serif({
   display: "swap",
 });
 
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL || "https://omnis-one.vercel.app";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "OMNIS — The Intelligence of Everything",
   description:
-    "Next-generation AI-powered global intelligence, scientific research, interactive knowledge graphs, 3D Earth atlas, and scenario simulation platform.",
+    "Understand Anything. Connect Everything. Interactive 3D Global Atlas, Infinite Knowledge Graphs, Monte Carlo Simulations & Deep Research.",
+  applicationName: "OMNIS",
+  manifest: "/manifest.webmanifest",
+  openGraph: {
+    title: "OMNIS — The Intelligence of Everything",
+    description:
+      "Understand Anything. Connect Everything. Interactive 3D Global Atlas, Infinite Knowledge Graphs, Monte Carlo Simulations & Deep Research.",
+    url: "https://omnis-one.vercel.app",
+    siteName: "OMNIS",
+    type: "website",
+    locale: "en_US",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        type: "image/png",
+        alt: "OMNIS — The Intelligence of Everything",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "OMNIS — The Intelligence of Everything",
+    description:
+      "Understand Anything. Connect Everything. Interactive 3D Global Atlas, Infinite Knowledge Graphs, Monte Carlo Simulations & Deep Research.",
+    images: [
+      {
+        url: "/twitter-image",
+        width: 1200,
+        height: 630,
+        alt: "OMNIS — The Intelligence of Everything",
+      },
+    ],
+  },
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "16x16 32x32 48x48", type: "image/x-icon" },
+      { url: "/icon", sizes: "32x32", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    shortcut: ["/favicon.ico"],
+    apple: [{ url: "/apple-icon", sizes: "180x180", type: "image/png" }],
+  },
 };
 
 const THEME_INIT_SCRIPT = `(function(){try{var raw=localStorage.getItem("omnis-intelligence-workspace-v1");if(!raw)return;var parsed=JSON.parse(raw);var t=parsed&&parsed.state&&parsed.state.theme;if(t==="light"||t==="dark"){document.documentElement.dataset.theme=t;}}catch(e){}})();`;
