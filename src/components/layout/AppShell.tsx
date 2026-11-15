@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 import { CreatorSignature } from "@/components/CreatorSignature";
+import { COUNTRIES_DATA } from "@/lib/data/global-intelligence";
 import { classifyQueryIntent } from "@/lib/research/engine";
 import { OmnisLoader, OmnisWordmark } from "@/components/brand/OmnisLogo";
 
@@ -228,7 +229,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     id: string;
     label: string;
     subtitle: string;
-    category: "Module" | "Action" | "Route";
+    category: "Module" | "Action" | "Route" | "Country";
     run: () => void;
   }
 
@@ -287,8 +288,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       },
     ];
 
+    const countryActions: CommandPaletteAction[] = Object.values(COUNTRIES_DATA).map((c) => ({
+      id: `country-${c.iso3}`,
+      label: `${c.flagEmoji} ${c.officialName} (${c.iso3})`,
+      subtitle: `${c.capital} • GDP $${c.gdpUsdBn.toLocaleString()}B (${
+        c.gdpGrowthPct >= 0 ? "+" : ""
+      }${c.gdpGrowthPct}%) • ${c.region}`,
+      category: "Country",
+      run: () => {
+        setCommandPaletteOpen(false);
+        router.push(`/atlas?country=${c.iso3}`);
+      },
+    }));
+
     const q = paletteQuery.trim().toLowerCase();
-    const combined = [...navActions, ...quickActions];
+    const combined = [...countryActions, ...navActions, ...quickActions];
     if (!q) return [];
     return combined
       .filter(
@@ -315,7 +329,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             className="sticky top-0 z-40 h-14 backdrop-blur-xl px-3 sm:px-4 flex items-center justify-between gap-2 sm:gap-3 overflow-x-clip"
             style={{
               backgroundColor: "var(--bg-glass)",
-              boxShadow: "inset 0 -1px 0 var(--border-subtle)",
+              boxShadow: "inset 0 -1px 0 var(--border-subtle), inset 0 1px 0 var(--border-highlight)",
             }}
           >
             <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
@@ -323,7 +337,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 type="button"
                 onClick={() => setMobileMenuOpen(true)}
                 aria-label="Open Navigation Menu"
-                className="lg:hidden shrink-0 p-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                className="lg:hidden shrink-0 min-h-[40px] min-w-[40px] sm:min-h-[34px] sm:min-w-[34px] flex items-center justify-center p-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
               >
                 <Menu className="w-4 h-4" />
               </button>
@@ -444,7 +458,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 onClick={toggleTheme}
                 aria-label="Toggle Light/Dark Theme"
                 title={`Switch to ${theme === "dark" ? "Alabaster Light" : "Obsidian Dark"} Theme`}
-                className="p-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-all cursor-pointer shrink-0"
+                className="min-h-[40px] min-w-[40px] sm:min-h-[34px] sm:min-w-[34px] flex items-center justify-center p-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-all cursor-pointer shrink-0"
               >
                 {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </button>

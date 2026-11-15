@@ -215,45 +215,73 @@ export default function CommandCenterPage() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 border-t border-l border-[var(--border-subtle)] bg-[var(--bg-graphite)]">
-                {countries.slice(0, 8).map((c) => (
-                  <Link
-                    key={c.iso3}
-                    href={`/atlas?country=${c.iso3}`}
-                    className="p-4 border-r border-b border-[var(--border-subtle)] hover:bg-[var(--bg-slate)]/60 transition-colors space-y-2.5 group"
-                  >
-                    <div className="flex items-center justify-between gap-1.5">
-                      <span className="font-bold text-xs sm:text-sm text-[var(--text-primary)] truncate group-hover:text-[var(--accent-blue)] transition-colors">
-                        {c.flagEmoji} {c.name}
-                      </span>
-                      <span className="text-[10px] font-semibold omnis-mono px-1.5 py-0.5 rounded badge-tone-blue shrink-0">
-                        {c.iso3}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div>
-                        <div className="text-[10px] text-[var(--text-muted)]">GDP (Nom.)</div>
-                        <div className="font-bold omnis-mono omnis-tabular text-[var(--text-primary)]">
-                          ${c.gdpUsdBn.toLocaleString()}B
-                        </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 border-t border-l border-[var(--border-subtle)] bg-[var(--bg-graphite)]">
+                {countries.map((c) => {
+                  const gdps = c.historicalSeries.map((pt) => pt.gdpUsdBn);
+                  const minGdp = Math.min(...gdps);
+                  const maxGdp = Math.max(...gdps);
+                  const sparkPoints = gdps
+                    .map((val, idx) => {
+                      const sx = (idx / Math.max(1, gdps.length - 1)) * 78;
+                      const sy = 20 - ((val - minGdp) / Math.max(1, maxGdp - minGdp)) * 16;
+                      return `${idx === 0 ? "M" : "L"}${sx.toFixed(1)},${sy.toFixed(1)}`;
+                    })
+                    .join(" ");
+                  return (
+                    <Link
+                      key={c.iso3}
+                      href={`/atlas?country=${c.iso3}`}
+                      className="p-4 border-r border-b border-[var(--border-subtle)] hover:bg-[var(--bg-slate)]/60 transition-colors space-y-2.5 group"
+                    >
+                      <div className="flex items-center justify-between gap-1.5">
+                        <span className="font-bold text-xs sm:text-sm text-[var(--text-primary)] truncate group-hover:text-[var(--accent-blue)] transition-colors">
+                          {c.flagEmoji} {c.name}
+                        </span>
+                        <span className="text-[10px] font-semibold omnis-mono px-1.5 py-0.5 rounded badge-tone-blue shrink-0">
+                          {c.iso3}
+                        </span>
                       </div>
-                      <div>
-                        <div className="text-[10px] text-[var(--text-muted)]">Real/yr</div>
-                        <div
-                          className={`font-bold omnis-mono omnis-tabular ${
-                            c.gdpGrowthPct >= 0 ? "tone-verified" : "tone-danger"
-                          }`}
+                      <div className="flex items-end justify-between gap-2">
+                        <div className="grid grid-cols-2 gap-3 text-xs">
+                          <div>
+                            <div className="text-[10px] text-[var(--text-muted)]">GDP (Nom.)</div>
+                            <div className="font-bold omnis-mono omnis-tabular text-[var(--text-primary)]">
+                              ${c.gdpUsdBn.toLocaleString()}B
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-[10px] text-[var(--text-muted)]">Real/yr</div>
+                            <div
+                              className={`font-bold omnis-mono omnis-tabular ${
+                                c.gdpGrowthPct >= 0 ? "tone-verified" : "tone-danger"
+                              }`}
+                            >
+                              {c.gdpGrowthPct >= 0 ? `+${c.gdpGrowthPct}%` : `${c.gdpGrowthPct}%`}
+                            </div>
+                          </div>
+                        </div>
+                        <svg
+                          viewBox="0 0 80 24"
+                          className="w-16 h-6 shrink-0"
+                          aria-label={`${c.name} GDP trajectory sparkline`}
                         >
-                          {c.gdpGrowthPct >= 0 ? `+${c.gdpGrowthPct}%` : `${c.gdpGrowthPct}%`}
-                        </div>
+                          <path
+                            d={sparkPoints}
+                            fill="none"
+                            stroke={c.gdpGrowthPct >= 0 ? "var(--status-verified)" : "var(--chart-amber)"}
+                            strokeWidth="1.75"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
                       </div>
-                    </div>
-                    <div className="text-[10.5px] text-[var(--text-muted)] flex justify-between pt-2 border-t border-[var(--border-subtle)] omnis-mono omnis-tabular">
-                      <span>Clean: {c.energyProfile.renewableSharePct}%</span>
-                      <span>AI: {c.technologyProfile.aiReadinessIndex}</span>
-                    </div>
-                  </Link>
-                ))}
+                      <div className="text-[10.5px] text-[var(--text-muted)] flex justify-between pt-2 border-t border-[var(--border-subtle)] omnis-mono omnis-tabular">
+                        <span>Clean: {c.energyProfile.renewableSharePct}%</span>
+                        <span>AI: {c.technologyProfile.aiReadinessIndex}</span>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             </section>
           ) : null}

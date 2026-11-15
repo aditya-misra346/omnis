@@ -9,7 +9,10 @@ import {
   clearLiveCountryCacheForTests,
   fetchLiveCountryIntelligence,
 } from "@/lib/providers/live-data";
-import { orchestrateDeepResearch } from "@/lib/research/engine";
+import {
+  executeUniversalSearch,
+  orchestrateDeepResearch,
+} from "@/lib/research/engine";
 import {
   clearHealthCacheForTests,
   probeUpstreamProviders,
@@ -390,5 +393,45 @@ describe("OMNIS Elevation & Credibility Regression Suite", () => {
       })
     );
     expect(mathHtml).toContain("katex");
+    expect(mathHtml).toContain("Copy TeX");
+  });
+
+  it("supports the Global Geopolitics & Trade Corridors blueprint and grounds unmatched topics against tracked records", () => {
+    const geoGraph = buildInfiniteKnowledgeGraph({
+      topic: "Global Geopolitics & Trade Corridors",
+      maxNodes: 16,
+    });
+    expect(geoGraph.isSynthesizedFallback).toBe(false);
+    expect(geoGraph.domainMatched).toBe("Global Geopolitics & Trade Corridors");
+    const geoLabels = geoGraph.nodes.map((n) => n.label.toLowerCase()).join(" | ");
+    expect(geoLabels).toMatch(/malacca|tariff|corridor/);
+    expect(geoLabels).not.toContain("rlhf");
+
+    const qGraph = buildInfiniteKnowledgeGraph({
+      topic: "Quantum Cryptography",
+      maxNodes: 16,
+    });
+    const qLabels = qGraph.nodes.map((n) => n.label.toLowerCase()).join(" | ");
+    expect(qGraph.isSynthesizedFallback).toBe(true);
+    expect(qLabels).toContain("quantum computing");
+  });
+
+  it("enforces honest zero-match empty results in Universal Search instead of generic India fallback", async () => {
+    const zero = executeUniversalSearch("zzzzxyznonexistenttoken999");
+    expect(zero.countries).toHaveLength(0);
+    expect(zero.historicalEvents).toHaveLength(0);
+    expect(zero.technologiesAndOrganizations).toHaveLength(0);
+
+    const curated = executeUniversalSearch("India", "overview", "curated");
+    expect(curated.countries.some((c) => c.iso3 === "IND")).toBe(true);
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({ results: [] }), { status: 200 }))
+    );
+    const report = await orchestrateDeepResearch("Quantum Computing", "deep");
+    expect(
+      report.relevantStatistics.some((s) => s.metric.toLowerCase().includes("quantum"))
+    ).toBe(true);
   });
 });

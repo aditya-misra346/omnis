@@ -140,6 +140,7 @@ function ExploreContent() {
               { value: "worldbank", label: "World Bank & IMF" },
               { value: "openalex", label: "OpenAlex Peer-Reviewed" },
               { value: "wikimedia", label: "Wikimedia & Archives" },
+              { value: "curated", label: "Curated OMNIS Benchmarks" },
             ]}
           />
           <OmnisButton type="submit">Search OMNIS</OmnisButton>
@@ -197,6 +198,56 @@ function ExploreContent() {
       {/* Categorised Search Results + History Sidebar */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-8 space-y-6">
+          {searchResults.countries.length === 0 &&
+            openAlexWorks.length === 0 &&
+            searchResults.historicalEvents.length === 0 &&
+            searchResults.technologiesAndOrganizations.length === 0 && (
+              <section className="omnis-card p-6 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <div className="text-[10px] omnis-mono font-bold uppercase tracking-[0.16em] tone-warning mb-1">
+                      ZERO DIRECT MATCHES IN INDEX
+                    </div>
+                    <h2 className="text-base font-bold text-[var(--text-primary)]">
+                      No verified records matched &ldquo;{activeQuery}&rdquo;
+                    </h2>
+                  </div>
+                  {sourceFilter !== "all" && (
+                    <OmnisButton variant="secondary" onClick={() => setSourceFilter("all")}>
+                      Reset Source Filter
+                    </OmnisButton>
+                  )}
+                </div>
+                <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                  OMNIS enforces strict provenance honesty and never substitutes unrelated fallback countries or events when a query yields zero matches. Try broadening keywords, checking spelling, or switching directly into the Deep Research synthesiser for OpenAlex literature discovery.
+                </p>
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <span className="text-[11px] font-semibold text-[var(--text-muted)] omnis-mono">
+                    Quick Try:
+                  </span>
+                  {[
+                    "India economy since 1991",
+                    "Semiconductor lithography",
+                    "Clean energy storage",
+                    "Artificial intelligence",
+                  ].map((sample) => (
+                    <button
+                      key={sample}
+                      type="button"
+                      onClick={() => {
+                        setQueryInput(sample);
+                        setActiveQuery(sample);
+                        setSourceFilter("all");
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] hover:border-[var(--accent-blue)] text-xs font-medium text-[var(--text-primary)] transition-colors cursor-pointer"
+                    >
+                      {sample}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
+
           {/* Countries Section */}
           {(activeTab === "overview" || activeTab === "countries" || activeTab === "statistics") && (
             <section className="omnis-card p-5 space-y-3">

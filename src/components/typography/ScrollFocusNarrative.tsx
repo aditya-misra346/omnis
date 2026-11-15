@@ -148,7 +148,7 @@ export function ScrollFocusNarrative({ text, className = "" }: ScrollFocusNarrat
       if (!node) return;
       const rect = node.getBoundingClientRect();
       const vh = window.innerHeight || 900;
-      const raw = (vh * 0.96 - rect.top) / (vh * 0.48);
+      const raw = (vh * 0.96 - rect.top) / (vh * 0.30);
       const clamped = Math.max(0, Math.min(1, raw));
       setScrollProgress(clamped);
     };
@@ -199,13 +199,13 @@ export function ScrollFocusNarrative({ text, className = "" }: ScrollFocusNarrat
     <div ref={containerRef} className={`relative ${className}`}>
       <p className="text-sm sm:text-[15.5px] leading-[1.72] text-[var(--text-secondary)]">
         {segments.map((seg, idx) => {
-          const tokenStart = (idx / totalCount) * 0.62;
-          const tokenSpan = 0.38;
+          const tokenStart = (idx / totalCount) * 0.75;
+          const tokenSpan = 0.25;
           const localA = Math.max(
             0,
             Math.min(1, (effectiveProgress - tokenStart) / tokenSpan)
           );
-          const opacity = Number((0.62 + localA * 0.38).toFixed(3));
+          const opacity = Number((0.58 + localA * 0.42).toFixed(3));
           const translateY = Number(((1 - localA) * 5).toFixed(2));
           const blurPx = Number(((1 - localA) * 1.2).toFixed(2));
 
@@ -241,7 +241,7 @@ export function ScrollFocusNarrative({ text, className = "" }: ScrollFocusNarrat
                         (e.currentTarget as HTMLElement).blur();
                       }
                     }}
-                    className={`relative inline-flex items-baseline gap-0.5 px-0.5 omnis-editorial text-[1.15em] transition-colors border-b border-dashed focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-blue)] rounded-sm ${
+                    className={`group relative inline-flex items-baseline gap-0.5 px-0.5 omnis-editorial text-[1.15em] transition-colors border-b border-dashed focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-blue)] rounded-sm ${
                       unlocked
                         ? "omnis-gradient-text font-normal border-[var(--ink-underline-active)]"
                         : "text-[var(--text-primary)] border-[var(--ink-underline)]"
@@ -250,7 +250,7 @@ export function ScrollFocusNarrative({ text, className = "" }: ScrollFocusNarrat
                     <span>{term.phrase}</span>
                     <sup
                       aria-hidden="true"
-                      className="text-[0.58em] font-sans not-italic opacity-75 leading-none select-none"
+                      className="omnis-magnetic-arrow text-[0.58em] font-sans not-italic opacity-75 leading-none select-none"
                     >
                       ↗
                     </sup>

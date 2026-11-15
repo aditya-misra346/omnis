@@ -124,11 +124,11 @@ function computeLayoutPositions(
     });
   }
 
-  const baseDist = Math.min(safeW, safeH) * 0.34;
+  const baseDist = Math.min(safeW, safeH) * 0.38;
   const pos = nodes.map((n, idx) => {
     if (idx === 0) return { ...n, x: cx, y: cy };
     const angle = (2 * Math.PI * (idx - 1)) / Math.max(1, count - 1);
-    const dist = baseDist + ((idx * 41) % 64) - 24;
+    const dist = baseDist + ((idx * 41) % 64) - 20;
     return {
       ...n,
       x: cx + dist * Math.cos(angle),
@@ -136,10 +136,10 @@ function computeLayoutPositions(
     };
   });
 
-  const padX = Math.max(82, safeW * 0.1);
-  const padY = Math.max(66, safeH * 0.12);
+  const padX = Math.max(105, safeW * 0.11);
+  const padY = Math.max(54, safeH * 0.1);
   const idToIdx = new Map(pos.map((p, i) => [p.id, i]));
-  for (let iter = 0; iter < 48; iter++) {
+  for (let iter = 0; iter < 54; iter++) {
     for (let i = 1; i < pos.length; i++) {
       let fx = 0;
       let fy = 0;
@@ -147,11 +147,13 @@ function computeLayoutPositions(
         if (i === j) continue;
         const dx = pos[i].x - pos[j].x;
         const dy = pos[i].y - pos[j].y;
-        const distSq = Math.max(600, dx * dx + dy * dy);
+        // Weight vertical separation stronger when horizontal pill labels could align
+        const effectiveDy = Math.abs(dx) < 180 ? dy * 0.68 : dy;
+        const distSq = Math.max(720, dx * dx + effectiveDy * effectiveDy);
         const dist = Math.sqrt(distSq);
-        const rep = 7200 / distSq;
+        const rep = 10800 / distSq;
         fx += (dx / dist) * rep;
-        fy += (dy / dist) * rep;
+        fy += (effectiveDy / dist) * rep;
       }
       for (const e of edges) {
         const sIdx = idToIdx.get(e.source);
@@ -161,13 +163,33 @@ function computeLayoutPositions(
           const dx = pos[otherIdx].x - pos[i].x;
           const dy = pos[otherIdx].y - pos[i].y;
           const dist = Math.max(1, Math.hypot(dx, dy));
-          const spring = (dist - Math.min(182, baseDist * 0.92)) * 0.036;
+          const restLen = Math.min(220, baseDist * 0.98);
+          const spring = (dist - restLen) * 0.028;
           fx += (dx / dist) * spring;
           fy += (dy / dist) * spring;
         }
       }
       pos[i].x = Math.max(padX, Math.min(safeW - padX, pos[i].x + fx * 0.25));
-      pos[i].y = Math.max(padY, Math.min(safeH - padY - 12, pos[i].y + fy * 0.25));
+      pos[i].y = Math.max(padY, Math.min(safeH - padY - 16, pos[i].y + fy * 0.25));
+    }
+  }
+
+  // Final label-pill de-confliction pass so stacked node pills never touch
+  const minLabelW = 175;
+  const minLabelH = 74;
+  for (let pass = 0; pass < 3; pass++) {
+    for (let i = 1; i < pos.length; i++) {
+      for (let j = 0; j < pos.length; j++) {
+        if (i === j) continue;
+        const dx = pos[i].x - pos[j].x;
+        const dy = pos[i].y - pos[j].y;
+        if (Math.abs(dx) < minLabelW && Math.abs(dy) < minLabelH) {
+          const pushY = (dy >= 0 ? 1 : -1) * ((minLabelH - Math.abs(dy)) * 0.55);
+          const pushX = dx === 0 ? (i % 2 === 0 ? 22 : -22) : (dx > 0 ? 1 : -1) * 14;
+          pos[i].x = Math.max(padX, Math.min(safeW - padX, pos[i].x + pushX));
+          pos[i].y = Math.max(padY, Math.min(safeH - padY - 16, pos[i].y + pushY));
+        }
+      }
     }
   }
 
@@ -235,13 +257,62 @@ export function KnowledgeGraphCanvas({
     [nodes, edges, layoutMode, canvasSize.width, canvasSize.height]
   );
 
+  const [animatedBasePositions, setAnimatedBasePositions] =
+    useState<PositionedNode[]>(basePositions);
+  const animatedRef = useRef<PositionedNode[]>(basePositions);
+
+  useEffect(() => {
+    const prefersReduced =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReduced || animatedRef.current.length === 0) {
+      animatedRef.current = basePositions;
+      setAnimatedBasePositions(basePositions);
+      return;
+    }
+
+    const prevMap = new Map(animatedRef.current.map((n) => [n.id, n]));
+    let current = basePositions.map((target) => {
+      const prev = prevMap.get(target.id);
+      return prev ? { ...target, x: prev.x, y: prev.y } : target;
+    });
+
+    let rafId = 0;
+    const step = () => {
+      let maxDelta = 0;
+      const next = basePositions.map((target, idx) => {
+        const cur = current[idx] ?? target;
+        const dx = target.x - cur.x;
+        const dy = target.y - cur.y;
+        maxDelta = Math.max(maxDelta, Math.abs(dx), Math.abs(dy));
+        if (Math.abs(dx) < 0.4 && Math.abs(dy) < 0.4) {
+          return target;
+        }
+        return {
+          ...target,
+          x: cur.x + dx * 0.18,
+          y: cur.y + dy * 0.18,
+        };
+      });
+      current = next;
+      animatedRef.current = next;
+      setAnimatedBasePositions(next);
+      if (maxDelta >= 0.4) {
+        rafId = requestAnimationFrame(step);
+      }
+    };
+
+    rafId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafId);
+  }, [basePositions]);
+
   const positionedNodes = useMemo(
     () =>
-      basePositions.map((n) => {
+      animatedBasePositions.map((n) => {
         const off = draggedOffsets[n.id];
         return off ? { ...n, x: n.x + off.dx, y: n.y + off.dy } : n;
       }),
-    [basePositions, draggedOffsets]
+    [animatedBasePositions, draggedOffsets]
   );
 
   const nodeById = useMemo(
@@ -364,7 +435,7 @@ export function KnowledgeGraphCanvas({
             onClick={() => setZoom((z) => Math.min(2.2, Number((z + 0.15).toFixed(2))))}
             title="Zoom In"
             aria-label="Zoom In"
-            className="p-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:border-[var(--border-strong)] cursor-pointer"
+            className="min-h-[40px] min-w-[40px] sm:min-h-[32px] sm:min-w-[32px] flex items-center justify-center p-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:border-[var(--border-strong)] cursor-pointer"
           >
             <ZoomIn className="w-3.5 h-3.5" />
           </button>
@@ -373,7 +444,7 @@ export function KnowledgeGraphCanvas({
             onClick={() => setZoom((z) => Math.max(0.45, Number((z - 0.15).toFixed(2))))}
             title="Zoom Out"
             aria-label="Zoom Out"
-            className="p-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:border-[var(--border-strong)] cursor-pointer"
+            className="min-h-[40px] min-w-[40px] sm:min-h-[32px] sm:min-w-[32px] flex items-center justify-center p-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:border-[var(--border-strong)] cursor-pointer"
           >
             <ZoomOut className="w-3.5 h-3.5" />
           </button>
@@ -382,7 +453,7 @@ export function KnowledgeGraphCanvas({
             onClick={handleFitToScreen}
             title="Fit Graph to Screen"
             aria-label="Fit Graph to Screen"
-            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:border-[var(--border-strong)] cursor-pointer font-medium"
+            className="min-h-[40px] sm:min-h-[32px] inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:border-[var(--border-strong)] cursor-pointer font-medium"
           >
             <Scan className="w-3.5 h-3.5 tone-blue" />
             <span className="hidden sm:inline">Fit</span>
@@ -396,7 +467,7 @@ export function KnowledgeGraphCanvas({
             }}
             title="Reset Graph Positions & Zoom"
             aria-label="Reset Graph Positions"
-            className="p-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:border-[var(--border-strong)] cursor-pointer"
+            className="min-h-[40px] min-w-[40px] sm:min-h-[32px] sm:min-w-[32px] flex items-center justify-center p-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:border-[var(--border-strong)] cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
@@ -404,7 +475,7 @@ export function KnowledgeGraphCanvas({
             type="button"
             onClick={handleExportSvg}
             title="Export Knowledge Graph as SVG"
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:border-[var(--border-strong)] cursor-pointer font-medium"
+            className="min-h-[40px] sm:min-h-[32px] inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:border-[var(--border-strong)] cursor-pointer font-medium"
           >
             <Download className="w-3.5 h-3.5 tone-blue" />
             <span>SVG</span>
@@ -414,7 +485,7 @@ export function KnowledgeGraphCanvas({
             onClick={() => setIsFullscreen((f) => !f)}
             title="Toggle Fullscreen Graph Exploration"
             aria-label="Toggle Fullscreen Graph"
-            className="p-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:border-[var(--border-strong)] cursor-pointer"
+            className="min-h-[40px] min-w-[40px] sm:min-h-[32px] sm:min-w-[32px] flex items-center justify-center p-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:border-[var(--border-strong)] cursor-pointer"
           >
             {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
           </button>
@@ -506,7 +577,7 @@ export function KnowledgeGraphCanvas({
               const pillWidth = Math.max(60, formattedRel.length * 6.2 + 16);
 
               return (
-                <g key={edge.id} opacity={isRelated ? 1 : 0.25}>
+                <g key={edge.id} opacity={isRelated ? 1 : 0.18}>
                   <path
                     d={`M ${src.x} ${src.y} Q ${cx} ${cy} ${tgt.x} ${tgt.y}`}
                     fill="none"
@@ -555,7 +626,7 @@ export function KnowledgeGraphCanvas({
               const color = CATEGORY_COLORS[node.category] ?? "#2563eb";
               const radius = idx === 0 ? 23 : isSelected ? 19 : 14.5;
 
-              const effectiveOpacity = !matchesSearch ? 0.18 : isConnected ? 1 : 0.25;
+              const effectiveOpacity = !matchesSearch ? 0.18 : isConnected ? 1 : 0.18;
 
               return (
                 <g
@@ -630,15 +701,35 @@ export function KnowledgeGraphCanvas({
                     />
                   ) : null}
 
-                  <text
-                    y={radius + 15}
-                    textAnchor="middle"
-                    fill="var(--text-primary)"
-                    fontSize="11"
-                    fontWeight={isSelected || idx === 0 ? "700" : "600"}
-                  >
-                    {node.label.length > 28 ? `${node.label.slice(0, 26)}…` : node.label}
-                  </text>
+                  {(() => {
+                    const displayLabel =
+                      node.label.length > 38 ? `${node.label.slice(0, 36)}…` : node.label;
+                    const pillW = Math.min(256, Math.max(76, displayLabel.length * 6.3 + 16));
+                    return (
+                      <>
+                        <rect
+                          x={-pillW / 2}
+                          y={radius + 4}
+                          width={pillW}
+                          height={17}
+                          rx={5}
+                          fill="var(--bg-graphite)"
+                          fillOpacity={0.86}
+                          stroke={isSelected ? color : "var(--border-subtle)"}
+                          strokeWidth={isSelected ? 1.1 : 0.7}
+                        />
+                        <text
+                          y={radius + 15.5}
+                          textAnchor="middle"
+                          fill="var(--text-primary)"
+                          fontSize="10.5"
+                          fontWeight={isSelected || idx === 0 ? "700" : "600"}
+                        >
+                          {displayLabel}
+                        </text>
+                      </>
+                    );
+                  })()}
                 </g>
               );
             })}
@@ -664,7 +755,7 @@ export function KnowledgeGraphCanvas({
             <button
               type="button"
               onClick={() => onExpandNode(selectedNodeId)}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--accent-blue-solid)] hover:brightness-110 text-white font-semibold cursor-pointer"
+              className="min-h-[40px] sm:min-h-[32px] inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--accent-blue-solid)] hover:brightness-110 text-white font-semibold cursor-pointer"
             >
               <PlusCircle className="w-3.5 h-3.5" />
               <span>Expand Node (+4)</span>

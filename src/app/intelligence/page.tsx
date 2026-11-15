@@ -37,16 +37,35 @@ interface FollowedTopicBriefing {
 
 function resolveCachedTopicBriefing(topic: string): FollowedTopicBriefing {
   const lower = topic.toLowerCase();
+  const stems = lower
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length >= 4)
+    .map((w) => w.slice(0, 5));
+
+  const matchesText = (text: string) => {
+    const t = text.toLowerCase();
+    return t.includes(lower) || stems.some((s) => t.includes(s));
+  };
+
+  const matchedCountry = Object.values(COUNTRIES_DATA).find(
+    (c) =>
+      matchesText(c.name) ||
+      matchesText(c.officialName) ||
+      lower.includes(c.iso3.toLowerCase()) ||
+      (lower.includes("european") && c.region === "Europe") ||
+      (lower.includes("us dollar") && c.iso3 === "USA") ||
+      (lower.includes("inflation") && c.iso3 === "USA")
+  );
+
   const matchedEvent =
     TIMELINE_EVENTS.find(
       (evt) =>
-        evt.title.toLowerCase().includes(lower.split(" ")[0] ?? "") ||
-        evt.connectedGraphTopics.some((t) =>
-          lower.includes(t.toLowerCase().split(" ")[0] ?? "")
-        )
+        matchesText(evt.title) ||
+        matchesText(evt.description) ||
+        evt.connectedGraphTopics.some((t) => matchesText(t))
     ) ?? null;
 
-  if (matchedEvent) {
+  if (matchedEvent && !matchedCountry) {
     return {
       status: "cached",
       dateLabel: `Event Record • ${matchedEvent.dateDisplay}`,
@@ -59,9 +78,7 @@ function resolveCachedTopicBriefing(topic: string): FollowedTopicBriefing {
 
   const matchedEntity =
     COMPARABLE_ENTITIES.find(
-      (ent) =>
-        ent.name.toLowerCase().includes(lower.split(" ")[0] ?? "") ||
-        ent.subtitle.toLowerCase().includes(lower.split(" ")[0] ?? "")
+      (ent) => matchesText(ent.name) || matchesText(ent.subtitle) || matchesText(ent.category)
     ) ?? null;
 
   if (matchedEntity) {
@@ -78,14 +95,27 @@ function resolveCachedTopicBriefing(topic: string): FollowedTopicBriefing {
     };
   }
 
-  const ind = COUNTRIES_DATA.IND;
+  const country = matchedCountry ?? COUNTRIES_DATA.IND;
+  if (matchedEvent && matchedCountry) {
+    return {
+      status: "cached",
+      dateLabel: `Sovereign & Event Record • ${matchedEvent.dateDisplay}`,
+      headline: `${matchedCountry.name}: ${matchedEvent.title}`,
+      summary: `${matchedEvent.description} (2026 GDP: $${matchedCountry.gdpUsdBn.toLocaleString()}B, +${matchedCountry.gdpGrowthPct}%/yr).`,
+      sourceLabel: `${matchedEvent.sources[0]?.publisher ?? "OMNIS"} / ${matchedCountry.provenance.publisher}`,
+      sourceUrl: `/atlas?country=${matchedCountry.iso3}`,
+    };
+  }
+
   return {
     status: "cached",
-    dateLabel: `WDI Edition • ${ind.provenance.lastUpdated}`,
-    headline: `${topic} — Sovereign & Historical Archive`,
-    summary: `Grounded against World Bank WDI (${ind.provenance.lastUpdated}) & curated historical records.`,
-    sourceLabel: ind.provenance.source,
-    sourceUrl: ind.provenance.url,
+    dateLabel: `WDI Edition • ${country.provenance.lastUpdated}`,
+    headline: `${country.flagEmoji} ${country.officialName} — ${topic}`,
+    summary: `GDP $${country.gdpUsdBn.toLocaleString()}B (${
+      country.gdpGrowthPct >= 0 ? "+" : ""
+    }${country.gdpGrowthPct}% real), ${country.energyProfile.renewableSharePct}% clean electricity, AI readiness ${country.technologyProfile.aiReadinessIndex}/100.`,
+    sourceLabel: country.provenance.source,
+    sourceUrl: `/atlas?country=${country.iso3}`,
   };
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useCallback, useEffect, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   FileSearch,
@@ -47,6 +47,17 @@ function ResearchContent() {
   const [customSummary, setCustomSummary] = useState("");
   const [savedToast, setSavedToast] = useState(false);
   const [copiedToast, setCopiedToast] = useState(false);
+  const [typographyStyle, setTypographyStyle] = useState<"editorial" | "sans">("editorial");
+  const [activeSourceId, setActiveSourceId] = useState<string | null>(null);
+  const sourceRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const inspectCitation = (sourceId: string) => {
+    setActiveSourceId(sourceId);
+    const card = sourceRefs.current[sourceId];
+    if (card) {
+      card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  };
 
   const { addWorkspaceItem, addSearchQuery, setActiveContext } = useOmnisStore();
 
@@ -291,7 +302,35 @@ ${report.sources
                     {report.query}
                   </h2>
                 </div>
-                <div className="flex items-center gap-1.5 no-print">
+                <div className="flex flex-wrap items-center gap-1.5 no-print">
+                  <div
+                    role="group"
+                    aria-label="Reader typography toggle"
+                    className="inline-flex rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] p-0.5 text-[11px] font-semibold omnis-mono"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setTypographyStyle("editorial")}
+                      className={`px-2 py-1 rounded-md cursor-pointer transition-colors ${
+                        typographyStyle === "editorial"
+                          ? "bg-[var(--bg-graphite)] text-[var(--text-primary)] shadow-2xs"
+                          : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                      }`}
+                    >
+                      Serif
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTypographyStyle("sans")}
+                      className={`px-2 py-1 rounded-md cursor-pointer transition-colors ${
+                        typographyStyle === "sans"
+                          ? "bg-[var(--bg-graphite)] text-[var(--text-primary)] shadow-2xs"
+                          : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                      }`}
+                    >
+                      Sans
+                    </button>
+                  </div>
                   <OmnisButton
                     variant="secondary"
                     size="sm"
@@ -319,7 +358,16 @@ ${report.sources
                     className="w-full p-3 rounded-xl bg-[var(--bg-slate)] border border-[var(--accent-blue)] text-xs leading-relaxed text-[var(--text-primary)] focus:outline-none"
                   />
                 ) : (
-                  <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+                  <p
+                    className={`leading-relaxed text-[var(--text-secondary)] ${
+                      typographyStyle === "editorial" ? "text-[16.5px] leading-[1.68]" : "text-sm"
+                    }`}
+                    style={
+                      typographyStyle === "editorial"
+                        ? { fontFamily: "var(--font-editorial), Georgia, serif" }
+                        : undefined
+                    }
+                  >
                     {customSummary}
                   </p>
                 )}
@@ -367,9 +415,23 @@ ${report.sources
                       <p className="font-medium text-[var(--text-primary)] leading-relaxed">
                         {claim.statement}
                       </p>
-                      <div className="text-[11px] text-[var(--text-muted)]">
-                        Methodology: {claim.methodologyNote} • Linked Sources:{" "}
-                        <span className="omnis-mono">{claim.sourceIds.join(", ")}</span>
+                      <div className="text-[11px] text-[var(--text-muted)] flex flex-wrap items-center gap-1.5">
+                        <span>Methodology: {claim.methodologyNote} • Linked Sources:</span>
+                        {claim.sourceIds.map((sid) => (
+                          <button
+                            key={sid}
+                            type="button"
+                            onMouseEnter={() => setActiveSourceId(sid)}
+                            onClick={() => inspectCitation(sid)}
+                            className={`px-1.5 py-0.5 rounded text-[10px] omnis-mono font-semibold border transition-colors cursor-pointer ${
+                              activeSourceId === sid
+                                ? "badge-tone-blue border-[var(--accent-blue)]"
+                                : "bg-[var(--bg-graphite)] border-[var(--border-subtle)] text-[var(--text-primary)] hover:border-[var(--accent-blue)]"
+                            }`}
+                          >
+                            [{sid}]
+                          </button>
+                        ))}
                       </div>
                     </div>
                   ))}
@@ -411,7 +473,7 @@ ${report.sources
             </div>
 
             {/* Right Column: Visualisation, Statistics & Source Credibility Registry */}
-            <div className="lg:col-span-4 space-y-6">
+            <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-20 lg:self-start">
               {/* Relevant Statistics & Comparative Bar Visualisation */}
               <div className="omnis-card p-5 space-y-3">
                 <h3 className="text-sm font-bold text-[var(--text-primary)]">
@@ -424,11 +486,19 @@ ${report.sources
                       className="omnis-surface-slate p-3 flex items-center justify-between gap-2 text-xs"
                     >
                       <div className="min-w-0">
-                        <div className="font-semibold text-[var(--text-primary)] truncate">
+                        <div className="font-semibold text-[var(--text-primary)] break-words">
                           {stat.metric}
                         </div>
-                        <div className="text-[10px] text-[var(--text-muted)]">
-                          {stat.period} • Ref: {stat.sourceId}
+                        <div className="text-[10px] text-[var(--text-muted)] flex flex-wrap items-center gap-1">
+                          <span>{stat.period} •</span>
+                          <button
+                            type="button"
+                            onMouseEnter={() => setActiveSourceId(stat.sourceId)}
+                            onClick={() => inspectCitation(stat.sourceId)}
+                            className="tone-blue hover:underline omnis-mono cursor-pointer"
+                          >
+                            Ref: [{stat.sourceId}]
+                          </button>
                         </div>
                       </div>
                       <div className="text-base font-bold omnis-mono tone-blue shrink-0">
@@ -516,38 +586,62 @@ ${report.sources
 
               {/* Source Credibility Registry */}
               <div className="omnis-card p-5 space-y-3">
-                <h3 className="text-sm font-bold text-[var(--text-primary)]">
-                  Transparent Source Credibility Registry ({report.sources.length})
-                </h3>
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                    Transparent Source Credibility Registry ({report.sources.length})
+                  </h3>
+                  {activeSourceId && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveSourceId(null)}
+                      className="text-[10px] omnis-mono tone-blue hover:underline cursor-pointer"
+                    >
+                      Clear highlight
+                    </button>
+                  )}
+                </div>
                 <div className="space-y-2.5 max-h-96 overflow-y-auto pr-1">
-                  {report.sources.map((src) => (
-                    <div key={src.id} className="omnis-surface-slate p-3 space-y-1.5 text-xs">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-md badge-tone-verified font-semibold">
-                          {src.sourceType}
-                        </span>
-                        <span className="text-[10px] omnis-mono text-[var(--text-muted)]">
-                          {src.publishedDate}
-                        </span>
-                      </div>
-                      <a
-                        href={src.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-bold tone-blue hover:underline flex items-center justify-between gap-1"
+                  {report.sources.map((src) => {
+                    const isFocused = activeSourceId === src.id;
+                    return (
+                      <div
+                        key={src.id}
+                        ref={(el) => {
+                          sourceRefs.current[src.id] = el;
+                        }}
+                        className={`p-3 space-y-1.5 text-xs rounded-xl border transition-all ${
+                          isFocused
+                            ? "bg-[var(--badge-blue-bg)] border-[var(--accent-blue)] ring-1 ring-[var(--accent-blue)]"
+                            : "omnis-surface-slate border-[var(--border-subtle)]"
+                        }`}
                       >
-                        <span className="line-clamp-2">{src.title}</span>
-                        <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                      </a>
-                      <div className="text-[11px] text-[var(--text-muted)]">
-                        Publisher: <strong className="text-[var(--text-primary)]">{src.publisher}</strong>{" "}
-                        • Authors: {src.authors.join(", ")}
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-md badge-tone-verified font-semibold">
+                            {src.sourceType}
+                          </span>
+                          <span className="text-[10px] omnis-mono text-[var(--text-muted)]">
+                            [{src.id}] • {src.publishedDate}
+                          </span>
+                        </div>
+                        <a
+                          href={src.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-bold tone-blue hover:underline flex items-center justify-between gap-1"
+                        >
+                          <span className="line-clamp-2">{src.title}</span>
+                          <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                        </a>
+                        <div className="text-[11px] text-[var(--text-muted)]">
+                          Publisher: <strong className="text-[var(--text-primary)]">{src.publisher}</strong>{" "}
+                          • Authors: {src.authors.join(", ")}
+                        </div>
+                        <p className="text-[11px] text-[var(--text-secondary)] italic">
+                          “{src.excerpt}”
+                        </p>
                       </div>
-                      <p className="text-[11px] text-[var(--text-secondary)] italic">
-                        “{src.excerpt}”
-                      </p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 

@@ -132,7 +132,12 @@ function scoreTypoTolerantMatch(text: string, query: string): number {
   return score;
 }
 
-export type UniversalSearchSourceFilter = "all" | "worldbank" | "openalex" | "wikimedia";
+export type UniversalSearchSourceFilter =
+  | "all"
+  | "worldbank"
+  | "openalex"
+  | "wikimedia"
+  | "curated";
 
 function matchesSourceFilter(
   sourceText: string,
@@ -151,6 +156,11 @@ function matchesSourceFilter(
   }
   if (filter === "wikimedia") {
     return /wikipedia\.org|wikimedia/.test(hay);
+  }
+  if (filter === "curated") {
+    return /omnis|world\s*bank|\bimf\b|nature\.com|journals\.aps|monograph|stanford\s*hai|iea|ipcc|primary\s*archive/.test(
+      hay
+    );
   }
   return true;
 }
@@ -178,7 +188,11 @@ export function executeUniversalSearch(
     .map((x) => x.item);
 
   const baseCountries =
-    scoredCountries.length > 0 ? scoredCountries : Object.values(COUNTRIES_DATA).slice(0, 4);
+    scoredCountries.length > 0
+      ? scoredCountries
+      : cleanQuery === ""
+        ? Object.values(COUNTRIES_DATA).slice(0, 4)
+        : [];
   const countries = baseCountries.filter((c) =>
     matchesSourceFilter(
       `${c.provenance.source} ${c.provenance.publisher}`,
@@ -198,7 +212,12 @@ export function executeUniversalSearch(
     .sort((a, b) => b.score - a.score)
     .map((x) => x.item);
 
-  const baseEvents = scoredEvents.length > 0 ? scoredEvents : TIMELINE_EVENTS.slice(0, 4);
+  const baseEvents =
+    scoredEvents.length > 0
+      ? scoredEvents
+      : cleanQuery === ""
+        ? TIMELINE_EVENTS.slice(0, 4)
+        : [];
   const historicalEvents = baseEvents.filter((e) =>
     matchesSourceFilter(
       e.sources.map((s) => `${s.publisher} ${s.sourceType} ${s.title}`).join(" "),
@@ -215,7 +234,12 @@ export function executeUniversalSearch(
     .sort((a, b) => b.score - a.score)
     .map((x) => x.item);
 
-  const baseEntities = scoredEntities.length > 0 ? scoredEntities : COMPARABLE_ENTITIES;
+  const baseEntities =
+    scoredEntities.length > 0
+      ? scoredEntities
+      : cleanQuery === ""
+        ? COMPARABLE_ENTITIES
+        : [];
   const technologiesAndOrganizations = baseEntities.filter((ent) =>
     matchesSourceFilter(ent.source, [], sourceFilter)
   );
@@ -329,6 +353,24 @@ export async function orchestrateDeepResearch(
   const leadCountry = matchedCountries[0];
   const compareCountry = matchedCountries[1];
 
+  const matchedComparable = COMPARABLE_ENTITIES.find((ent) => {
+    const hay = `${ent.name} ${ent.subtitle} ${ent.category}`.toLowerCase();
+    const tokens = lowerQuery.split(/\s+/).filter((t) => t.length >= 4);
+    return tokens.some((tok) => hay.includes(tok));
+  });
+
+  const comparableStats: ResearchReportData["relevantStatistics"] = matchedComparable
+    ? Object.entries(matchedComparable.keyAttributes)
+        .slice(0, 2)
+        .map(([attrLabel, attrValue]) => ({
+          metric: `${matchedComparable.name.split("&")[0].trim()} • ${attrLabel}`,
+          value: attrValue,
+          unit: matchedComparable.category,
+          period: "2026 Tracked Benchmark",
+          sourceId: primarySourceId,
+        }))
+    : [];
+
   const relevantStatistics: ResearchReportData["relevantStatistics"] = leadCountry
     ? [
         {
@@ -361,6 +403,7 @@ export async function orchestrateDeepResearch(
         },
       ]
     : [
+        ...comparableStats,
         {
           metric: "OpenAlex Peer-Reviewed Citations",
           value: String(openAlexSources.length),

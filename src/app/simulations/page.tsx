@@ -36,6 +36,12 @@ const CATEGORIES: { id: SimulationCategory; label: string }[] = [
 function SimulationsContent() {
   const searchParams = useSearchParams();
   const initialCat = (searchParams.get("category") as SimulationCategory) || "economics";
+  const paramOilShock = searchParams.get("oilShock");
+  const paramCountry = searchParams.get("country");
+  const parsedOilShock =
+    paramOilShock !== null && Number.isFinite(Number(paramOilShock))
+      ? Math.max(-30, Math.min(80, Number(paramOilShock)))
+      : null;
 
   const [category, setCategory] = useState<SimulationCategory>(
     CATEGORIES.some((c) => c.id === initialCat) ? initialCat : "economics"
@@ -51,14 +57,17 @@ function SimulationsContent() {
     SIMULATION_SCENARIOS.find((s) => s.category === category) ??
     SIMULATION_SCENARIOS[0];
 
-  // Reset overrides when category changes
+  // Reset overrides when category changes, honouring URL sandbox oilShock preset
   useEffect(() => {
     const defaults: Record<string, number> = {};
     for (const p of activeSpec.parameters) {
       defaults[p.key] = p.defaultModifiedValue;
     }
+    if (activeSpec.category === "economics" && parsedOilShock !== null) {
+      defaults.oilPriceShockPct = parsedOilShock;
+    }
     setOverrides(defaults);
-  }, [activeSpec]);
+  }, [activeSpec, parsedOilShock]);
 
   useEffect(() => {
     setActiveContext("What-If Simulation Engine", activeSpec.title);
@@ -167,7 +176,38 @@ function SimulationsContent() {
             ))}
           </div>
         }
-      />
+      >
+        {(parsedOilShock !== null || paramCountry) && category === "economics" ? (
+          <div className="px-3 py-2 rounded-xl badge-tone-blue text-xs flex flex-wrap items-center justify-between gap-2">
+            <span>
+              Initialized from Sandbox Preset
+              {paramCountry ? (
+                <>
+                  {" "}
+                  for <strong className="omnis-mono">{paramCountry}</strong>
+                </>
+              ) : null}
+              {parsedOilShock !== null ? (
+                <>
+                  {" "}
+                  • Oil Price Impulse:{" "}
+                  <strong className="omnis-mono omnis-tabular">
+                    {parsedOilShock >= 0 ? "+" : ""}
+                    {parsedOilShock}%
+                  </strong>
+                </>
+              ) : null}
+            </span>
+            <button
+              type="button"
+              onClick={handleReset}
+              className="text-[11px] font-semibold underline cursor-pointer"
+            >
+              Revert to Default Baseline
+            </button>
+          </div>
+        ) : undefined}
+      </OmnisModuleHeader>
 
       {/* Main Simulation Workspace */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

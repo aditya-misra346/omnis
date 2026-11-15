@@ -157,9 +157,13 @@ export default function LandingPage() {
   const [selectedIso3, setSelectedIso3] = useState("IND");
   const [activeLayer, setActiveLayer] = useState<IntelligenceLayerId>("economics");
   const [simOilShock, setSimOilShock] = useState(30);
+  const [activeGraphNodeIdx, setActiveGraphNodeIdx] = useState(0);
 
   const countriesList = Object.values(COUNTRIES_DATA);
   const activeCountry = COUNTRIES_DATA[selectedIso3] ?? COUNTRIES_DATA.IND;
+  const formattedCoords = `${Math.abs(activeCountry.lat).toFixed(2)}°${
+    activeCountry.lat >= 0 ? "N" : "S"
+  }, ${Math.abs(activeCountry.lng).toFixed(2)}°${activeCountry.lng >= 0 ? "E" : "W"}`;
 
   const submitHeroExplore = (rawQuery: string) => {
     const q = rawQuery.trim() || "Explain India's economic development since 1991";
@@ -173,12 +177,15 @@ export default function LandingPage() {
   };
 
   // Compute responsive SVG curve paths for the live interactive Oil Shock Simulation demo
+  // Dynamically coupled to the active sovereign nation's growth rate & fossil import exposure
   const oilShockPreviewSvg = useMemo(() => {
     const years = [2025, 2028, 2031, 2034, 2037, 2040];
-    const shockFactor = simOilShock * 0.0012;
-    const uncertaintySpread = 0.084 + Math.abs(simOilShock) * 0.0011;
+    const baseAnnualRate = Math.max(-0.015, Math.min(0.075, activeCountry.gdpGrowthPct / 100));
+    const fossilExposure = Math.max(0.25, (100 - activeCountry.energyProfile.renewableSharePct) / 100);
+    const shockFactor = simOilShock * (0.00095 + fossilExposure * 0.00055);
+    const uncertaintySpread = 0.078 + Math.abs(simOilShock) * 0.0011;
 
-    const baseline = years.map((_, i) => 100 * Math.pow(1.032, i * 3));
+    const baseline = years.map((_, i) => 100 * Math.pow(1 + baseAnnualRate, i * 3));
     const shocked = years.map((_, i) => {
       const decay = 1 - Math.exp(-0.28 * (i + 1));
       return baseline[i] * (1 - shockFactor * decay);
@@ -217,9 +224,9 @@ export default function LandingPage() {
       bandPath: areaPoints,
       endBaseline: baseline[baseline.length - 1],
       endShocked: shocked[shocked.length - 1],
-      bandPct: ((uncertaintySpread * 100)).toFixed(1),
+      bandPct: (uncertaintySpread * 100).toFixed(1),
     };
-  }, [simOilShock]);
+  }, [simOilShock, activeCountry]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -387,7 +394,7 @@ export default function LandingPage() {
             </div>
 
             <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 border-t border-l border-[var(--border-subtle)]">
-              {DISCIPLINES.map((item) => {
+              {DISCIPLINES.map((item, idx) => {
                 const Icon = item.icon;
                 return (
                   <div
@@ -395,8 +402,13 @@ export default function LandingPage() {
                     className="p-5 border-r border-b border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:bg-[var(--bg-slate)]/50 transition-colors space-y-2.5"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <div className="p-1.5 rounded-md badge-tone-blue">
-                        <Icon className="w-4 h-4" />
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded-md badge-tone-blue">
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <span className="text-[10px] font-bold omnis-mono tone-blue">
+                          01.{idx + 1}
+                        </span>
                       </div>
                       <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
                         {item.badge}
@@ -437,15 +449,17 @@ export default function LandingPage() {
             </Link>
           </div>
 
-          {/* Primary Showcase Tier: Modules 01 & 02 */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {FLAGSHIP_MODULES.slice(0, 2).map((mod) => {
+          {/* Primary Showcase Tier: Modules 01 & 02 Asymmetric Bento */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            {FLAGSHIP_MODULES.slice(0, 2).map((mod, idx) => {
               const Icon = mod.icon;
               return (
                 <Link
                   key={mod.number}
                   href={mod.href}
-                  className="omnis-card omnis-card-interactive p-6 sm:p-7 flex flex-col justify-between gap-5 group"
+                  className={`${
+                    idx === 0 ? "lg:col-span-7" : "lg:col-span-5"
+                  } omnis-card omnis-card-interactive p-6 sm:p-7 flex flex-col justify-between gap-5 group`}
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
@@ -465,7 +479,7 @@ export default function LandingPage() {
                   </div>
 
                   <div className="pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between gap-3 text-[11px] text-[var(--text-muted)] omnis-mono">
-                    <span className="line-clamp-2">{mod.metrics}</span>
+                    <span>{mod.metrics}</span>
                     <ArrowRight className={`w-3.5 h-3.5 shrink-0 ${mod.accentText} group-hover:translate-x-1 transition-transform`} />
                   </div>
                 </Link>
@@ -501,7 +515,7 @@ export default function LandingPage() {
                   </div>
 
                   <div className="pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between gap-2 text-[10.5px] text-[var(--text-muted)] omnis-mono">
-                    <span className="line-clamp-2">{mod.metrics}</span>
+                    <span>{mod.metrics}</span>
                     <ArrowRight className={`w-3.5 h-3.5 shrink-0 ${mod.accentText} group-hover:translate-x-0.5 transition-transform`} />
                   </div>
                 </Link>
@@ -535,9 +549,14 @@ export default function LandingPage() {
                   <span className="text-[10.5px] uppercase tracking-widest tone-blue font-bold omnis-mono">
                     Interactive Country Intelligence Experience
                   </span>
-                  <h3 className="text-xl font-bold mt-0.5 text-[var(--text-primary)]">
-                    {activeCountry.flagEmoji} {activeCountry.officialName} ({activeCountry.iso3})
-                  </h3>
+                  <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                    <h3 className="text-xl font-bold text-[var(--text-primary)]">
+                      {activeCountry.flagEmoji} {activeCountry.officialName} ({activeCountry.iso3})
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-md bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[10.5px] omnis-mono omnis-tabular text-[var(--text-muted)]">
+                      {formattedCoords}
+                    </span>
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {["IND", "USA", "CHN", "DEU", "JPN"].map((iso) => (
@@ -615,16 +634,16 @@ export default function LandingPage() {
             {/* Interactive What-If Simulation & Knowledge Graph Demo */}
             <div className="lg:col-span-5 flex flex-col gap-6">
               <div className="omnis-card p-6 space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <span className="text-[10.5px] uppercase tracking-widest tone-violet font-bold omnis-mono">
                     Interactive What-If Simulation Demo
                   </span>
-                  <span className="text-[11px] omnis-mono text-[var(--text-muted)]">
-                    Solow-Swan MDSE-v2.4
+                  <span className="text-[11px] omnis-mono text-[var(--text-muted)] truncate">
+                    {activeCountry.name} + Solow-Swan MDSE-v2.4
                   </span>
                 </div>
                 <h3 className="text-base font-bold text-[var(--text-primary)]">
-                  Crude Oil Price Shock Impact on 2040 Real GDP Index
+                  Crude Oil Price Shock Impact on 2040 {activeCountry.iso3} GDP Index
                 </h3>
 
                 {/* Live Interactive SVG Trajectory Fan */}
@@ -700,34 +719,147 @@ export default function LandingPage() {
                   </div>
                 </div>
                 <Link
-                  href="/simulations"
+                  href={`/simulations?category=economics&oilShock=${simOilShock}&country=${activeCountry.iso3}`}
                   className="text-xs font-semibold tone-blue hover:underline inline-flex items-center gap-1"
                 >
                   Open Full 5-Domain Simulation Workspace <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </div>
 
-              <div className="omnis-card p-6 space-y-3">
-                <span className="text-[10.5px] uppercase tracking-widest tone-verified font-bold omnis-mono">
-                  Deep Research & Infinite Graph Integration
-                </span>
+              {/* Card 3: Live 1-Hop Causal Graph & Claim Inspector */}
+              <div className="omnis-card p-6 space-y-3.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10.5px] uppercase tracking-widest tone-verified font-bold omnis-mono">
+                    Live 1-Hop Causal Graph & Claim Inspector
+                  </span>
+                  <span className="text-[10px] omnis-mono px-1.5 py-0.5 rounded badge-tone-verified font-semibold">
+                    VERIFIED EVIDENCE
+                  </span>
+                </div>
                 <h3 className="text-base font-bold text-[var(--text-primary)]">
-                  Traceable Multi-Step Research & Semantic Graph Expansion
+                  {activeCountry.name} Causal Shock & Clean Grid Pathways
                 </h3>
-                <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                  Every research report decomposes complex questions into sub-tasks, retrieves live
-                  OpenAlex peer-reviewed works and World Bank indicators, flags conflicting evidence,
-                  and transitions into an interactive Knowledge Graph in one click.
-                </p>
+
+                {(() => {
+                  const fossilPct = Math.max(
+                    0,
+                    Number((100 - activeCountry.energyProfile.renewableSharePct).toFixed(1))
+                  );
+                  const inflationImpulse = Number((simOilShock * 0.042).toFixed(2));
+                  const nodes = [
+                    {
+                      id: "core",
+                      x: 170,
+                      y: 52,
+                      short: `${activeCountry.iso3} GDP (+${activeCountry.gdpGrowthPct}%)`,
+                      title: `${activeCountry.officialName} Real Output Core`,
+                      claim: `Nominal GDP of $${activeCountry.gdpUsdBn.toLocaleString()}B anchored by ${
+                        activeCountry.gdpGrowthPct >= 0 ? "+" : ""
+                      }${activeCountry.gdpGrowthPct}% baseline real annual growth.`,
+                      source: activeCountry.provenance.source,
+                      tone: "var(--chart-blue)",
+                    },
+                    {
+                      id: "fossil",
+                      x: 56,
+                      y: 22,
+                      short: `Fossil (${fossilPct}%)`,
+                      title: "Hydrocarbon Import & Baseload Exposure",
+                      claim: `${fossilPct}% non-renewable electricity share creates direct current-account sensitivity to a ${
+                        simOilShock >= 0 ? "+" : ""
+                      }${simOilShock}% crude shock.`,
+                      source: "IEA / World Bank WDI Energy Profile",
+                      tone: "var(--chart-amber)",
+                    },
+                    {
+                      id: "cpi",
+                      x: 284,
+                      y: 22,
+                      short: `CPI (${inflationImpulse >= 0 ? "+" : ""}${inflationImpulse}%)`,
+                      title: "Pass-Through Inflationary Channel",
+                      claim: `Simulated energy impulse shifts headline CPI expectations by ${
+                        inflationImpulse >= 0 ? "+" : ""
+                      }${inflationImpulse} pp over baseline (${activeCountry.inflationPct}% current).`,
+                      source: "OMNIS Solow-Swan MDSE-v2.4 Elasticities",
+                      tone: "var(--chart-violet)",
+                    },
+                    {
+                      id: "clean",
+                      x: 170,
+                      y: 96,
+                      short: `Clean Grid (${activeCountry.energyProfile.renewableSharePct}%)`,
+                      title: "Renewable Decarbonisation Buffer",
+                      claim: `${activeCountry.energyProfile.renewableSharePct}% renewable share dampens external fossil volatility while boosting long-run capital productivity.`,
+                      source: "IRENA / World Bank Clean Generation Index",
+                      tone: "var(--chart-emerald)",
+                    },
+                  ];
+                  const activeNode = nodes[activeGraphNodeIdx] ?? nodes[0];
+                  return (
+                    <>
+                      <div className="rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] p-2">
+                        <svg viewBox="0 0 340 118" className="w-full h-28" aria-label="Interactive 1-Hop Causal Graph">
+                          <line x1={56} y1={22} x2={170} y2={52} stroke="var(--chart-amber)" strokeWidth="1.6" strokeOpacity={0.75} />
+                          <line x1={170} y1={52} x2={284} y2={22} stroke="var(--chart-violet)" strokeWidth="1.6" strokeDasharray="3,2" />
+                          <line x1={170} y1={96} x2={170} y2={52} stroke="var(--chart-emerald)" strokeWidth="1.8" />
+                          {nodes.map((n, idx) => {
+                            const selected = idx === activeGraphNodeIdx;
+                            return (
+                              <g
+                                key={n.id}
+                                className="cursor-pointer"
+                                onClick={() => setActiveGraphNodeIdx(idx)}
+                              >
+                                <rect
+                                  x={n.x - 50}
+                                  y={n.y - 12}
+                                  width={100}
+                                  height={24}
+                                  rx={6}
+                                  fill={selected ? "var(--bg-graphite)" : "var(--bg-elevated)"}
+                                  stroke={selected ? n.tone : "var(--border-subtle)"}
+                                  strokeWidth={selected ? 2 : 1}
+                                />
+                                <text
+                                  x={n.x}
+                                  y={n.y + 3.5}
+                                  textAnchor="middle"
+                                  fontSize="9"
+                                  fontWeight={selected ? "700" : "600"}
+                                  fill="var(--text-primary)"
+                                  className="omnis-mono"
+                                >
+                                  {n.short}
+                                </text>
+                              </g>
+                            );
+                          })}
+                        </svg>
+                      </div>
+                      <div className="omnis-surface-slate p-3 space-y-1 text-xs">
+                        <div className="font-bold text-[var(--text-primary)]">{activeNode.title}</div>
+                        <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+                          {activeNode.claim}
+                        </p>
+                        <div className="text-[10px] omnis-mono text-[var(--text-muted)]">
+                          Provenance: {activeNode.source}
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+
                 <div className="flex flex-wrap gap-2 pt-1">
                   <Link
-                    href="/research"
+                    href={`/research?q=${encodeURIComponent(
+                      `Explain ${activeCountry.name}'s economic and energy trajectory`
+                    )}`}
                     className="px-3.5 py-2 rounded-xl badge-tone-verified hover:brightness-105 text-xs font-semibold transition-all"
                   >
                     Launch Deep Research
                   </Link>
                   <Link
-                    href="/knowledge-graph"
+                    href={`/knowledge-graph?topic=${encodeURIComponent(activeCountry.name)}`}
                     className="px-3.5 py-2 rounded-xl badge-tone-blue hover:brightness-105 text-xs font-semibold transition-all"
                   >
                     Launch Knowledge Graph

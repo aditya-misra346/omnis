@@ -328,6 +328,7 @@ export function InteractiveGlobe3D({
 
   const [autoRotate, setAutoRotate] = useState(true);
   const [dayLightAngle, setDayLightAngle] = useState(35);
+  const [utcScrubberOpen, setUtcScrubberOpen] = useState(false);
   const [zoomDistance, setZoomDistance] = useState(DEFAULT_ZOOM);
   const [webglSupported, setWebglSupported] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -462,9 +463,9 @@ export function InteractiveGlobe3D({
         );
         const oceanGrad = ctx.createLinearGradient(0, 0, 0, texH);
         if (isLight) {
-          oceanGrad.addColorStop(0, "#d7e7f6");
-          oceanGrad.addColorStop(0.5, "#b7d5f0");
-          oceanGrad.addColorStop(1, "#cee2f4");
+          oceanGrad.addColorStop(0, "#D8E8F8");
+          oceanGrad.addColorStop(0.5, "#C2DCF4");
+          oceanGrad.addColorStop(1, "#D8E8F8");
         } else {
           oceanGrad.addColorStop(0, "#051024");
           oceanGrad.addColorStop(0.5, "#081c3a");
@@ -492,7 +493,7 @@ export function InteractiveGlobe3D({
             ctx.lineWidth = 2.0;
             ctx.stroke();
           } else {
-            ctx.fillStyle = isLight ? "#eef2ec" : "#10223b";
+            ctx.fillStyle = isLight ? "#F4F1EA" : "#10223b";
             ctx.fill();
             ctx.strokeStyle = isLight ? "rgba(71, 98, 128, 0.45)" : "rgba(125, 179, 252, 0.34)";
             ctx.lineWidth = 0.85;
@@ -593,7 +594,7 @@ export function InteractiveGlobe3D({
     const width = container.clientWidth || 720;
     const height = container.clientHeight || 480;
     setStageDims({ width, height });
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = Math.min(window.devicePixelRatio || 1, width < 768 ? 1.5 : 2);
     renderer.setSize(width, height);
     renderer.setPixelRatio(dpr);
     container.innerHTML = "";
@@ -818,8 +819,10 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
       if (!container) return;
       const w = container.clientWidth || 720;
       const h = container.clientHeight || 480;
+      const nextDpr = Math.min(window.devicePixelRatio || 1, w < 768 ? 1.5 : 2);
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
+      renderer.setPixelRatio(nextDpr);
       renderer.setSize(w, h);
       setStageDims({ width: w, height: h });
     };
@@ -1162,28 +1165,51 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
             }
             title="Zoom Out"
             aria-label="Zoom Out"
-            className="p-1 sm:p-1.5 rounded-lg hover:bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+            className="min-h-[40px] min-w-[40px] sm:min-h-[32px] sm:min-w-[32px] flex items-center justify-center p-1 sm:p-1.5 rounded-lg hover:bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
           >
             <ZoomOut className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
           </button>
-          <button
-            type="button"
-            onClick={() => setDayLightAngle((a) => (a + 45) % 360)}
-            title="Cycle Solar Terminator Illumination"
-            aria-label="Cycle Solar Terminator Illumination"
-            className="inline-flex items-center gap-1 p-1 sm:px-2 sm:py-1 rounded-lg hover:bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
-          >
-            <Sun className="w-3 h-3 sm:w-3.5 sm:h-3.5 tone-warning" />
-            <span className="hidden sm:inline text-[11px] omnis-mono omnis-tabular">
-              {dayLightAngle}°
-            </span>
-          </button>
+          <div className="flex items-center gap-1.5 px-1 sm:px-2 py-0.5 rounded-lg bg-[var(--bg-slate)]/75 border border-[var(--border-subtle)]">
+            <button
+              type="button"
+              onClick={() => {
+                setDayLightAngle((a) => (a + 45) % 360);
+                setUtcScrubberOpen((prev) => !prev);
+              }}
+              title="Orbital UTC Solar Terminator Time (Click to cycle / scrub)"
+              aria-label="Orbital UTC Solar Terminator Scrubber"
+              className="min-h-[38px] sm:min-h-[28px] inline-flex items-center gap-1 px-1 rounded hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+            >
+              <Sun className="w-3 h-3 sm:w-3.5 sm:h-3.5 tone-warning shrink-0" />
+              <span className="text-[10.5px] omnis-mono omnis-tabular font-semibold whitespace-nowrap">
+                {(() => {
+                  const totalMins = Math.round((((dayLightAngle % 360) + 360) % 360) * 4) % 1440;
+                  const hh = String(Math.floor(totalMins / 60)).padStart(2, "0");
+                  const mm = String(totalMins % 60).padStart(2, "0");
+                  return `${hh}:${mm} UTC`;
+                })()}
+              </span>
+            </button>
+            <input
+              type="range"
+              min={0}
+              max={360}
+              step={5}
+              value={dayLightAngle}
+              onChange={(e) => setDayLightAngle(Number(e.target.value))}
+              aria-label="Orbital UTC Time Angle"
+              title={`Solar longitude angle: ${dayLightAngle}°`}
+              className={`${
+                utcScrubberOpen ? "block w-20" : "hidden md:block w-16 lg:w-20"
+              } h-1.5 cursor-pointer`}
+            />
+          </div>
           <button
             type="button"
             onClick={handleResetView}
             title="Reset View"
             aria-label="Reset View"
-            className="p-1 sm:p-1.5 rounded-lg hover:bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+            className="min-h-[40px] min-w-[40px] sm:min-h-[32px] sm:min-w-[32px] flex items-center justify-center p-1 sm:p-1.5 rounded-lg hover:bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
           >
             <RotateCcw className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
           </button>
@@ -1192,7 +1218,7 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
             onClick={() => setIsFullscreen((f) => !f)}
             title={isFullscreen ? "Exit Fullscreen" : "Fullscreen Globe"}
             aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen Globe"}
-            className="p-1 sm:p-1.5 rounded-lg hover:bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+            className="min-h-[40px] min-w-[40px] sm:min-h-[32px] sm:min-w-[32px] flex items-center justify-center p-1 sm:p-1.5 rounded-lg hover:bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
           >
             {isFullscreen ? <Minimize2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> : <Maximize2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
           </button>
@@ -1206,7 +1232,7 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
             type="button"
             onClick={() => railRef.current?.scrollBy({ left: -200, behavior: "smooth" })}
             aria-label="Scroll countries left"
-            className="shrink-0 p-1.5 rounded-lg bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+            className="shrink-0 min-h-[40px] min-w-[40px] sm:min-h-[32px] sm:min-w-[32px] flex items-center justify-center p-1.5 rounded-lg bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
           >
             <ChevronLeft className="w-3.5 h-3.5" />
           </button>
@@ -1254,7 +1280,7 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
             type="button"
             onClick={() => railRef.current?.scrollBy({ left: 200, behavior: "smooth" })}
             aria-label="Scroll countries right"
-            className="shrink-0 p-1.5 rounded-lg bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+            className="shrink-0 min-h-[40px] min-w-[40px] sm:min-h-[32px] sm:min-w-[32px] flex items-center justify-center p-1.5 rounded-lg bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
           >
             <ChevronRight className="w-3.5 h-3.5" />
           </button>

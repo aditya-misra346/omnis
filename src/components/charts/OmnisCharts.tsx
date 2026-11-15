@@ -554,51 +554,70 @@ export function ComparisonRadarChart({
   const radarAxes = [
     {
       label: "Real Growth",
-      maxLabel: "8% max",
-      l: Math.min(1, leftCountry.gdpGrowthPct / 8),
-      r: Math.min(1, rightCountry.gdpGrowthPct / 8),
-      rawL: `${leftCountry.gdpGrowthPct}%`,
-      rawR: `${rightCountry.gdpGrowthPct}%`,
+      maxLabel: "-2..+10%",
+      l: Math.max(0, Math.min(1, (leftCountry.gdpGrowthPct - -2) / 12)),
+      r: Math.max(0, Math.min(1, (rightCountry.gdpGrowthPct - -2) / 12)),
+      rawL: `${leftCountry.gdpGrowthPct >= 0 ? "+" : ""}${leftCountry.gdpGrowthPct}%`,
+      rawR: `${rightCountry.gdpGrowthPct >= 0 ? "+" : ""}${rightCountry.gdpGrowthPct}%`,
+      deltaLabel: `${leftCountry.gdpGrowthPct - rightCountry.gdpGrowthPct >= 0 ? "+" : ""}${(
+        leftCountry.gdpGrowthPct - rightCountry.gdpGrowthPct
+      ).toFixed(1)} pp`,
     },
     {
       label: "Clean Energy",
-      maxLabel: "90%",
-      l: Math.min(1, leftCountry.energyProfile.renewableSharePct / 90),
-      r: Math.min(1, rightCountry.energyProfile.renewableSharePct / 90),
+      maxLabel: "0..100%",
+      l: Math.max(0, Math.min(1, leftCountry.energyProfile.renewableSharePct / 100)),
+      r: Math.max(0, Math.min(1, rightCountry.energyProfile.renewableSharePct / 100)),
       rawL: `${leftCountry.energyProfile.renewableSharePct}%`,
       rawR: `${rightCountry.energyProfile.renewableSharePct}%`,
+      deltaLabel: `${leftCountry.energyProfile.renewableSharePct - rightCountry.energyProfile.renewableSharePct >= 0 ? "+" : ""}${(
+        leftCountry.energyProfile.renewableSharePct - rightCountry.energyProfile.renewableSharePct
+      ).toFixed(1)} pp`,
     },
     {
       label: "AI Index",
-      maxLabel: "100",
-      l: Math.min(1, leftCountry.technologyProfile.aiReadinessIndex / 100),
-      r: Math.min(1, rightCountry.technologyProfile.aiReadinessIndex / 100),
+      maxLabel: "0..100",
+      l: Math.max(0, Math.min(1, leftCountry.technologyProfile.aiReadinessIndex / 100)),
+      r: Math.max(0, Math.min(1, rightCountry.technologyProfile.aiReadinessIndex / 100)),
       rawL: `${leftCountry.technologyProfile.aiReadinessIndex}/100`,
       rawR: `${rightCountry.technologyProfile.aiReadinessIndex}/100`,
+      deltaLabel: `${leftCountry.technologyProfile.aiReadinessIndex - rightCountry.technologyProfile.aiReadinessIndex >= 0 ? "+" : ""}${
+        leftCountry.technologyProfile.aiReadinessIndex - rightCountry.technologyProfile.aiReadinessIndex
+      } pts`,
     },
     {
       label: "R&D Spend",
-      maxLabel: "4% GDP",
-      l: Math.min(1, leftCountry.technologyProfile.rdSpendPctGdp / 4),
-      r: Math.min(1, rightCountry.technologyProfile.rdSpendPctGdp / 4),
+      maxLabel: "0..4.5%",
+      l: Math.max(0, Math.min(1, leftCountry.technologyProfile.rdSpendPctGdp / 4.5)),
+      r: Math.max(0, Math.min(1, rightCountry.technologyProfile.rdSpendPctGdp / 4.5)),
       rawL: `${leftCountry.technologyProfile.rdSpendPctGdp}%`,
       rawR: `${rightCountry.technologyProfile.rdSpendPctGdp}%`,
+      deltaLabel: `${leftCountry.technologyProfile.rdSpendPctGdp - rightCountry.technologyProfile.rdSpendPctGdp >= 0 ? "+" : ""}${(
+        leftCountry.technologyProfile.rdSpendPctGdp - rightCountry.technologyProfile.rdSpendPctGdp
+      ).toFixed(2)}% GDP`,
     },
     {
       label: "Internet",
-      maxLabel: "100%",
-      l: Math.min(1, leftCountry.technologyProfile.internetPenetrationPct / 100),
-      r: Math.min(1, rightCountry.technologyProfile.internetPenetrationPct / 100),
+      maxLabel: "0..100%",
+      l: Math.max(0, Math.min(1, leftCountry.technologyProfile.internetPenetrationPct / 100)),
+      r: Math.max(0, Math.min(1, rightCountry.technologyProfile.internetPenetrationPct / 100)),
       rawL: `${leftCountry.technologyProfile.internetPenetrationPct}%`,
       rawR: `${rightCountry.technologyProfile.internetPenetrationPct}%`,
+      deltaLabel: `${leftCountry.technologyProfile.internetPenetrationPct - rightCountry.technologyProfile.internetPenetrationPct >= 0 ? "+" : ""}${(
+        leftCountry.technologyProfile.internetPenetrationPct -
+        rightCountry.technologyProfile.internetPenetrationPct
+      ).toFixed(1)} pp`,
     },
     {
       label: "Longevity",
-      maxLabel: "90y",
-      l: Math.min(1, leftCountry.lifeExpectancyYears / 90),
-      r: Math.min(1, rightCountry.lifeExpectancyYears / 90),
+      maxLabel: "50..90y",
+      l: Math.max(0, Math.min(1, (leftCountry.lifeExpectancyYears - 50) / 40)),
+      r: Math.max(0, Math.min(1, (rightCountry.lifeExpectancyYears - 50) / 40)),
       rawL: `${leftCountry.lifeExpectancyYears} yrs`,
       rawR: `${rightCountry.lifeExpectancyYears} yrs`,
+      deltaLabel: `${leftCountry.lifeExpectancyYears - rightCountry.lifeExpectancyYears >= 0 ? "+" : ""}${(
+        leftCountry.lifeExpectancyYears - rightCountry.lifeExpectancyYears
+      ).toFixed(1)} yrs`,
     },
   ];
 
@@ -624,10 +643,10 @@ export function ComparisonRadarChart({
 
   const activeAxis = hoveredAxis !== null ? radarAxes[hoveredAxis] : null;
   const contractionNotes = [
-    leftCountry.gdpGrowthPct < 0
+    leftCountry.gdpGrowthPct < -2
       ? `${leftCountry.iso3}: ${leftCountry.gdpGrowthPct}% contraction`
       : null,
-    rightCountry.gdpGrowthPct < 0
+    rightCountry.gdpGrowthPct < -2
       ? `${rightCountry.iso3}: ${rightCountry.gdpGrowthPct}% contraction`
       : null,
   ].filter(Boolean);
@@ -648,23 +667,36 @@ export function ComparisonRadarChart({
         <text
           x={cx + 3}
           y={cy - zeroRingRadius + 9}
-          fontSize="8"
+          fontSize="7.5"
           fill="var(--text-muted)"
           className="omnis-mono"
         >
-          0%
+          min
         </text>
-        {[0.5, 1.0].map((ring) => (
-          <circle
-            key={ring}
-            cx={cx}
-            cy={cy}
-            r={zeroRingRadius + (radius - zeroRingRadius) * ring}
-            fill="none"
-            stroke="var(--chart-grid)"
-            strokeDasharray="3,3"
-          />
-        ))}
+        {[0.25, 0.5, 0.75, 1.0].map((ring) => {
+          const r = zeroRingRadius + (radius - zeroRingRadius) * ring;
+          return (
+            <g key={ring}>
+              <circle
+                cx={cx}
+                cy={cy}
+                r={r}
+                fill="none"
+                stroke="var(--chart-grid)"
+                strokeDasharray="3,3"
+              />
+              <text
+                x={cx + 4}
+                y={cy - r + 8}
+                fontSize="7"
+                fill="var(--text-muted)"
+                className="omnis-mono"
+              >
+                {Math.round(ring * 100)}%
+              </text>
+            </g>
+          );
+        })}
         {radarAxes.map((axis, i) => {
           const angle = (Math.PI * 2 * i) / radarAxes.length - Math.PI / 2;
           const x2 = cx + radius * Math.cos(angle);
@@ -677,6 +709,7 @@ export function ComparisonRadarChart({
               className="cursor-pointer"
               onMouseEnter={() => setHoveredAxis(i)}
               onMouseLeave={() => setHoveredAxis(null)}
+              onClick={() => setHoveredAxis((prev) => (prev === i ? null : i))}
             >
               <line x1={cx} y1={cy} x2={x2} y2={y2} stroke="var(--chart-grid)" strokeWidth="1.2" />
               <text
@@ -698,7 +731,7 @@ export function ComparisonRadarChart({
                 fill="var(--text-muted)"
                 className="omnis-mono"
               >
-                ({axis.maxLabel})
+                [{axis.maxLabel}]
               </text>
             </g>
           );
@@ -721,9 +754,14 @@ export function ComparisonRadarChart({
           const pl = getCoord(i, axis.l);
           const pr = getCoord(i, axis.r);
           return (
-            <g key={`dots-${axis.label}`}>
-              <circle cx={pr.x} cy={pr.y} r={3.5} fill="var(--chart-violet)" />
-              <circle cx={pl.x} cy={pl.y} r={3.8} fill="var(--chart-blue)" />
+            <g
+              key={`dots-${axis.label}`}
+              className="cursor-pointer"
+              onMouseEnter={() => setHoveredAxis(i)}
+              onClick={() => setHoveredAxis((prev) => (prev === i ? null : i))}
+            >
+              <circle cx={pr.x} cy={pr.y} r={hoveredAxis === i ? 5 : 3.5} fill="var(--chart-violet)" />
+              <circle cx={pl.x} cy={pl.y} r={hoveredAxis === i ? 5.2 : 3.8} fill="var(--chart-blue)" />
             </g>
           );
         })}
@@ -731,22 +769,25 @@ export function ComparisonRadarChart({
 
       {contractionNotes.length > 0 ? (
         <div className="px-2.5 py-1.5 rounded-md badge-tone-warning text-[10.5px] omnis-mono text-center">
-          Below-zero real growth clamped to 0% ring: {contractionNotes.join(" • ")}
+          Severe contraction clamped to domain min (-2%): {contractionNotes.join(" • ")}
         </div>
       ) : null}
 
       {activeAxis ? (
-        <div className="omnis-surface-slate px-3 py-2 text-[11px] flex items-center justify-between omnis-mono">
-          <span className="font-bold">{activeAxis.label}</span>
+        <div className="omnis-surface-slate px-3 py-2 text-[11px] flex flex-wrap items-center justify-between gap-2 omnis-mono">
+          <span className="font-bold text-[var(--text-primary)]">{activeAxis.label}</span>
           <span className="tone-blue font-semibold">
             {leftCountry.iso3}: {activeAxis.rawL}
           </span>
           <span className="tone-violet font-semibold">
             {rightCountry.iso3}: {activeAxis.rawR}
           </span>
+          <span className="px-1.5 py-0.5 rounded badge-tone-blue text-[10px] font-bold">
+            Δ {activeAxis.deltaLabel}
+          </span>
         </div>
       ) : (
-        <div className="flex items-center justify-center gap-6 text-xs">
+        <div className="flex flex-wrap items-center justify-center gap-4 text-xs">
           <span className="inline-flex items-center gap-1.5 font-semibold tone-blue">
             <span className="w-3 h-3 rounded-xs bg-[var(--chart-blue)]" />
             {leftCountry.name} ({leftCountry.iso3})
@@ -754,6 +795,9 @@ export function ComparisonRadarChart({
           <span className="inline-flex items-center gap-1.5 font-semibold tone-violet">
             <span className="w-3 h-3 rounded-xs bg-[var(--chart-violet)]" />
             {rightCountry.name} ({rightCountry.iso3})
+          </span>
+          <span className="text-[10.5px] text-[var(--text-muted)] omnis-mono">
+            Hover or tap any axis for vertex delta
           </span>
         </div>
       )}

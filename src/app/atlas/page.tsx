@@ -147,6 +147,13 @@ function GlobalAtlasContent() {
               <Network className="w-3.5 h-3.5 tone-violet" />
               <span>Knowledge Graph</span>
             </Link>
+            <Link
+              href={`/simulations?category=economics&country=${country.iso3}`}
+              className="px-3.5 py-2 rounded-lg bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-xs font-semibold text-[var(--text-primary)] inline-flex items-center gap-1.5 transition-colors"
+            >
+              <TrendingUp className="w-3.5 h-3.5 tone-verified" />
+              <span>Simulate Macro Shock</span>
+            </Link>
           </>
         }
         secondaryControls={
@@ -212,7 +219,11 @@ function GlobalAtlasContent() {
                 </h2>
                 <p className="text-xs text-[var(--text-secondary)]">
                   Capital: <strong className="text-[var(--text-primary)]">{country.capital}</strong> •
-                  Region: {country.region} ({country.subregion}) • Currency: {country.currency}
+                  Region: {country.region} ({country.subregion}) • Currency: {country.currency} •{" "}
+                  <span className="omnis-mono omnis-tabular text-[var(--text-muted)]">
+                    {Math.abs(country.lat).toFixed(2)}°{country.lat >= 0 ? "N" : "S"},{" "}
+                    {Math.abs(country.lng).toFixed(2)}°{country.lng >= 0 ? "E" : "W"}
+                  </span>
                 </p>
               </div>
             </div>

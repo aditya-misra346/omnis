@@ -14,6 +14,23 @@ import {
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
 import { OmnisButton, OmnisModuleHeader } from "@/components/ui/OmnisPrimitives";
+import { OmnisParameterSlider } from "@/components/ui/OmnisParameterSlider";
+import { OmnisMathBlock } from "@/components/ui/OmnisMathBlock";
+
+const LAB_EQUATIONS_LATEX: Record<string, string> = {
+  physics:
+    "\\frac{d^2\\theta}{dt^2} + \\frac{b}{m}\\frac{d\\theta}{dt} + \\frac{g}{L}\\sin(\\theta) = 0 \\quad\\vert\\quad T \\approx 2\\pi\\sqrt{\\frac{L}{g}}",
+  space:
+    "v^2 = G M\\left(\\frac{2}{r} - \\frac{1}{a}\\right) \\quad\\vert\\quad r(\\theta) = \\frac{a(1 - e^2)}{1 + e\\cos\\theta}",
+  chemistry:
+    "E_{\\text{vib}} = \\left(v + \\frac{1}{2}\\right)\\hbar\\omega \\quad\\vert\\quad \\mu = q \\cdot d \\cdot \\cos\\!\\left(\\frac{\\theta}{2}\\right)",
+  biology:
+    "\\frac{dx}{dt} = \\alpha x - \\beta x y \\quad\\vert\\quad \\frac{dy}{dt} = \\delta x y - \\gamma y",
+  climate:
+    "\\frac{(1 - \\alpha)S_0}{4} = \\varepsilon\\sigma T_s^4 - 5.35\\ln\\!\\left(\\frac{C}{C_0}\\right)",
+  engineering:
+    "\\delta_{\\max} = \\frac{F L^3}{48 E I} \\quad\\vert\\quad SF = \\frac{\\sigma_{\\text{yield}}}{\\sigma_{\\text{axial}}}",
+};
 
 type LabCategoryId =
   | "physics"
@@ -147,6 +164,29 @@ function LaboratoryContent() {
 
   const { theme, addWorkspaceItem, setActiveContext } = useOmnisStore();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [canvasSize, setCanvasSize] = useState({ width: 720, height: 320 });
+
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+    const syncSize = () => {
+      const nextW = Math.max(320, el.clientWidth || 720);
+      const nextH = Math.max(240, el.clientHeight || 320);
+      setCanvasSize((prev) =>
+        Math.abs(prev.width - nextW) > 2 || Math.abs(prev.height - nextH) > 2
+          ? { width: nextW, height: nextH }
+          : prev
+      );
+    };
+    syncSize();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(syncSize) : null;
+    ro?.observe(el);
+    window.addEventListener("resize", syncSize);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", syncSize);
+    };
+  }, []);
 
   useEffect(() => {
     setP1(exp.param1.defaultVal);
@@ -163,9 +203,9 @@ function LaboratoryContent() {
     if (!ctx) return;
 
     const isLight = theme === "light";
-    const W = 720;
-    const H = 320;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const W = canvasSize.width;
+    const H = canvasSize.height;
+    const dpr = Math.min(window.devicePixelRatio || 1, W < 640 ? 1.5 : 2);
     canvas.width = W * dpr;
     canvas.height = H * dpr;
 
@@ -471,7 +511,7 @@ function LaboratoryContent() {
 
     frameId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(frameId);
-  }, [activeId, p1, p2, p3, running, theme]);
+  }, [activeId, p1, p2, p3, running, theme, canvasSize]);
 
   const handleSaveLab = () => {
     addWorkspaceItem({
@@ -572,34 +612,25 @@ function LaboratoryContent() {
             { spec: exp.param2, val: p2, setVal: setP2 },
             { spec: exp.param3, val: p3, setVal: setP3 },
           ].map(({ spec, val, setVal }) => (
-            <div key={spec.label} className="omnis-surface-slate p-3.5 space-y-2 text-xs">
-              <div className="flex justify-between gap-2">
-                <span className="font-semibold text-[var(--text-primary)]">{spec.label}</span>
-                <span className="font-bold omnis-mono tone-blue shrink-0">
-                  {val} {spec.unit}
-                </span>
-              </div>
-              <input
-                type="range"
-                min={spec.min}
-                max={spec.max}
-                step={spec.step}
-                value={val}
-                aria-label={spec.label}
-                onChange={(e) => setVal(Number(e.target.value))}
-                className="w-full accent-[var(--accent-blue)] cursor-pointer"
-              />
-            </div>
+            <OmnisParameterSlider
+              key={spec.label}
+              label={spec.label}
+              unit={spec.unit}
+              min={spec.min}
+              max={spec.max}
+              step={spec.step}
+              baselineValue={spec.defaultVal}
+              value={val}
+              accent="blue"
+              onChange={setVal}
+              onReset={() => setVal(spec.defaultVal)}
+            />
           ))}
 
-          <div className="omnis-surface-slate p-3.5 space-y-1.5 text-xs">
-            <div className="text-[10px] uppercase tracking-wider tone-violet font-bold omnis-mono">
-              Governing Mathematical Equations
-            </div>
-            <div className="omnis-mono text-[11px] text-[var(--text-primary)] overflow-x-auto">
-              {exp.equations}
-            </div>
-          </div>
+          <OmnisMathBlock
+            label="Governing Mathematical Equations"
+            latex={LAB_EQUATIONS_LATEX[exp.id] ?? exp.equations}
+          />
 
           <div className="p-3 rounded-xl badge-tone-warning text-[11px] flex items-start gap-2 leading-relaxed">
             <Info className="w-4 h-4 shrink-0 mt-0.5" />

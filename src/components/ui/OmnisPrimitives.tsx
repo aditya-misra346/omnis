@@ -109,7 +109,13 @@ export function OmnisModuleHeader({
 
       {children}
       {secondaryControls && (
-        <div className={mobileExpanded ? "block" : "hidden sm:block"}>{secondaryControls}</div>
+        <div
+          className={`${
+            mobileExpanded ? "block" : "hidden sm:block"
+          } max-w-full overflow-x-auto pb-1 sm:pb-0 sm:overflow-visible`}
+        >
+          {secondaryControls}
+        </div>
       )}
     </section>
   );
@@ -159,3 +165,6 @@ export function OmnisSkeleton({ className = "h-24 w-full" }: { className?: strin
     />
   );
 }
+
+export { OmnisSelect, type OmnisSelectOption, type OmnisSelectProps } from "./OmnisSelect";
+export { OmnisParameterSlider, type OmnisParameterSliderProps } from "./OmnisParameterSlider";

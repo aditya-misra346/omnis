@@ -1,3 +1,8 @@
+import {
+  COMPARABLE_ENTITIES,
+  COUNTRIES_DATA,
+  TIMELINE_EVENTS,
+} from "@/lib/data/global-intelligence";
 import type {
   KnowledgeGraphData,
   KnowledgeGraphEdge,
@@ -1134,6 +1139,194 @@ const DOMAIN_BLUEPRINTS: DomainBlueprint[] = [
       },
     ],
   },
+  {
+    domainName: "Global Geopolitics & Trade Corridors",
+    keywords: [
+      "geopolitics",
+      "trade corridor",
+      "corridors",
+      "tariff",
+      "tariffs",
+      "maritime",
+      "malacca",
+      "chokepoint",
+      "sanctions",
+      "wto",
+      "brics",
+      "export controls",
+      "global trade",
+    ],
+    nodes: [
+      {
+        label: "Global Geopolitics & Trade Corridors",
+        category: "Core Concept",
+        summary:
+          "Strategic rivalry over maritime chokepoints, tariff regimes, critical mineral refining, and cross-continental logistics infrastructure.",
+        importance: 100,
+        verificationStatus: "verified",
+        sources: [
+          {
+            title: "World Trade Statistical Review",
+            publisher: "World Trade Organization (WTO)",
+            url: "https://www.wto.org",
+            year: "2026",
+          },
+        ],
+      },
+      {
+        label: "Strait of Malacca & Red Sea Maritime Chokepoints",
+        category: "Geopolitics",
+        summary:
+          "Narrow oceanic transit corridors carrying over 60% of global seaborne container tonnage and Indo-Pacific energy shipments.",
+        importance: 94,
+        verificationStatus: "verified",
+        sources: [
+          {
+            title: "Review of Maritime Transport",
+            publisher: "UNCTAD",
+            url: "https://unctad.org",
+            year: "2025",
+          },
+        ],
+      },
+      {
+        label: "Tariffs, Export Controls & Industrial Policy",
+        category: "Institution",
+        summary:
+          "Unilateral customs duties, dual-use technology restrictions, and domestic subsidy regimes reshaping cross-border capital flows.",
+        importance: 92,
+        verificationStatus: "verified",
+        sources: [
+          {
+            title: "World Economic Outlook — Geoeconomic Fragmentation",
+            publisher: "IMF",
+            url: "https://www.imf.org",
+            year: "2026",
+          },
+        ],
+      },
+      {
+        label: "Critical Minerals & Rare Earth Refining",
+        category: "Economics",
+        summary:
+          "Geographic concentration of lithium, cobalt, gallium, and rare earth element processing required for defence and grid hardware.",
+        importance: 90,
+        verificationStatus: "verified",
+        sources: [
+          {
+            title: "Global Critical Minerals Outlook",
+            publisher: "International Energy Agency (IEA)",
+            url: "https://www.iea.org",
+            year: "2026",
+          },
+        ],
+      },
+      {
+        label: "IMEC & Diversified Friend-Shoring Corridors",
+        category: "Geopolitics",
+        summary:
+          "Multilateral rail, port, hydrogen pipeline, and subsea cable corridors linking India, the Gulf, Europe, and Southeast Asia.",
+        importance: 86,
+        verificationStatus: "verified",
+        sources: [
+          {
+            title: "G20 Partnership for Global Infrastructure",
+            publisher: "OECD / World Bank",
+            url: "https://data.worldbank.org",
+            year: "2025",
+          },
+        ],
+      },
+      {
+        label: "Sovereign Currency Settlement & Bond Markets",
+        category: "Economics",
+        summary:
+          "US Dollar reserve dominance alongside bilateral local-currency settlement corridors and sovereign debt refinancing pressures.",
+        importance: 87,
+        verificationStatus: "verified",
+        sources: [
+          {
+            title: "Annual Economic Report",
+            publisher: "Bank for International Settlements (BIS)",
+            url: "https://www.bis.org",
+            year: "2026",
+          },
+        ],
+      },
+      {
+        label: "2035 Polycentric Trade Bloc Fragmentation Hypothesis",
+        category: "Scenario Hypothesis",
+        summary:
+          "Hypothesis: Persistent export controls bifurcate high-tech supply chains while commodity corridors deepen regional multipolar settlement.",
+        importance: 78,
+        verificationStatus: "ai_hypothesis",
+        sources: [
+          {
+            title: "OMNIS Geoeconomic Fragmentation Model",
+            publisher: "OMNIS Scenario Lab",
+            url: "https://www.imf.org",
+            year: "2026",
+          },
+        ],
+      },
+    ],
+    edges: [
+      {
+        fromIdx: 1,
+        toIdx: 0,
+        type: "DEPENDS_ON",
+        evidence: "Maritime chokepoints transmit regional security shocks directly into global freight rates.",
+        url: "https://unctad.org",
+        isHypothesis: false,
+        weight: 0.94,
+      },
+      {
+        fromIdx: 2,
+        toIdx: 0,
+        type: "REGULATES",
+        evidence: "Tariffs and export controls re-route multinational FDI and intermediate goods flows.",
+        url: "https://www.imf.org",
+        isHypothesis: false,
+        weight: 0.92,
+      },
+      {
+        fromIdx: 3,
+        toIdx: 2,
+        type: "INFLUENCES",
+        evidence: "Concentrated critical-mineral refining creates strategic leverage in industrial trade negotiations.",
+        url: "https://www.iea.org",
+        isHypothesis: false,
+        weight: 0.9,
+      },
+      {
+        fromIdx: 4,
+        toIdx: 1,
+        type: "SUPPORTS",
+        evidence: "Overland-maritime multimodal corridors build redundancy around single maritime bottlenecks.",
+        url: "https://data.worldbank.org",
+        isHypothesis: false,
+        weight: 0.85,
+      },
+      {
+        fromIdx: 5,
+        toIdx: 0,
+        type: "PART_OF",
+        evidence: "Cross-border trade invoicing and capital accounts anchor sovereign geopolitical alignment.",
+        url: "https://www.bis.org",
+        isHypothesis: false,
+        weight: 0.87,
+      },
+      {
+        fromIdx: 2,
+        toIdx: 6,
+        type: "CAUSES",
+        evidence: "Scenario projection if tariff escalation persists through 2030+.",
+        url: "https://www.imf.org",
+        isHypothesis: true,
+        weight: 0.76,
+      },
+    ],
+  },
 ];
 
 function slugify(label: string): string {
@@ -1249,7 +1442,134 @@ export function buildInfiniteKnowledgeGraph(params: {
       }
     }
   } else {
-    // Dynamic unmatched-topic graph: zero unrelated static domain leakage!
+    // Dynamic unmatched-topic graph: ground against real OMNIS records first, zero unrelated static leakage!
+    const queryTokens = lower
+      .split(/[^a-z0-9]+/)
+      .filter((t) => t.length >= 4);
+
+    if (queryTokens.length > 0) {
+      for (const entity of COMPARABLE_ENTITIES) {
+        if (nodeMap.size >= maxNodes) break;
+        const hay = `${entity.name} ${entity.subtitle} ${entity.category}`.toLowerCase();
+        if (queryTokens.some((tok) => hay.includes(tok))) {
+          const eid = slugify(entity.name);
+          if (!nodeMap.has(eid)) {
+            nodeMap.set(eid, {
+              id: eid,
+              label: entity.name,
+              category:
+                entity.category === "Organisation"
+                  ? "Institution"
+                  : entity.category === "Scientific Concept"
+                    ? "Science"
+                    : "Technology",
+              summary: `${entity.subtitle} (Resilience ${entity.metrics.resilienceIndex}/100, Growth ${entity.metrics.growthVelocity}/100).`,
+              importance: 88,
+              verificationStatus: "verified",
+              sources: [
+                {
+                  title: entity.name,
+                  publisher: entity.source,
+                  url: `https://openalex.org/works?search=${encodeURIComponent(entity.name)}`,
+                  year: "2026",
+                },
+              ],
+            });
+            const edgeKey = `${rootId}->${eid}:RELATED_TO`;
+            edgeMap.set(edgeKey, {
+              id: edgeKey,
+              source: rootId,
+              target: eid,
+              relationshipType: "RELATED_TO",
+              evidence: `Matched OMNIS tracked benchmark entity (${entity.category}) for "${cleanTopic}".`,
+              citationUrl: `https://openalex.org/works?search=${encodeURIComponent(entity.name)}`,
+              isHypothesis: false,
+              weight: 0.89,
+            });
+          }
+        }
+      }
+
+      for (const evt of TIMELINE_EVENTS) {
+        if (nodeMap.size >= maxNodes) break;
+        const hay = `${evt.title} ${evt.description} ${evt.category}`.toLowerCase();
+        if (queryTokens.some((tok) => hay.includes(tok))) {
+          const evid = slugify(`evt-${evt.id}`);
+          if (!nodeMap.has(evid)) {
+            nodeMap.set(evid, {
+              id: evid,
+              label: `${evt.title} (${evt.dateDisplay})`,
+              category: "History",
+              summary: evt.description,
+              importance: 83,
+              verificationStatus: "verified",
+              sources: evt.sources.slice(0, 2).map((s) => ({
+                title: s.title,
+                publisher: s.publisher,
+                url: s.url,
+                year: s.year,
+              })),
+            });
+            const edgeKey = `${evid}->${rootId}:HISTORICALLY_PRECEDED`;
+            edgeMap.set(edgeKey, {
+              id: edgeKey,
+              source: evid,
+              target: rootId,
+              relationshipType: "HISTORICALLY_PRECEDED",
+              evidence: `Verified historical milestone (${evt.dateDisplay}) linked to "${cleanTopic}".`,
+              citationUrl: evt.sources[0]?.url ?? "https://en.wikipedia.org",
+              isHypothesis: false,
+              weight: 0.84,
+            });
+          }
+        }
+      }
+
+      for (const country of Object.values(COUNTRIES_DATA)) {
+        if (nodeMap.size >= maxNodes) break;
+        const hay = `${country.name} ${country.officialName} ${country.majorIndustries.join(" ")}`.toLowerCase();
+        if (
+          queryTokens.some(
+            (tok) =>
+              country.name.toLowerCase().includes(tok) ||
+              country.iso3.toLowerCase() === tok ||
+              hay.includes(tok)
+          )
+        ) {
+          const cid = slugify(`country-${country.iso3}`);
+          if (!nodeMap.has(cid)) {
+            nodeMap.set(cid, {
+              id: cid,
+              label: `${country.name} (${country.iso3})`,
+              category: "Geopolitics",
+              summary: `Nominal GDP $${country.gdpUsdBn.toLocaleString()}B (${country.gdpGrowthPct >= 0 ? "+" : ""}${country.gdpGrowthPct}% real growth), AI index ${country.technologyProfile.aiReadinessIndex}/100.`,
+              importance: 85,
+              verificationStatus: "verified",
+              sources: [
+                {
+                  title: country.provenance.source,
+                  publisher: country.provenance.publisher,
+                  url: country.provenance.url,
+                  year: "2026",
+                },
+              ],
+            });
+            const edgeKey = `${cid}->${rootId}:INFLUENCES`;
+            edgeMap.set(edgeKey, {
+              id: edgeKey,
+              source: cid,
+              target: rootId,
+              relationshipType: "INFLUENCES",
+              evidence: `Sovereign macroeconomic & industrial capacity of ${country.name} intersects "${cleanTopic}".`,
+              citationUrl: country.provenance.url,
+              isHypothesis: false,
+              weight: 0.85,
+            });
+          }
+        }
+      }
+    }
+
     const structuralFacets: Array<{
       idSuffix: string;
       label: string;
