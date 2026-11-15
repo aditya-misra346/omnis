@@ -33,6 +33,7 @@ import {
   Play,
 } from "lucide-react";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
+import { CreatorSignature } from "@/components/CreatorSignature";
 import { classifyQueryIntent } from "@/lib/research/engine";
 import { OmnisLoader, OmnisWordmark } from "@/components/brand/OmnisLogo";
 
@@ -575,6 +576,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {/* Main Route Viewport */}
             <main className="flex-1 min-w-0 overflow-x-hidden">{children}</main>
           </div>
+
+          <CreatorSignature />
 
           {/* Mobile Accessible Navigation Drawer */}
           <AnimatePresence>

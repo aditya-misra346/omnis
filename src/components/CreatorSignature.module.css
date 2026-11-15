@@ -1,0 +1,229 @@
+.colophon {
+  position: relative;
+  z-index: 30;
+  width: 100%;
+  box-sizing: border-box;
+  border-top: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(7, 10, 16, 0.96);
+  color: #cbd5e1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.specularLine {
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(96, 165, 250, 0.42) 32%,
+    rgba(96, 165, 250, 0.42) 68%,
+    transparent 100%
+  );
+}
+
+.monogramFrame {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.8);
+  color: #f8fafc;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.eyebrow {
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, monospace;
+  font-size: 10px;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.signatureLine {
+  font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  display: inline-block;
+}
+
+.signatureEditorial {
+  font-size: clamp(1.125rem, 1.45vw, 1.375rem);
+}
+
+.signatureCompact {
+  font-size: 0.875rem;
+}
+
+.madeBy {
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.creatorName {
+  position: relative;
+  display: inline-block;
+  font-weight: 700;
+  color: #ffffff;
+  transition: color 0.18s ease;
+}
+
+.creatorName::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 2px;
+  border-radius: 1px;
+  background: #60a5fa;
+  transform: scaleX(0.32);
+  transform-origin: left center;
+  opacity: 0.72;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.18s ease;
+}
+
+.colophon:hover .creatorName::after,
+.colophon:focus-within .creatorName::after {
+  transform: scaleX(1);
+  opacity: 1;
+}
+
+.tagline {
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, monospace;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #7c8ba3;
+}
+
+.dividerDot {
+  width: 3px;
+  height: 3px;
+  border-radius: 9999px;
+  background: rgba(148, 163, 184, 0.45);
+}
+
+.githubLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, monospace;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #e2e8f0;
+  padding: 0.3rem 0.65rem;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(15, 23, 42, 0.65);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+}
+
+.githubLinkCompact {
+  font-size: 11px;
+  padding: 0.175rem 0.5rem;
+}
+
+.githubLink:hover {
+  border-color: rgba(96, 165, 250, 0.65);
+  background: rgba(37, 99, 235, 0.16);
+  color: #ffffff;
+}
+
+.arrowIcon {
+  display: inline-block;
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.githubLink:hover .arrowIcon {
+  transform: translate(2px, -2px);
+}
+
+/* Archival Pearl Light Theme Parity ([data-theme="light"]) */
+:global([data-theme="light"]) .colophon {
+  border-top: 1px solid rgba(148, 163, 184, 0.52);
+  background: rgba(248, 250, 252, 0.96);
+  color: #334155;
+}
+
+:global([data-theme="light"]) .specularLine {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(37, 99, 235, 0.28) 32%,
+    rgba(37, 99, 235, 0.28) 68%,
+    transparent 100%
+  );
+}
+
+:global([data-theme="light"]) .monogramFrame {
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  background: #ffffff;
+  color: #020617;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+:global([data-theme="light"]) .eyebrow {
+  color: #475569;
+}
+
+:global([data-theme="light"]) .madeBy {
+  color: #475569;
+}
+
+:global([data-theme="light"]) .creatorName {
+  color: #020617;
+}
+
+:global([data-theme="light"]) .creatorName::after {
+  background: #2563eb;
+}
+
+:global([data-theme="light"]) .tagline {
+  color: #64748b;
+}
+
+:global([data-theme="light"]) .dividerDot {
+  background: rgba(15, 23, 42, 0.26);
+}
+
+:global([data-theme="light"]) .githubLink {
+  color: #0f172a;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  background: #ffffff;
+}
+
+:global([data-theme="light"]) .githubLink:hover {
+  border-color: rgba(37, 99, 235, 0.55);
+  background: rgba(37, 99, 235, 0.08);
+  color: #1d4ed8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .colophon,
+  .monogramFrame,
+  .creatorName,
+  .creatorName::after,
+  .githubLink,
+  .arrowIcon {
+    transition: none;
+  }
+
+  .githubLink:hover .arrowIcon {
+    transform: none;
+  }
+}
