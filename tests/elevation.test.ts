@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -511,5 +513,30 @@ describe("OMNIS Elevation & Credibility Regression Suite", () => {
     expect(findNearestEventByPercent(sampleEvents, 38)?.id).toBe("printing");
     expect(findNearestEventByPercent(sampleEvents, 98)?.id).toBe("transformer");
     expect(findNearestEventByPercent([], 50)).toBeNull();
+  });
+
+  it("ships extensioned, WhatsApp-sized (<300 KB) static social & icon assets", () => {
+    const pub = path.resolve(process.cwd(), "public");
+    const ogStats = fs.statSync(path.join(pub, "og-image.jpg"));
+    const appleStats = fs.statSync(path.join(pub, "apple-touch-icon.png"));
+    const icon192 = fs.statSync(path.join(pub, "icons/icon-192.png"));
+    const icon512 = fs.statSync(path.join(pub, "icons/icon-512.png"));
+    const favicon = fs.statSync(path.join(pub, "favicon.ico"));
+
+    expect(ogStats.size).toBeGreaterThan(10_000);
+    expect(ogStats.size).toBeLessThan(300_000);
+    expect(appleStats.size).toBeGreaterThan(1_000);
+    expect(icon192.size).toBeGreaterThan(1_000);
+    expect(icon512.size).toBeGreaterThan(5_000);
+    expect(favicon.size).toBeGreaterThan(500);
+
+    const layoutSrc = fs.readFileSync(
+      path.resolve(process.cwd(), "src/app/layout.tsx"),
+      "utf8"
+    );
+    expect(layoutSrc).toContain("https://omnis-one.vercel.app/og-image.jpg");
+    expect(layoutSrc).toContain("secureUrl:");
+    expect(layoutSrc).toContain("/apple-touch-icon.png");
+    expect(layoutSrc).not.toContain('url: "/opengraph-image"');
   });
 });

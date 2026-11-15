@@ -55,10 +55,11 @@ export const metadata: Metadata = {
     locale: "en_US",
     images: [
       {
-        url: "/opengraph-image",
+        url: "https://omnis-one.vercel.app/og-image.jpg",
+        secureUrl: "https://omnis-one.vercel.app/og-image.jpg",
         width: 1200,
         height: 630,
-        type: "image/png",
+        type: "image/jpeg",
         alt: "OMNIS — The Intelligence of Everything",
       },
     ],
@@ -70,9 +71,10 @@ export const metadata: Metadata = {
       "Understand Anything. Connect Everything. Interactive 3D Global Atlas, Infinite Knowledge Graphs, Monte Carlo Simulations & Deep Research.",
     images: [
       {
-        url: "/twitter-image",
+        url: "https://omnis-one.vercel.app/og-image.jpg",
         width: 1200,
         height: 630,
+        type: "image/jpeg",
         alt: "OMNIS — The Intelligence of Everything",
       },
     ],
@@ -80,12 +82,12 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "16x16 32x32 48x48", type: "image/x-icon" },
-      { url: "/icon", sizes: "32x32", type: "image/png" },
+      { url: "/icons/icon-32.png", sizes: "32x32", type: "image/png" },
       { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
     shortcut: ["/favicon.ico"],
-    apple: [{ url: "/apple-icon", sizes: "180x180", type: "image/png" }],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
 };
 
@@ -104,6 +106,8 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        <link rel="image_src" href="https://omnis-one.vercel.app/og-image.jpg" />
+        <meta itemProp="image" content="https://omnis-one.vercel.app/og-image.jpg" />
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body className="antialiased selection:bg-blue-600 selection:text-white">
