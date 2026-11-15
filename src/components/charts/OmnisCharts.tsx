@@ -2,6 +2,24 @@
 
 import React, { useMemo, useState } from "react";
 import { OmnisSegmentedControl } from "@/components/ui/OmnisPrimitives";
+
+/** Maps a pointer clientX coordinate inside an SVG viewBox plot area to the nearest data index. */
+function resolveSvgPlotIndex(
+  clientX: number,
+  svgEl: SVGSVGElement,
+  viewBoxWidth: number,
+  padL: number,
+  padR: number,
+  count: number
+): number | null {
+  if (count <= 0) return null;
+  if (count === 1) return 0;
+  const rect = svgEl.getBoundingClientRect();
+  if (rect.width <= 0) return null;
+  const svgX = ((clientX - rect.left) / rect.width) * viewBoxWidth;
+  const frac = Math.max(0, Math.min(1, (svgX - padL) / Math.max(1, viewBoxWidth - padL - padR)));
+  return Math.max(0, Math.min(count - 1, Math.round(frac * (count - 1))));
+}
 import type {
   CountryIntelligenceProfile,
   SimulationSensitivityItem,
@@ -189,7 +207,20 @@ export function HistoricalTrajectoryChart({
       </div>
 
       <div className="relative rounded-xl bg-[var(--bg-graphite)] border border-[var(--border-subtle)] p-2">
-        <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-56 overflow-visible">
+        <svg
+          viewBox={`0 0 ${w} ${h}`}
+          className="w-full h-56 overflow-visible touch-pan-y select-none"
+          onPointerDown={(e) => {
+            const idx = resolveSvgPlotIndex(e.clientX, e.currentTarget, w, padL, padR, points.length);
+            if (idx !== null) setHoverIdx(idx);
+          }}
+          onPointerMove={(e) => {
+            const idx = resolveSvgPlotIndex(e.clientX, e.currentTarget, w, padL, padR, points.length);
+            if (idx !== null) setHoverIdx(idx);
+          }}
+          onPointerLeave={() => setHoverIdx(null)}
+          onPointerCancel={() => setHoverIdx(null)}
+        >
           <defs>
             <linearGradient id={`area-grad-${country.iso3}-${metric}`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={meta.colorVar} stopOpacity="0.35" />
@@ -446,7 +477,20 @@ export function MonteCarloFanChart({
       </div>
 
       <div className="w-full overflow-x-auto">
-        <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-72 min-w-[460px]">
+        <svg
+          viewBox={`0 0 ${w} ${h}`}
+          className="w-full h-72 min-w-[460px] touch-pan-y select-none"
+          onPointerDown={(e) => {
+            const idx = resolveSvgPlotIndex(e.clientX, e.currentTarget, w, padL, padR, trajectory.length);
+            if (idx !== null) setHoverIndex(idx);
+          }}
+          onPointerMove={(e) => {
+            const idx = resolveSvgPlotIndex(e.clientX, e.currentTarget, w, padL, padR, trajectory.length);
+            if (idx !== null) setHoverIndex(idx);
+          }}
+          onPointerLeave={() => setHoverIndex(null)}
+          onPointerCancel={() => setHoverIndex(null)}
+        >
           <defs>
             <linearGradient id="mc-fan-grad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="var(--chart-blue)" stopOpacity="0.24" />

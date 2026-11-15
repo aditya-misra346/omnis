@@ -35,6 +35,7 @@ import {
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 import { CreatorSignature } from "@/components/CreatorSignature";
 import { COUNTRIES_DATA } from "@/lib/data/global-intelligence";
+import { WORLD_COUNTRIES_CATALOG } from "@/lib/data/world-catalog";
 import { classifyQueryIntent } from "@/lib/research/engine";
 import { OmnisLoader, OmnisWordmark } from "@/components/brand/OmnisLogo";
 
@@ -151,13 +152,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // Prevent background page scroll while modal overlays/drawers are open
   useEffect(() => {
-    if (!(mobileMenuOpen || commandPaletteOpen || shortcutsOpen)) return;
+    if (!(mobileMenuOpen || commandPaletteOpen || shortcutsOpen || assistantOpen)) return;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prevOverflow;
     };
-  }, [mobileMenuOpen, commandPaletteOpen, shortcutsOpen]);
+  }, [mobileMenuOpen, commandPaletteOpen, shortcutsOpen, assistantOpen]);
 
   // Keyboard shortcuts: Cmd+K Search Palette, Cmd+J Assistant, ? Cheatsheet, Esc Close
   useEffect(() => {
@@ -322,18 +323,57 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       },
     ];
 
-    const countryActions: CommandPaletteAction[] = Object.values(COUNTRIES_DATA).map((c) => ({
-      id: `country-${c.iso3}`,
-      label: `${c.flagEmoji} ${c.officialName} (${c.iso3})`,
-      subtitle: `${c.capital} • GDP $${c.gdpUsdBn.toLocaleString()}B (${
-        c.gdpGrowthPct >= 0 ? "+" : ""
-      }${c.gdpGrowthPct}%) • ${c.region}`,
-      category: "Country",
-      run: () => {
-        setCommandPaletteOpen(false);
-        router.push(`/atlas?country=${c.iso3}`);
-      },
-    }));
+    const countryActions: CommandPaletteAction[] = (() => {
+      const seen = new Set<string>();
+      const actionsList: CommandPaletteAction[] = [];
+      const addAction = (iso3: string, flagEmoji: string, labelName: string, subtitle: string) => {
+        if (seen.has(iso3)) return;
+        seen.add(iso3);
+        actionsList.push({
+          id: `country-${iso3}`,
+          label: `${flagEmoji} ${labelName} (${iso3})`,
+          subtitle,
+          category: "Country",
+          run: () => {
+            setCommandPaletteOpen(false);
+            router.push(`/atlas?country=${iso3}`);
+          },
+        });
+      };
+
+      for (const entry of WORLD_COUNTRIES_CATALOG) {
+        const c = COUNTRIES_DATA[entry.iso3];
+        if (c) {
+          addAction(
+            c.iso3,
+            c.flagEmoji,
+            c.officialName,
+            `${c.capital} • GDP $${c.gdpUsdBn.toLocaleString()}B (${
+              c.gdpGrowthPct >= 0 ? "+" : ""
+            }${c.gdpGrowthPct}%) • ${c.region}`
+          );
+        } else {
+          addAction(
+            entry.iso3,
+            entry.flagEmoji,
+            entry.name,
+            `${entry.region} • Live World Bank & REST Countries hydration`
+          );
+        }
+      }
+
+      for (const c of Object.values(COUNTRIES_DATA)) {
+        addAction(
+          c.iso3,
+          c.flagEmoji,
+          c.officialName,
+          `${c.capital} • GDP $${c.gdpUsdBn.toLocaleString()}B (${
+            c.gdpGrowthPct >= 0 ? "+" : ""
+          }${c.gdpGrowthPct}%) • ${c.region}`
+        );
+      }
+      return actionsList;
+    })();
 
     const q = paletteQuery.trim().toLowerCase();
     if (!q) {
@@ -384,7 +424,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <MotionConfig reducedMotion="user">
-        <div className="min-h-screen flex flex-col bg-[var(--bg-obsidian)] text-[var(--text-primary)]">
+        <div className="min-h-dvh flex flex-col bg-[var(--bg-obsidian)] text-[var(--text-primary)]">
           {/* Top Global Intelligence Header */}
           <header
             className="sticky top-0 z-40 h-14 backdrop-blur-xl px-3 sm:px-4 flex items-center justify-between gap-2 sm:gap-3 overflow-x-clip"
@@ -726,7 +766,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t border-[var(--border-subtle)] text-[13px] space-y-2.5">
+                  <div className="pt-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t border-[var(--border-subtle)] text-[13px] space-y-2.5">
                     <button
                       type="button"
                       onClick={toggleMotionPaused}
@@ -1043,7 +1083,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
                 <form
                   onSubmit={handleAssistantSend}
-                  className="p-2.5 border-t border-[var(--border-subtle)] bg-[var(--bg-graphite)] flex items-center gap-2"
+                  className="p-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] border-t border-[var(--border-subtle)] bg-[var(--bg-graphite)] flex items-center gap-2"
                 >
                   <input
                     type="text"

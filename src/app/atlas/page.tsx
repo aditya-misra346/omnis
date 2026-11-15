@@ -1,7 +1,7 @@
 "use client";
 
-import React, { Suspense, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Globe2,
@@ -18,6 +18,7 @@ import {
   FileSearch,
   Network,
   ArrowRight,
+  ArrowUpRight,
 } from "lucide-react";
 import { COUNTRIES_DATA } from "@/lib/data/global-intelligence";
 import { InteractiveGlobe3D } from "@/components/globe/InteractiveGlobe3D";
@@ -44,6 +45,7 @@ const LAYERS: { id: IntelligenceLayerId; label: string; desc: string }[] = [
 ];
 
 function GlobalAtlasContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const urlCountryParam = searchParams.get("country")?.trim().toUpperCase() || "";
 
@@ -61,6 +63,7 @@ function GlobalAtlasContent() {
   const [hydratedCountries, setHydratedCountries] = useState<
     Record<string, CountryIntelligenceProfile>
   >({});
+  const hydratedRef = useRef<Record<string, CountryIntelligenceProfile>>({});
   const [liveProfile, setLiveProfile] = useState<CountryIntelligenceProfile | null>(null);
   const [countryLookupStatus, setCountryLookupStatus] = useState<"idle" | "loading" | "missing">("idle");
   const [savedNotice, setSavedNotice] = useState(false);
@@ -85,10 +88,15 @@ function GlobalAtlasContent() {
   }, [country.name, country.iso3, setActiveContext]);
 
   useEffect(() => {
+    const cached = hydratedRef.current[selectedIso3];
+    if (cached) {
+      setLiveProfile(cached);
+      setCountryLookupStatus("idle");
+      return;
+    }
+
     let cancelled = false;
-    setCountryLookupStatus(
-      COUNTRIES_DATA[selectedIso3] || hydratedCountries[selectedIso3] ? "idle" : "loading"
-    );
+    setCountryLookupStatus(COUNTRIES_DATA[selectedIso3] ? "idle" : "loading");
     fetch(`/api/v1/countries/${selectedIso3}`)
       .then((r) => {
         if (r.status === 404) {
@@ -99,13 +107,14 @@ function GlobalAtlasContent() {
       })
       .then((data: CountryIntelligenceProfile | null) => {
         if (!cancelled && data && data.iso3 === selectedIso3) {
+          hydratedRef.current[selectedIso3] = data;
           setLiveProfile(data);
           setHydratedCountries((prev) => ({ ...prev, [selectedIso3]: data }));
           setCountryLookupStatus("idle");
         }
       })
       .catch(() => {
-        if (!cancelled && !COUNTRIES_DATA[selectedIso3] && !hydratedCountries[selectedIso3]) {
+        if (!cancelled && !COUNTRIES_DATA[selectedIso3] && !hydratedRef.current[selectedIso3]) {
           setCountryLookupStatus("missing");
         }
       });
@@ -115,12 +124,13 @@ function GlobalAtlasContent() {
   }, [selectedIso3]);
 
   useEffect(() => {
-    if (COUNTRIES_DATA[compareIso3] || hydratedCountries[compareIso3]) return;
+    if (COUNTRIES_DATA[compareIso3] || hydratedRef.current[compareIso3]) return;
     let cancelled = false;
     fetch(`/api/v1/countries/${compareIso3}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data: CountryIntelligenceProfile | null) => {
         if (!cancelled && data && data.iso3 === compareIso3) {
+          hydratedRef.current[compareIso3] = data;
           setHydratedCountries((prev) => ({ ...prev, [compareIso3]: data }));
         }
       })
@@ -128,7 +138,16 @@ function GlobalAtlasContent() {
     return () => {
       cancelled = true;
     };
-  }, [compareIso3, hydratedCountries]);
+  }, [compareIso3]);
+
+  const selectCountry = (iso: string) => {
+    const nextIso = iso.trim().toUpperCase();
+    setSelectedIso3(nextIso);
+    if (nextIso === compareIso3) {
+      setCompareIso3(nextIso === "IND" ? "CHN" : "IND");
+    }
+    router.replace(`/atlas?country=${encodeURIComponent(nextIso)}`, { scroll: false });
+  };
 
   const handleSaveCountry = () => {
     addWorkspaceItem({
@@ -213,12 +232,7 @@ function GlobalAtlasContent() {
       <InteractiveGlobe3D
         countries={countriesList}
         selectedIso3={selectedIso3}
-        onSelectCountry={(iso) => {
-          setSelectedIso3(iso);
-          if (iso === compareIso3) {
-            setCompareIso3(iso === "IND" ? "CHN" : "IND");
-          }
-        }}
+        onSelectCountry={selectCountry}
         activeLayer={activeLayer}
         heightClass="h-[480px]"
       />
@@ -538,19 +552,28 @@ function GlobalAtlasContent() {
                 <ArrowLeftRight className="w-4 h-4 tone-blue" />
                 Compare {country.name} vs {compareCountry.name}
               </h3>
-              <OmnisSelect
-                value={compareIso3}
-                onChange={setCompareIso3}
-                ariaLabel="Select Comparison Country"
-                menuAlign="right"
-                options={countriesList
-                  .filter((c) => c.iso3 !== country.iso3)
-                  .map((c) => ({
-                    value: c.iso3,
-                    label: `${c.flagEmoji} ${c.name} (${c.iso3})`,
-                    hint: c.region,
-                  }))}
-              />
+              <div className="flex flex-wrap items-center gap-2">
+                <Link
+                  href={`/intelligence?left=${country.iso3}&right=${compareCountry.iso3}`}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--accent-cyan)]/35 bg-[var(--accent-cyan)]/10 px-2.5 py-1.5 font-mono text-xs uppercase tracking-[0.12em] text-[var(--accent-cyan)] transition-colors hover:bg-[var(--accent-cyan)]/20"
+                >
+                  <span>Full Matrix</span>
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </Link>
+                <OmnisSelect
+                  value={compareIso3}
+                  onChange={setCompareIso3}
+                  ariaLabel="Select Comparison Country"
+                  menuAlign="right"
+                  options={countriesList
+                    .filter((c) => c.iso3 !== country.iso3)
+                    .map((c) => ({
+                      value: c.iso3,
+                      label: `${c.flagEmoji} ${c.name} (${c.iso3})`,
+                      hint: c.region,
+                    }))}
+                />
+              </div>
             </div>
 
             <div className="overflow-x-auto">

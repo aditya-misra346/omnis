@@ -73,10 +73,19 @@ const PRESET_TOPICS = [
 function KnowledgeGraphContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const initialTopic = searchParams.get("topic") || "Artificial Intelligence";
+  const urlTopicParam = searchParams.get("topic")?.trim() || "";
+  const initialTopic = urlTopicParam || "Artificial Intelligence";
 
   const [topicInput, setTopicInput] = useState(initialTopic);
   const [activeTopic, setActiveTopic] = useState(initialTopic);
+
+  useEffect(() => {
+    if (urlTopicParam) {
+      setTopicInput(urlTopicParam);
+      setExpandTargetId(undefined);
+      setActiveTopic(urlTopicParam);
+    }
+  }, [urlTopicParam]);
   const [layoutMode, setLayoutMode] = useState<GraphLayoutMode>("force");
   const [relFilter, setRelFilter] = useState<RelationshipType | "ALL">("ALL");
   const [nodeSearch, setNodeSearch] = useState("");
@@ -172,12 +181,20 @@ function KnowledgeGraphContent() {
     [causalPath]
   );
 
-  const handleGenerateTopic = (e: React.FormEvent) => {
-    e.preventDefault();
-    const clean = topicInput.trim();
+  const selectGraphTopic = (nextTopic: string) => {
+    const clean = nextTopic.trim();
     if (!clean) return;
+    setTopicInput(clean);
     setExpandTargetId(undefined);
     setActiveTopic(clean);
+    router.replace(`/knowledge-graph?topic=${encodeURIComponent(clean)}`, {
+      scroll: false,
+    });
+  };
+
+  const handleGenerateTopic = (e: React.FormEvent) => {
+    e.preventDefault();
+    selectGraphTopic(topicInput);
   };
 
   const handleSaveGraph = () => {
@@ -253,11 +270,7 @@ function KnowledgeGraphContent() {
               <button
                 key={preset}
                 type="button"
-                onClick={() => {
-                  setTopicInput(preset);
-                  setExpandTargetId(undefined);
-                  setActiveTopic(preset);
-                }}
+                onClick={() => selectGraphTopic(preset)}
                 className={`px-2.5 py-1 rounded-full border transition-colors cursor-pointer ${
                   activeTopic.toLowerCase() === preset.toLowerCase()
                     ? "badge-tone-blue font-semibold"

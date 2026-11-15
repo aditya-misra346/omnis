@@ -42,6 +42,30 @@ const CATEGORIES: { id: SimulationCategory; label: string }[] = [
   { id: "environment", label: "Climate & Carbon Cycle" },
 ];
 
+function resolveScenarioCategory(
+  catParam: string | null,
+  modelParam: string | null
+): SimulationCategory | null {
+  const cat = catParam?.trim().toLowerCase();
+  if (cat) {
+    const byCat = SIMULATION_SCENARIOS.find(
+      (s) => s.category.toLowerCase() === cat || s.id.toLowerCase() === cat
+    );
+    if (byCat) return byCat.category;
+  }
+  const mod = modelParam?.trim().toLowerCase();
+  if (mod) {
+    const byMod = SIMULATION_SCENARIOS.find(
+      (s) =>
+        s.id.toLowerCase() === mod ||
+        s.category.toLowerCase() === mod ||
+        s.modelName.toLowerCase().includes(mod)
+    );
+    if (byMod) return byMod.category;
+  }
+  return null;
+}
+
 function SimulationsContent() {
   const searchParams = useSearchParams();
   const promptQuery = searchParams.get("q") || "";
@@ -51,7 +75,7 @@ function SimulationsContent() {
   );
 
   const initialCat =
-    (searchParams.get("category") as SimulationCategory) ||
+    resolveScenarioCategory(searchParams.get("category"), searchParams.get("model")) ||
     parsedPrompt.category ||
     "economics";
   const paramOilShock = searchParams.get("oilShock");
@@ -91,7 +115,10 @@ function SimulationsContent() {
     SIMULATION_SCENARIOS[0];
 
   useEffect(() => {
-    const urlCat = searchParams.get("category") as SimulationCategory | null;
+    const urlCat = resolveScenarioCategory(
+      searchParams.get("category"),
+      searchParams.get("model")
+    );
     if (urlCat && CATEGORIES.some((c) => c.id === urlCat)) {
       setCategory(urlCat);
     }

@@ -19,148 +19,13 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { ISO3_TO_NUMERIC, NUMERIC_TO_ISO3 } from "@/lib/data/world-catalog";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 import type { CountryIntelligenceProfile, IntelligenceLayerId } from "@/types/omnis";
 
 const MIN_ZOOM = 1.85;
 const MAX_ZOOM = 4.1;
 const DEFAULT_ZOOM = 2.68;
-
-const ISO3_TO_NUMERIC: Record<string, string> = {
-  AFG: "004",
-  AGO: "024",
-  ALB: "008",
-  ARE: "784",
-  ARG: "032",
-  ARM: "051",
-  AUS: "036",
-  AUT: "040",
-  AZE: "031",
-  BEL: "056",
-  BGD: "050",
-  BGR: "100",
-  BIH: "070",
-  BLR: "112",
-  BOL: "068",
-  BRA: "076",
-  BWA: "072",
-  CAN: "124",
-  CHE: "756",
-  CHL: "152",
-  CHN: "156",
-  CIV: "384",
-  CMR: "120",
-  COD: "180",
-  COG: "178",
-  COL: "170",
-  CRI: "188",
-  CUB: "192",
-  CYP: "196",
-  CZE: "203",
-  DEU: "276",
-  DNK: "208",
-  DOM: "214",
-  DZA: "012",
-  ECU: "218",
-  EGY: "818",
-  ESP: "724",
-  EST: "233",
-  ETH: "231",
-  FIN: "246",
-  FJI: "242",
-  FRA: "250",
-  GBR: "826",
-  GEO: "268",
-  GHA: "288",
-  GRC: "300",
-  GRL: "304",
-  GTM: "320",
-  HND: "340",
-  HRV: "191",
-  HUN: "348",
-  IDN: "360",
-  IND: "356",
-  IRL: "372",
-  IRN: "364",
-  IRQ: "368",
-  ISL: "352",
-  ISR: "376",
-  ITA: "380",
-  JAM: "388",
-  JOR: "400",
-  JPN: "392",
-  KAZ: "398",
-  KEN: "404",
-  KHM: "116",
-  KOR: "410",
-  KWT: "414",
-  LAO: "418",
-  LBN: "422",
-  LBY: "434",
-  LKA: "144",
-  LTU: "440",
-  LUX: "442",
-  LVA: "428",
-  MAR: "504",
-  MDA: "498",
-  MDG: "450",
-  MEX: "484",
-  MLI: "466",
-  MMR: "104",
-  MNG: "496",
-  MOZ: "508",
-  MYS: "458",
-  NAM: "516",
-  NER: "562",
-  NGA: "566",
-  NLD: "528",
-  NOR: "578",
-  NPL: "524",
-  NZL: "554",
-  OMN: "512",
-  PAK: "586",
-  PAN: "591",
-  PER: "604",
-  PHL: "608",
-  PNG: "598",
-  POL: "616",
-  PRK: "408",
-  PRT: "620",
-  PRY: "600",
-  QAT: "634",
-  ROU: "642",
-  RUS: "643",
-  RWA: "646",
-  SAU: "682",
-  SDN: "729",
-  SEN: "686",
-  SGP: "702",
-  SRB: "688",
-  SVK: "703",
-  SVN: "705",
-  SWE: "752",
-  SYR: "760",
-  THA: "764",
-  TUN: "788",
-  TUR: "792",
-  TWN: "158",
-  TZA: "834",
-  UGA: "800",
-  UKR: "804",
-  URY: "858",
-  USA: "840",
-  UZB: "860",
-  VEN: "862",
-  VNM: "704",
-  YEM: "887",
-  ZAF: "710",
-  ZMB: "894",
-  ZWE: "716",
-};
-
-const NUMERIC_TO_ISO3: Record<string, string> = Object.fromEntries(
-  Object.entries(ISO3_TO_NUMERIC).map(([iso3, numId]) => [numId, iso3])
-);
 
 interface PickCountryEntry {
   iso3: string;
@@ -350,6 +215,7 @@ export function InteractiveGlobe3D({
   const [zoomDistance, setZoomDistance] = useState(DEFAULT_ZOOM);
   const [webglSupported, setWebglSupported] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [touchOrbitLocked, setTouchOrbitLocked] = useState(false);
   const [railScrollState, setRailScrollState] = useState({ left: false, right: false });
   const [stageDims, setStageDims] = useState({ width: 720, height: 480 });
   const [hoveredCountry, setHoveredCountry] = useState<{
@@ -362,6 +228,7 @@ export function InteractiveGlobe3D({
   const rotationRef = useRef({ x: 0.28, y: -2.95 });
   const targetQuatRef = useRef<THREE.Quaternion | null>(null);
   const flightTotalAngleRef = useRef(0);
+  const lastFlownIsoRef = useRef<string | null>(null);
   const isDraggingRef = useRef(false);
   const engagedRef = useRef(false);
   const pointerDownPosRef = useRef({ x: 0, y: 0 });
@@ -374,6 +241,7 @@ export function InteractiveGlobe3D({
   const motionPausedRef = useRef(motionPaused);
   const wheelZoomModeRef = useRef(wheelZoomMode);
   const isFullscreenRef = useRef(isFullscreen);
+  const touchOrbitLockedRef = useRef(false);
   const onSelectCountryRef = useRef(onSelectCountry);
   const themeRef = useRef(theme);
   const selectedIso3Ref = useRef(selectedIso3);
@@ -458,23 +326,31 @@ export function InteractiveGlobe3D({
 
   useEffect(() => {
     isFullscreenRef.current = isFullscreen;
-  }, [isFullscreen]);
+    touchOrbitLockedRef.current = touchOrbitLocked || isFullscreen;
+  }, [isFullscreen, touchOrbitLocked]);
 
   useEffect(() => {
     onSelectCountryRef.current = onSelectCountry;
   }, [onSelectCountry]);
 
   useEffect(() => {
-    const target = countries.find((c) => c.iso3 === selectedIso3) ?? geoCentroids[selectedIso3];
-    if (target) {
-      const nextX = Math.max(-0.85, Math.min(0.85, (target.lat * Math.PI) / 180 * 0.65));
-      const rawY = -((target.lng + 90) * Math.PI) / 180;
-      const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(nextX, rawY, 0, "XYZ"));
-      targetQuatRef.current = q;
-      const handle = sceneHandleRef.current;
-      flightTotalAngleRef.current = handle ? handle.globeGroup.quaternion.angleTo(q) : 0.8;
+    if (!selectedIso3) {
+      lastFlownIsoRef.current = null;
+      return;
     }
-  }, [selectedIso3, countries, geoCentroids]);
+    const target =
+      countriesRef.current.find((c) => c.iso3 === selectedIso3) ??
+      geoCentroids[selectedIso3];
+    if (!target) return;
+    if (lastFlownIsoRef.current === selectedIso3) return;
+    lastFlownIsoRef.current = selectedIso3;
+    const nextX = Math.max(-0.85, Math.min(0.85, (target.lat * Math.PI) / 180 * 0.65));
+    const rawY = -((target.lng + 90) * Math.PI) / 180;
+    const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(nextX, rawY, 0, "XYZ"));
+    targetQuatRef.current = q;
+    const handle = sceneHandleRef.current;
+    flightTotalAngleRef.current = handle ? handle.globeGroup.quaternion.angleTo(q) : 0.8;
+  }, [selectedIso3, geoCentroids]);
 
   // Monitor rail horizontal scroll state for overflow chevrons & masks
   const updateRailScrollState = useCallback(() => {
@@ -1044,16 +920,70 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
       }
     };
 
+    const domElem = renderer.domElement;
+    const activeTouchGesture: {
+      id: number | null;
+      startX: number;
+      startY: number;
+      axis: "undecided" | "horizontal" | "vertical";
+    } = {
+      id: null,
+      startX: 0,
+      startY: 0,
+      axis: "undecided",
+    };
+
     const onPointerDown = (e: PointerEvent) => {
       engagedRef.current = true;
+      pointerDownPosRef.current = { x: e.clientX, y: e.clientY };
+      prevMouseRef.current = { x: e.clientX, y: e.clientY };
+
+      if (e.pointerType === "touch" && !touchOrbitLockedRef.current) {
+        activeTouchGesture.id = e.pointerId;
+        activeTouchGesture.startX = e.clientX;
+        activeTouchGesture.startY = e.clientY;
+        activeTouchGesture.axis = "undecided";
+        isDraggingRef.current = false;
+        return;
+      }
+
+      activeTouchGesture.id = null;
+      activeTouchGesture.axis = "undecided";
       isDraggingRef.current = true;
       targetQuatRef.current = null;
       flightTotalAngleRef.current = 0;
-      pointerDownPosRef.current = { x: e.clientX, y: e.clientY };
-      prevMouseRef.current = { x: e.clientX, y: e.clientY };
     };
 
     const onPointerMove = (e: PointerEvent) => {
+      if (e.pointerType === "touch" && !touchOrbitLockedRef.current) {
+        if (activeTouchGesture.id !== e.pointerId || activeTouchGesture.axis === "vertical") {
+          return;
+        }
+        if (activeTouchGesture.axis === "undecided") {
+          const totalDx = e.clientX - activeTouchGesture.startX;
+          const totalDy = e.clientY - activeTouchGesture.startY;
+          if (Math.hypot(totalDx, totalDy) < 6) {
+            return;
+          }
+          if (Math.abs(totalDy) > Math.abs(totalDx) * 1.15) {
+            activeTouchGesture.axis = "vertical";
+            isDraggingRef.current = false;
+            return;
+          }
+          activeTouchGesture.axis = "horizontal";
+          isDraggingRef.current = true;
+          targetQuatRef.current = null;
+          flightTotalAngleRef.current = 0;
+          prevMouseRef.current = { x: e.clientX, y: e.clientY };
+          try {
+            domElem.setPointerCapture(e.pointerId);
+          } catch {
+            // Ignore pointer capture issues on synthetic tests
+          }
+          return;
+        }
+      }
+
       const rect = renderer.domElement.getBoundingClientRect();
       if (isDraggingRef.current) {
         const dx = e.clientX - prevMouseRef.current.x;
@@ -1110,13 +1040,45 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
       }
     };
 
+    const onPointerCancel = (e: PointerEvent) => {
+      if (activeTouchGesture.id === e.pointerId) {
+        activeTouchGesture.id = null;
+        activeTouchGesture.axis = "undecided";
+      }
+      isDraggingRef.current = false;
+      try {
+        if (domElem.hasPointerCapture?.(e.pointerId)) {
+          domElem.releasePointerCapture(e.pointerId);
+        }
+      } catch {
+        // Ignore cleanup errors
+      }
+    };
+
     const onPointerUp = (e: PointerEvent) => {
-      if (!isDraggingRef.current) return;
+      const wasTouchTapCandidate =
+        e.pointerType === "touch" &&
+        activeTouchGesture.id === e.pointerId &&
+        activeTouchGesture.axis === "undecided";
+      if (activeTouchGesture.id === e.pointerId) {
+        activeTouchGesture.id = null;
+        activeTouchGesture.axis = "undecided";
+      }
+      try {
+        if (domElem.hasPointerCapture?.(e.pointerId)) {
+          domElem.releasePointerCapture(e.pointerId);
+        }
+      } catch {
+        // Ignore cleanup errors
+      }
+
+      if (!isDraggingRef.current && !wasTouchTapCandidate) return;
+      const tapThreshold = e.pointerType === "touch" ? 7 : 5;
       const moved =
         Math.hypot(
           e.clientX - pointerDownPosRef.current.x,
           e.clientY - pointerDownPosRef.current.y
-        ) > 5;
+        ) > tapThreshold;
       isDraggingRef.current = false;
 
       if (!moved) {
@@ -1155,12 +1117,12 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
       setZoomDistance(nextZoom);
     };
 
-    const domElem = renderer.domElement;
     domElem.addEventListener("pointerdown", onPointerDown);
     domElem.addEventListener("pointermove", onPointerMove);
+    domElem.addEventListener("pointercancel", onPointerCancel);
     domElem.addEventListener("wheel", onWheel, { passive: false });
     window.addEventListener("pointerup", onPointerUp);
-    window.addEventListener("pointercancel", onPointerUp);
+    window.addEventListener("pointercancel", onPointerCancel);
 
     return () => {
       sceneHandleRef.current = null;
@@ -1169,9 +1131,10 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
       window.removeEventListener("resize", handleResize);
       domElem.removeEventListener("pointerdown", onPointerDown);
       domElem.removeEventListener("pointermove", onPointerMove);
+      domElem.removeEventListener("pointercancel", onPointerCancel);
       domElem.removeEventListener("wheel", onWheel);
       window.removeEventListener("pointerup", onPointerUp);
-      window.removeEventListener("pointercancel", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerCancel);
       disposeGroupChildren(markersGroup);
       disposeGroupChildren(arcsGroup);
       hitMeshesRef.current = [];
@@ -1255,9 +1218,11 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
     const newPulses: { curve: THREE.QuadraticBezierCurve3; mesh: THREE.Mesh; offset: number }[] = [];
     if (selectedCoords) {
       const startVec = latLngToVector3(selectedCoords.lat, selectedCoords.lng, 1.015);
+      const peerTargets = countries
+        .filter((other) => other.iso3 !== selectedCoords.iso3)
+        .slice(0, 11);
       let idx = 0;
-      for (const other of countries) {
-        if (other.iso3 === selectedCoords.iso3) continue;
+      for (const other of peerTargets) {
         const endVec = latLngToVector3(other.lat, other.lng, 1.015);
         const arcHeight = 1.14 + Math.min(0.24, startVec.distanceTo(endVec) * 0.14);
         const midVec = startVec
@@ -1329,7 +1294,9 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
       {webglSupported ? (
         <div
           ref={mountRef}
-          className="w-full h-full touch-none cursor-grab active:cursor-grabbing"
+          className={`w-full h-full cursor-grab active:cursor-grabbing ${
+            isFullscreen || touchOrbitLocked ? "touch-none" : "touch-pan-y sm:touch-none"
+          }`}
           aria-label="Interactive 3D Global Intelligence Globe"
         />
       ) : (
@@ -1480,6 +1447,22 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
             {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
           </button>
         </div>
+      </div>
+
+      {/* Mobile 1-Finger Touch Mode Toggle */}
+      <div className="sm:hidden absolute bottom-[64px] left-3 z-10">
+        <button
+          type="button"
+          onClick={() => setTouchOrbitLocked((prev) => !prev)}
+          className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.1em] backdrop-blur-md transition-all cursor-pointer ${
+            touchOrbitLocked
+              ? "badge-tone-warning"
+              : "omnis-hud-pill text-[var(--text-secondary)]"
+          }`}
+          title="Toggle between vertical page scroll and full 360° 1-finger globe orbit"
+        >
+          <span>{touchOrbitLocked ? "360° Orbit Locked" : "Scroll-Safe Touch"}</span>
+        </button>
       </div>
 
       {/* Bottom Interactive Country Coordinate Selector Rail with Scroll Affordances */}

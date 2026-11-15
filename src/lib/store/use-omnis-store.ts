@@ -1,7 +1,38 @@
 "use client";
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
+
+const memoryFallbackStorage = new Map<string, string>();
+
+const safeWebStorage: StateStorage = {
+  getItem: (name: string) => {
+    if (typeof window === "undefined") return null;
+    try {
+      return window.localStorage.getItem(name);
+    } catch {
+      return memoryFallbackStorage.get(name) ?? null;
+    }
+  },
+  setItem: (name: string, value: string) => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(name, value);
+    } catch {
+      // Fall back to in-memory persistence under QuotaExceededError or private-mode locks
+      memoryFallbackStorage.set(name, value);
+    }
+  },
+  removeItem: (name: string) => {
+    memoryFallbackStorage.delete(name);
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.removeItem(name);
+    } catch {
+      // Ignore storage removal errors in restricted contexts
+    }
+  },
+};
 
 export interface WorkspaceSavedItem {
   id: string;
@@ -341,6 +372,7 @@ export const useOmnisStore = create<OmnisState>()(
     }),
     {
       name: "omnis-intelligence-workspace-v1",
+      storage: createJSONStorage(() => safeWebStorage),
     }
   )
 );

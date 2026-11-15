@@ -70,11 +70,14 @@ function ResearchContent() {
   };
 
   const { addWorkspaceItem, addSearchQuery, setActiveContext } = useOmnisStore();
+  const lastFetchedKeyRef = useRef<string | null>(null);
 
   const runResearch = useCallback(
     async (q: string, m: ResearchMode, syncUrl = false) => {
       const clean = q.trim();
       if (!clean) return;
+      const reqKey = `${clean}::${m}`;
+      lastFetchedKeyRef.current = reqKey;
       if (syncUrl) {
         router.replace(
           `/research?q=${encodeURIComponent(clean)}&mode=${encodeURIComponent(m)}`,
@@ -107,8 +110,10 @@ function ResearchContent() {
   );
 
   useEffect(() => {
+    const reqKey = `${initialQuery.trim()}::${resolvedInitialMode}`;
     setQueryInput(initialQuery);
     setMode(resolvedInitialMode);
+    if (lastFetchedKeyRef.current === reqKey) return;
     runResearch(initialQuery, resolvedInitialMode, false);
   }, [initialQuery, resolvedInitialMode, runResearch]);
 
@@ -221,7 +226,10 @@ ${report.sources
             onChange={(val) => {
               const nextMode = val as ResearchMode;
               setMode(nextMode);
-              runResearch(queryInput, nextMode, true);
+              const activeQuery = queryInput.trim() || report?.query || initialQuery;
+              if (activeQuery) {
+                runResearch(activeQuery, nextMode, true);
+              }
             }}
             options={RESEARCH_MODES.map((m) => ({
               value: m.id,

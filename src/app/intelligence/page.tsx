@@ -1,7 +1,7 @@
 "use client";
 
-import React, { Suspense, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Layers,
@@ -19,6 +19,11 @@ import {
   COUNTRIES_DATA,
   TIMELINE_EVENTS,
 } from "@/lib/data/global-intelligence";
+import {
+  WORLD_CATALOG_BY_ISO3,
+  WORLD_COUNTRIES_CATALOG,
+  buildPlaceholderCountryProfile,
+} from "@/lib/data/world-catalog";
 import { buildSovereignComparisonMatrix } from "@/lib/research/compare";
 import { fetchOpenAlexSources } from "@/lib/providers/live-data";
 import { ComparisonRadarChart } from "@/components/charts/OmnisCharts";
@@ -26,7 +31,7 @@ import { OmnisLoader } from "@/components/brand/OmnisLogo";
 import { OmnisButton, OmnisModuleHeader } from "@/components/ui/OmnisPrimitives";
 import { OmnisSelect } from "@/components/ui/OmnisSelect";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
-import type { ResearchSourceItem } from "@/types/omnis";
+import type { CountryIntelligenceProfile, ResearchSourceItem } from "@/types/omnis";
 
 interface FollowedTopicBriefing {
   status: "live" | "cached";
@@ -155,11 +160,11 @@ function parseCountriesFromCompareQuery(query: string): [string, string] | null 
     nigeria: "NGA",
   };
   const hits: Array<{ idx: number; iso3: string }> = [];
-  for (const country of Object.values(COUNTRIES_DATA)) {
-    const isoPos = clean.search(new RegExp(`\\b${country.iso3.toLowerCase()}\\b`));
-    if (isoPos !== -1) hits.push({ idx: isoPos, iso3: country.iso3 });
-    const namePos = clean.indexOf(country.name.toLowerCase());
-    if (namePos !== -1) hits.push({ idx: namePos, iso3: country.iso3 });
+  for (const entry of WORLD_COUNTRIES_CATALOG) {
+    const isoPos = clean.search(new RegExp(`\\b${entry.iso3.toLowerCase()}\\b`));
+    if (isoPos !== -1) hits.push({ idx: isoPos, iso3: entry.iso3 });
+    const namePos = clean.indexOf(entry.name.toLowerCase());
+    if (namePos !== -1) hits.push({ idx: namePos, iso3: entry.iso3 });
   }
   for (const [alias, iso3] of Object.entries(aliases)) {
     const pos = clean.search(new RegExp(`\\b${alias}\\b`));
@@ -178,17 +183,34 @@ function parseCountriesFromCompareQuery(query: string): [string, string] | null 
   return null;
 }
 
+function isSupportedIso3(iso?: string | null): iso is string {
+  if (!iso) return false;
+  const code = iso.trim().toUpperCase();
+  return (
+    /^[A-Z]{3}$/.test(code) &&
+    (Boolean(COUNTRIES_DATA[code]) || Boolean(WORLD_CATALOG_BY_ISO3[code]))
+  );
+}
+
 function IntelligenceCompareContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const queryParam = searchParams.get("q") || "";
   const parsedFromQuery = parseCountriesFromCompareQuery(queryParam);
+  const rawLeft = searchParams.get("left")?.trim().toUpperCase();
+  const rawRight = searchParams.get("right")?.trim().toUpperCase();
   const initialLeft =
-    searchParams.get("left")?.toUpperCase() || parsedFromQuery?.[0] || "IND";
+    (isSupportedIso3(rawLeft) ? rawLeft : null) || parsedFromQuery?.[0] || "IND";
   const initialRight =
-    searchParams.get("right")?.toUpperCase() || parsedFromQuery?.[1] || "CHN";
+    (isSupportedIso3(rawRight) ? rawRight : null) || parsedFromQuery?.[1] || "CHN";
 
-  const [leftIso, setLeftIso] = useState(COUNTRIES_DATA[initialLeft] ? initialLeft : "IND");
-  const [rightIso, setRightIso] = useState(COUNTRIES_DATA[initialRight] ? initialRight : "CHN");
+  const [leftIso, setLeftIso] = useState(initialLeft);
+  const [rightIso, setRightIso] = useState(initialRight);
+  const [hydratedCountries, setHydratedCountries] = useState<
+    Record<string, CountryIntelligenceProfile>
+  >({});
+  const hydratedRef = useRef<Record<string, CountryIntelligenceProfile>>({});
+  const [hydratingIsoList, setHydratingIsoList] = useState<string[]>([]);
   const [savedNotice, setSavedNotice] = useState(false);
   const [pinnedTopics, setPinnedTopics] = useState<Record<string, boolean>>({});
   const [liveBriefings, setLiveBriefings] = useState<Record<string, ResearchSourceItem | null>>({});
@@ -197,20 +219,95 @@ function IntelligenceCompareContent() {
   useEffect(() => {
     const q = searchParams.get("q") || "";
     const parsed = parseCountriesFromCompareQuery(q);
-    const leftParam = searchParams.get("left")?.toUpperCase();
-    const rightParam = searchParams.get("right")?.toUpperCase();
-    const nextLeft = leftParam || parsed?.[0];
-    const nextRight = rightParam || parsed?.[1];
-    if (nextLeft && COUNTRIES_DATA[nextLeft]) setLeftIso(nextLeft);
-    if (nextRight && COUNTRIES_DATA[nextRight]) setRightIso(nextRight);
+    const leftParam = searchParams.get("left")?.trim().toUpperCase();
+    const rightParam = searchParams.get("right")?.trim().toUpperCase();
+    const nextLeft = (isSupportedIso3(leftParam) ? leftParam : null) || parsed?.[0];
+    const nextRight = (isSupportedIso3(rightParam) ? rightParam : null) || parsed?.[1];
+    if (nextLeft) setLeftIso(nextLeft);
+    if (nextRight) setRightIso(nextRight);
   }, [searchParams]);
 
   const { followedTopics, toggleFollowedTopic, addWorkspaceItem, setActiveContext } =
     useOmnisStore();
 
-  const countries = Object.values(COUNTRIES_DATA);
-  const leftCountry = COUNTRIES_DATA[leftIso] ?? COUNTRIES_DATA.IND;
-  const rightCountry = COUNTRIES_DATA[rightIso] ?? COUNTRIES_DATA.CHN;
+  useEffect(() => {
+    const targets = [leftIso, rightIso].filter(
+      (iso, idx, arr) =>
+        arr.indexOf(iso) === idx && !COUNTRIES_DATA[iso] && !hydratedRef.current[iso]
+    );
+    if (targets.length === 0) {
+      setHydratingIsoList([]);
+      return;
+    }
+
+    let cancelled = false;
+    setHydratingIsoList(targets);
+    Promise.all(
+      targets.map(async (iso) => {
+        try {
+          const res = await fetch(`/api/v1/countries/${encodeURIComponent(iso)}`);
+          if (!res.ok) return [iso, null] as const;
+          const data = (await res.json()) as CountryIntelligenceProfile;
+          return [iso, data?.iso3 === iso ? data : null] as const;
+        } catch {
+          return [iso, null] as const;
+        }
+      })
+    ).then((results) => {
+      if (cancelled) return;
+      const nextEntries: Record<string, CountryIntelligenceProfile> = {};
+      for (const [iso, data] of results) {
+        if (data) {
+          hydratedRef.current[iso] = data;
+          nextEntries[iso] = data;
+        }
+      }
+      if (Object.keys(nextEntries).length > 0) {
+        setHydratedCountries((prev) => ({ ...prev, ...nextEntries }));
+      }
+      setHydratingIsoList([]);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [leftIso, rightIso]);
+
+  const updateComparePair = (nextLeft: string, nextRight: string) => {
+    setLeftIso(nextLeft);
+    setRightIso(nextRight);
+    router.replace(
+      `/intelligence?left=${encodeURIComponent(nextLeft)}&right=${encodeURIComponent(nextRight)}`,
+      { scroll: false }
+    );
+  };
+
+  const countryOptions = useMemo(
+    () =>
+      WORLD_COUNTRIES_CATALOG.map((entry) => {
+        const live = COUNTRIES_DATA[entry.iso3] ?? hydratedCountries[entry.iso3];
+        const flagEmoji = live?.flagEmoji ?? entry.flagEmoji;
+        const name = live?.name ?? entry.name;
+        const region = live?.region ?? entry.region;
+        return {
+          value: entry.iso3,
+          label: `${flagEmoji} ${name} (${entry.iso3})`,
+          hint: region,
+        };
+      }),
+    [hydratedCountries]
+  );
+
+  const leftCountry =
+    COUNTRIES_DATA[leftIso] ??
+    hydratedCountries[leftIso] ??
+    buildPlaceholderCountryProfile(leftIso) ??
+    COUNTRIES_DATA.IND;
+  const rightCountry =
+    COUNTRIES_DATA[rightIso] ??
+    hydratedCountries[rightIso] ??
+    buildPlaceholderCountryProfile(rightIso) ??
+    COUNTRIES_DATA.CHN;
 
   useEffect(() => {
     setActiveContext(
@@ -290,25 +387,17 @@ function IntelligenceCompareContent() {
         <div className="flex flex-wrap items-center gap-3 pt-1">
           <OmnisSelect
             value={leftIso}
-            onChange={setLeftIso}
+            onChange={(next) => updateComparePair(next, rightIso)}
             ariaLabel="Select Primary Comparison Country"
             prefixLabel="Entity A:"
             tone="blue"
             size="md"
-            options={countries.map((c) => ({
-              value: c.iso3,
-              label: `${c.flagEmoji} ${c.name} (${c.iso3})`,
-              hint: c.region,
-            }))}
+            options={countryOptions}
           />
 
           <button
             type="button"
-            onClick={() => {
-              const temp = leftIso;
-              setLeftIso(rightIso);
-              setRightIso(temp);
-            }}
+            onClick={() => updateComparePair(rightIso, leftIso)}
             aria-label="Swap Entities"
             className="p-2 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] transition-colors cursor-pointer"
             title="Swap Entities"
@@ -318,16 +407,12 @@ function IntelligenceCompareContent() {
 
           <OmnisSelect
             value={rightIso}
-            onChange={setRightIso}
+            onChange={(next) => updateComparePair(leftIso, next)}
             ariaLabel="Select Secondary Comparison Country"
             prefixLabel="Entity B:"
             tone="violet"
             size="md"
-            options={countries.map((c) => ({
-              value: c.iso3,
-              label: `${c.flagEmoji} ${c.name} (${c.iso3})`,
-              hint: c.region,
-            }))}
+            options={countryOptions}
           />
 
           {/* Preset Quick Comparisons */}
@@ -341,10 +426,7 @@ function IntelligenceCompareContent() {
               <button
                 key={pair.label}
                 type="button"
-                onClick={() => {
-                  setLeftIso(pair.l);
-                  setRightIso(pair.r);
-                }}
+                onClick={() => updateComparePair(pair.l, pair.r)}
                 className="px-2.5 py-1.5 rounded-lg bg-[var(--bg-slate)] hover:border-[var(--border-strong)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] font-medium transition-colors cursor-pointer"
               >
                 {pair.label}
@@ -359,11 +441,18 @@ function IntelligenceCompareContent() {
         <div className="lg:col-span-7 omnis-card p-6 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-[15px] sm:text-base font-bold text-[var(--text-primary)]">
-              Side-by-Side Indicator & Relative Delta Matrix
+              Side-by-Side Indicator &amp; Relative Delta Matrix
             </h2>
-            <span className="text-xs text-[var(--text-muted)] omnis-mono">
-              Source: World Bank WDI & IMF 2026
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              {hydratingIsoList.length > 0 ? (
+                <span className="px-2 py-0.5 rounded badge-tone-cyan text-xs omnis-mono">
+                  Hydrating World Bank telemetry ({hydratingIsoList.join(", ")})…
+                </span>
+              ) : null}
+              <span className="text-xs text-[var(--text-muted)] omnis-mono">
+                Source: World Bank WDI &amp; IMF 2026
+              </span>
+            </div>
           </div>
 
           <div className="overflow-x-auto">

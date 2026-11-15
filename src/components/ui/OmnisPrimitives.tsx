@@ -114,7 +114,7 @@ export function OmnisModuleHeader({
         <div
           className={`${
             mobileExpanded ? "block" : "hidden sm:block"
-          } max-w-full overflow-x-auto pb-1 sm:pb-0 sm:overflow-visible`}
+          } max-w-full pt-1 sm:pt-0 overflow-visible`}
         >
           {secondaryControls}
         </div>

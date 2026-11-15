@@ -43,10 +43,42 @@ export default function CommandCenterPage() {
 
   const [commandInput, setCommandInput] = useState("");
   const [customizeOpen, setCustomizeOpen] = useState(false);
+  const [providerStatuses, setProviderStatuses] = useState<
+    Array<{ id: string; name: string; status: string; latencyMs?: number; license: string }>
+  >([
+    { id: "world-bank", name: "World Bank WDI v2", status: "checking", license: "CC BY 4.0" },
+    { id: "rest-countries", name: "REST Countries v3.1", status: "checking", license: "MPL 2.0" },
+    { id: "openalex", name: "OpenAlex Scholarly Graph", status: "checking", license: "CC0" },
+    { id: "wikimedia", name: "Wikimedia REST v1", status: "checking", license: "CC BY-SA 4.0" },
+  ]);
 
   useEffect(() => {
     setActiveContext("Home — Intelligence Command Center", "Global Overview & Live Signals");
   }, [setActiveContext]);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/v1/health")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!active || !data || !Array.isArray(data.providers) || data.providers.length === 0) return;
+        setProviderStatuses(
+          data.providers.map((p: { id: string; name: string; status: string; latencyMs?: number; license?: string }) => ({
+            id: p.id,
+            name: p.name,
+            status: p.status || "operational",
+            latencyMs: typeof p.latencyMs === "number" ? p.latencyMs : undefined,
+            license: p.license || "Open",
+          }))
+        );
+      })
+      .catch(() => {
+        // Retain static epistemic attribution labels on offline/network failure
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleCommandSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,8 +98,6 @@ export default function CommandCenterPage() {
   };
 
   const sortedWidgets = [...widgets].sort((a, b) => a.order - b.order);
-  const isWidgetVisible = (id: string) =>
-    widgets.find((w) => w.id === id)?.visible ?? true;
   const countries = Object.values(COUNTRIES_DATA);
 
   return (
@@ -410,18 +440,18 @@ export default function CommandCenterPage() {
               ),
               "recommended-paths": (
                 <section className="omnis-card p-5 space-y-4">
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <Sparkles className="w-4 h-4 text-[var(--accent-blue)]" />
-                      <h2 className="text-[13px] font-semibold tracking-tight text-[var(--text-primary)]">
+                      <h2 className="text-[15px] font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono">
                         Recommended Cross-Disciplinary Explorations
                       </h2>
                     </div>
-                    <span className="text-[11px] font-mono text-[var(--text-muted)]">
+                    <span className="text-xs font-mono text-[var(--text-muted)]">
                       MULTI-MODULE WORKFLOWS
                     </span>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-px rounded-lg overflow-hidden border border-[var(--border-subtle)] bg-[var(--border-subtle)]">
                     {[
                       {
                         title: "Submarine Cable & Sovereign AI Compute",
@@ -459,26 +489,106 @@ export default function CommandCenterPage() {
                       <Link
                         key={path.title}
                         href={path.href}
-                        className="group rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] p-3.5 hover:border-[var(--border-strong)] transition-colors flex flex-col justify-between gap-2.5"
+                        className="group bg-[var(--bg-graphite)] hover:bg-[var(--bg-slate)] p-4 transition-colors flex flex-col justify-between gap-2.5"
                       >
                         <div className="space-y-1.5">
                           <div className="flex items-center justify-between gap-2">
                             <span
-                              className={`text-[10px] font-mono uppercase tracking-[0.12em] ${path.accent}`}
+                              className={`text-xs font-mono uppercase tracking-[0.12em] ${path.accent}`}
                             >
                               {path.chain}
                             </span>
-                            <ArrowRight className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover:translate-x-0.5 group-hover:text-[var(--text-primary)] transition-transform" />
+                            <ArrowRight className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover:translate-x-0.5 group-hover:text-[var(--text-primary)] transition-transform shrink-0" />
                           </div>
-                          <h3 className="text-[13px] font-semibold text-[var(--text-primary)] leading-snug">
+                          <h3 className="text-[15px] font-semibold text-[var(--text-primary)] leading-snug">
                             {path.title}
                           </h3>
-                          <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed">
+                          <p className="text-[13.5px] text-[var(--text-secondary)] leading-relaxed">
                             {path.detail}
                           </p>
                         </div>
                       </Link>
                     ))}
+                  </div>
+                </section>
+              ),
+              "recent-explorations": (
+                <section className="omnis-card p-5 space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[var(--border-subtle)]">
+                    <div className="flex items-center gap-2">
+                      <Bookmark className="w-4 h-4 tone-violet" />
+                      <h2 className="text-[15px] font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono">
+                        Recently Explored & Pinned Workspace
+                      </h2>
+                    </div>
+                    <Link
+                      href="/workspace"
+                      className="text-xs tone-blue font-semibold hover:underline omnis-mono"
+                    >
+                      Open Workspace ({workspaceItems.length}) →
+                    </Link>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-px rounded-lg overflow-hidden border border-[var(--border-subtle)] bg-[var(--border-subtle)]">
+                    <div className="bg-[var(--bg-graphite)] p-4 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-[13px] font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono flex items-center gap-1.5">
+                          <Search className="w-3.5 h-3.5 tone-violet" />
+                          Query History
+                        </h3>
+                        <Link
+                          href="/explore"
+                          className="text-xs tone-blue font-semibold hover:underline"
+                        >
+                          Explore →
+                        </Link>
+                      </div>
+                      <div className="divide-y divide-[var(--border-subtle)]">
+                        {searchHistory.slice(0, 5).map((q) => (
+                          <Link
+                            key={q}
+                            href={`/explore?q=${encodeURIComponent(q)}`}
+                            className="omnis-magnetic-arrow flex items-center justify-between py-2 text-[13.5px] text-[var(--text-secondary)] hover:text-[var(--accent-blue)] transition-colors gap-2"
+                          >
+                            <span className="truncate font-medium">{q}</span>
+                            <ArrowRight className="omnis-arrow-glyph w-3 h-3 shrink-0 opacity-70" />
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="bg-[var(--bg-graphite)] p-4 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-[13px] font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono flex items-center gap-1.5">
+                          <Bookmark className="w-3.5 h-3.5 tone-blue" />
+                          Pinned Briefs ({workspaceItems.length})
+                        </h3>
+                        <Link
+                          href="/workspace"
+                          className="text-xs tone-blue font-semibold hover:underline"
+                        >
+                          Manage →
+                        </Link>
+                      </div>
+                      <div className="divide-y divide-[var(--border-subtle)]">
+                        {workspaceItems.slice(0, 4).map((item) => (
+                          <Link
+                            key={item.id}
+                            href={item.href}
+                            className="block py-2 hover:bg-[var(--bg-slate)]/50 -mx-2 px-2 rounded transition-colors"
+                          >
+                            <div className="flex items-center justify-between gap-2 text-[13.5px] font-semibold">
+                              <span className="text-[var(--text-primary)] truncate">{item.title}</span>
+                              <span className="text-[11px] uppercase px-1.5 py-0.5 rounded badge-tone-blue omnis-mono shrink-0">
+                                {item.type}
+                              </span>
+                            </div>
+                            <div className="text-xs text-[var(--text-secondary)] mt-0.5 truncate">
+                              {item.subtitle}
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </section>
               ),
@@ -491,72 +601,64 @@ export default function CommandCenterPage() {
           })()}
         </div>
 
-        {/* Right Telemetry & Pinned Workspace Hairline Rail (4 Cols) */}
+        {/* Right Epistemic Provider Telemetry & Timeline Rail (4 Cols) */}
         <aside className="lg:col-span-4 border border-[var(--border-subtle)] rounded-lg bg-[var(--bg-graphite)] divide-y divide-[var(--border-subtle)]">
-          {/* Search History Strip */}
-          {isWidgetVisible("recent-explorations") ? (
-            <div className="p-4 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <h2 className="text-[13px] font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono flex items-center gap-1.5">
-                  <Search className="w-3.5 h-3.5 tone-violet" />
-                  Query History
-                </h2>
-                <Link
-                  href="/explore"
-                  className="omnis-magnetic-arrow text-xs tone-blue font-semibold hover:underline inline-flex items-center gap-1"
-                >
-                  <span>Search All</span>
-                  <ArrowRight className="omnis-arrow-glyph w-3 h-3" />
-                </Link>
-              </div>
-              <div className="divide-y divide-[var(--border-subtle)]">
-                {searchHistory.slice(0, 5).map((q) => (
-                  <Link
-                    key={q}
-                    href={`/explore?q=${encodeURIComponent(q)}`}
-                    className="omnis-magnetic-arrow flex items-center justify-between py-2 text-[13.5px] text-[var(--text-secondary)] hover:text-[var(--accent-blue)] transition-colors gap-2"
-                  >
-                    <span className="truncate font-medium">{q}</span>
-                    <ArrowRight className="omnis-arrow-glyph w-3 h-3 shrink-0 opacity-70" />
-                  </Link>
-                ))}
-              </div>
+          {/* Live Epistemic Provider Telemetry */}
+          <div className="p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-[13px] font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 tone-cyan" />
+                Live Epistemic Telemetry
+              </h2>
+              <Link
+                href="/settings"
+                className="text-xs tone-blue font-semibold hover:underline omnis-mono"
+              >
+                Status →
+              </Link>
             </div>
-          ) : null}
-
-          {/* Pinned Workspace Bookmarks */}
-          {isWidgetVisible("recent-explorations") ? (
-            <div className="p-4 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <h2 className="text-[13px] font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono flex items-center gap-1.5">
-                  <Bookmark className="w-3.5 h-3.5 tone-blue" />
-                  Pinned Workspace ({workspaceItems.length})
-                </h2>
-                <Link href="/workspace" className="text-xs tone-blue font-semibold hover:underline">
-                  Manage →
-                </Link>
-              </div>
-              <div className="divide-y divide-[var(--border-subtle)]">
-                {workspaceItems.slice(0, 4).map((item) => (
+            <div className="divide-y divide-[var(--border-subtle)]">
+              {providerStatuses.map((provider) => {
+                const routeMap: Record<string, string> = {
+                  "world-bank": "/intelligence",
+                  "rest-countries": "/atlas",
+                  openalex: "/explore",
+                  wikimedia: "/knowledge-graph",
+                };
+                const targetHref = routeMap[provider.id] ?? "/explore";
+                const isOp = provider.status === "operational";
+                const isChecking = provider.status === "checking";
+                return (
                   <Link
-                    key={item.id}
-                    href={item.href}
-                    className="block py-2.5 hover:bg-[var(--bg-slate)]/50 -mx-2 px-2 rounded transition-colors"
+                    key={provider.id}
+                    href={targetHref}
+                    className="flex items-center justify-between gap-2 py-2.5 hover:bg-[var(--bg-slate)]/50 -mx-2 px-2 rounded transition-colors"
                   >
-                    <div className="flex items-center justify-between gap-2 text-[13.5px] font-semibold">
-                      <span className="text-[var(--text-primary)] truncate">{item.title}</span>
-                      <span className="text-[11px] uppercase px-1.5 py-0.5 rounded badge-tone-blue omnis-mono shrink-0">
-                        {item.type}
-                      </span>
+                    <div className="min-w-0">
+                      <div className="text-[13.5px] font-semibold text-[var(--text-primary)] truncate">
+                        {provider.name}
+                      </div>
+                      <div className="text-xs text-[var(--text-muted)] omnis-mono">
+                        {provider.license}
+                        {typeof provider.latencyMs === "number" ? ` • ${provider.latencyMs}ms` : ""}
+                      </div>
                     </div>
-                    <div className="text-xs text-[var(--text-secondary)] mt-0.5 truncate">
-                      {item.subtitle}
-                    </div>
+                    <span
+                      className={`text-[11px] uppercase px-2 py-0.5 rounded omnis-mono shrink-0 ${
+                        isOp
+                          ? "badge-tone-verified"
+                          : isChecking
+                          ? "badge-tone-blue"
+                          : "badge-tone-warning"
+                      }`}
+                    >
+                      {provider.status}
+                    </span>
                   </Link>
-                ))}
-              </div>
+                );
+              })}
             </div>
-          ) : null}
+          </div>
 
           {/* Timeline Digest */}
           <div className="p-4 space-y-2.5">

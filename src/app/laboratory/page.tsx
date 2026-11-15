@@ -10,6 +10,7 @@ import {
   Play,
   Pause,
   Info,
+  Download,
 } from "lucide-react";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
@@ -267,9 +268,12 @@ function LaboratoryContent() {
 
     const isAnimating = running && !motionPaused && !pendulumRef.current.dragging && !orbitDraggingRef.current;
     let frameId = 0;
+    let lastFrameTime = performance.now();
 
-    const render = () => {
-      if (isAnimating) simTimeRef.current += 0.025;
+    const render = (now: number = performance.now()) => {
+      const dt = Math.min(0.033, Math.max(0.001, (now - lastFrameTime) / 1000)) * 60;
+      lastFrameTime = now;
+      if (isAnimating) simTimeRef.current += 0.025 * dt;
       const t = simTimeRef.current;
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -295,8 +299,8 @@ function LaboratoryContent() {
       if (activeId === "physics") {
         if (isAnimating) {
           const alpha = -(p1 / p2) * Math.sin(pendulumRef.current.theta) - p3 * pendulumRef.current.omega;
-          pendulumRef.current.omega += alpha * 0.035;
-          pendulumRef.current.theta += pendulumRef.current.omega * 0.035;
+          pendulumRef.current.omega += alpha * (0.035 * dt);
+          pendulumRef.current.theta += pendulumRef.current.omega * (0.035 * dt);
         }
         const theta = pendulumRef.current.theta;
         const pivotX = W * 0.28;
@@ -719,10 +723,26 @@ function LaboratoryContent() {
         subtitle={exp.objective}
         icon={<FlaskConical className="w-3.5 h-3.5" />}
         actions={
-          <OmnisButton onClick={handleSaveLab}>
-            {savedNotice ? <Check className="w-3.5 h-3.5" /> : <Bookmark className="w-3.5 h-3.5" />}
-            <span>{savedNotice ? "Experiment Saved" : "Save Experiment"}</span>
-          </OmnisButton>
+          <>
+            <OmnisButton
+              variant="secondary"
+              onClick={() => {
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+                const link = document.createElement("a");
+                link.download = `omnis-lab-${activeId}.png`;
+                link.href = canvas.toDataURL("image/png");
+                link.click();
+              }}
+            >
+              <Download className="w-3.5 h-3.5 tone-cyan" />
+              <span>Export PNG</span>
+            </OmnisButton>
+            <OmnisButton onClick={handleSaveLab}>
+              {savedNotice ? <Check className="w-3.5 h-3.5" /> : <Bookmark className="w-3.5 h-3.5" />}
+              <span>{savedNotice ? "Experiment Saved" : "Save Experiment"}</span>
+            </OmnisButton>
+          </>
         }
       >
         <div className="pt-1 overflow-x-auto max-w-full">

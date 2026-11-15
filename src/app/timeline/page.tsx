@@ -53,7 +53,11 @@ const ERAS: { id: TimelineEra | "all"; label: string; range: string }[] = [
 function TimelineContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const initialEventId = searchParams.get("event") || "evt-india-1991";
+  const urlEventParam = searchParams.get("event")?.trim() || "";
+  const initialEventId =
+    urlEventParam && TIMELINE_EVENTS.some((e) => e.id === urlEventParam)
+      ? urlEventParam
+      : "evt-india-1991";
 
   const [selectedEra, setSelectedEra] = useState<TimelineEra | "all">("all");
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -65,6 +69,17 @@ function TimelineContent() {
   const [scrubbing, setScrubbing] = useState(false);
   const [mobileDossierOpen, setMobileDossierOpen] = useState(false);
   const scrubberRef = React.useRef<HTMLDivElement | null>(null);
+
+  const selectEvent = (eventId: string) => {
+    setSelectedEventId(eventId);
+    router.replace(`/timeline?event=${encodeURIComponent(eventId)}`, { scroll: false });
+  };
+
+  useEffect(() => {
+    if (urlEventParam && TIMELINE_EVENTS.some((e) => e.id === urlEventParam)) {
+      setSelectedEventId(urlEventParam);
+    }
+  }, [urlEventParam]);
 
   const { addWorkspaceItem, setActiveContext } = useOmnisStore();
 
@@ -215,7 +230,7 @@ function TimelineContent() {
                 <button
                   key={evt.id}
                   type="button"
-                  onClick={() => setSelectedEventId(evt.id)}
+                  onClick={() => selectEvent(evt.id)}
                   className={`w-72 text-left p-4 rounded-xl border transition-all flex flex-col justify-between gap-2 cursor-pointer ${
                     active
                       ? "bg-[var(--bg-elevated)] border-[var(--accent-blue)] ring-1 ring-[var(--accent-blue)]"
@@ -244,13 +259,16 @@ function TimelineContent() {
 
       {/* Piecewise-Logarithmic 5,000-Year Temporal Scrubber */}
       {(() => {
-        const scrubFromPointer = (clientX: number) => {
+        const scrubFromPointer = (clientX: number, syncUrl = false) => {
           const track = scrubberRef.current;
           if (!track || filteredEvents.length === 0) return;
           const rect = track.getBoundingClientRect();
           const pct = ((clientX - rect.left) / Math.max(1, rect.width)) * 100;
           const nearest = findNearestEventByPercent(filteredEvents, pct);
-          if (nearest && nearest.id !== selectedEventId) {
+          if (!nearest) return;
+          if (syncUrl) {
+            selectEvent(nearest.id);
+          } else if (nearest.id !== selectedEventId) {
             setSelectedEventId(nearest.id);
           }
         };
@@ -286,7 +304,11 @@ function TimelineContent() {
               onPointerMove={(e) => {
                 if (scrubbing) scrubFromPointer(e.clientX);
               }}
-              onPointerUp={() => setScrubbing(false)}
+              onPointerUp={(e) => {
+                setScrubbing(false);
+                scrubFromPointer(e.clientX, true);
+              }}
+              onPointerCancel={() => setScrubbing(false)}
               onPointerLeave={() => setScrubbing(false)}
               onKeyDown={(e) => {
                 const idx = filteredEvents.findIndex((evt) => evt.id === activeEvent.id);
@@ -294,11 +316,11 @@ function TimelineContent() {
                 if (e.key === "ArrowRight") {
                   e.preventDefault();
                   const next = filteredEvents[Math.min(filteredEvents.length - 1, idx + 1)];
-                  if (next) setSelectedEventId(next.id);
+                  if (next) selectEvent(next.id);
                 } else if (e.key === "ArrowLeft") {
                   e.preventDefault();
                   const prev = filteredEvents[Math.max(0, idx - 1)];
-                  if (prev) setSelectedEventId(prev.id);
+                  if (prev) selectEvent(prev.id);
                 }
               }}
               className="relative h-11 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] cursor-ew-resize select-none touch-none px-3 flex items-center"
@@ -326,7 +348,7 @@ function TimelineContent() {
                       title={`${evt.dateDisplay}: ${evt.title}`}
                       onClick={(e) => {
                         e.stopPropagation();
-                        setSelectedEventId(evt.id);
+                        selectEvent(evt.id);
                       }}
                       style={{
                         left: `${pct}%`,
@@ -349,9 +371,9 @@ function TimelineContent() {
               </div>
             </div>
 
-            <div className="relative h-5 text-xs omnis-mono omnis-tabular text-[var(--text-muted)]">
+            <div className="relative h-5 text-[11px] sm:text-xs omnis-mono omnis-tabular text-[var(--text-muted)]">
               <span className="absolute left-0">3000 BCE</span>
-              <span style={{ left: "22%" }} className="absolute -translate-x-1/2">
+              <span className="absolute left-[25%] sm:left-[22%] -translate-x-1/2">
                 500 CE
               </span>
               <span style={{ left: "45%" }} className="absolute -translate-x-1/2">
@@ -376,7 +398,7 @@ function TimelineContent() {
               return (
                 <div
                   key={evt.id}
-                  onClick={() => setSelectedEventId(evt.id)}
+                  onClick={() => selectEvent(evt.id)}
                   className={`relative p-3.5 rounded-xl border cursor-pointer transition-all ${
                     active
                       ? "bg-[var(--bg-elevated)] border-[var(--accent-blue)] shadow-sm"
@@ -386,8 +408,8 @@ function TimelineContent() {
                   <span
                     className={`absolute -left-[23px] top-4 w-3 h-3 rounded-full border-2 ${
                       active
-                        ? "bg-[var(--accent-blue)] border-[var(--bg-obsidian)]"
-                        : "bg-[var(--bg-obsidian)] border-[var(--accent-blue)]"
+                        ? "bg-[var(--accent-blue)] border-[var(--bg-graphite)]"
+                        : "bg-[var(--bg-graphite)] border-[var(--accent-blue)]"
                     }`}
                   />
                   <div className="flex items-center justify-between text-xs omnis-mono">

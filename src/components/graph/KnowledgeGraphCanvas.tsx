@@ -258,6 +258,17 @@ export function KnowledgeGraphCanvas({
     };
   }, [isFullscreen]);
 
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isFullscreen]);
+
   const basePositions = useMemo(
     () =>
       computeLayoutPositions(nodes, edges, layoutMode, canvasSize.width, canvasSize.height),
@@ -469,7 +480,9 @@ export function KnowledgeGraphCanvas({
   return (
     <div
       className={`${
-        isFullscreen ? "fixed inset-4 z-50 bg-[var(--bg-obsidian)]" : "relative w-full h-[560px]"
+        isFullscreen
+          ? "fixed inset-4 z-50 h-[calc(100dvh-2rem)] bg-[var(--bg-obsidian)]/95 backdrop-blur-xl shadow-2xl"
+          : "relative w-full h-[560px]"
       } omnis-card overflow-hidden flex flex-col`}
     >
       {/* Top Control Toolbar */}
