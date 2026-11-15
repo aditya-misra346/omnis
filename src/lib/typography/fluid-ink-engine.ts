@@ -283,6 +283,8 @@ class SharedFluidInkEngine {
   private resizeObserver: ResizeObserver | null = null;
   private intersectionObserver: IntersectionObserver | null = null;
   private reducedMotionMq: MediaQueryList | null = null;
+  private ambientIntervalId: ReturnType<typeof setInterval> | null = null;
+  private isCoarsePointer = false;
 
   private pointerPrev: { x: number; y: number } | null = null;
 
@@ -354,6 +356,21 @@ class SharedFluidInkEngine {
         this.renderMirrorCanvas(t);
       }
     }
+  }
+
+  /** Trigger a localized touch ripple wave from mobile touch devices without blocking scroll. */
+  pulseTouchWave(u: number, v: number, dx = 0.45, dy = 0.35): void {
+    if (this.isMotionDisabled() || !this.initialized) return;
+    const clampedU = Math.max(0.05, Math.min(0.95, u));
+    const clampedV = Math.max(0.05, Math.min(0.95, v));
+    const speed = Math.min(1, Math.hypot(dx, dy));
+    this.splat(clampedU, clampedV, dx, dy, [
+      0.38 + speed * 0.42,
+      0.62 + speed * 0.32,
+      0.72 + speed * 0.25,
+    ]);
+    this.lastPointerActivityTime = performance.now();
+    this.wake(2800);
   }
 
   private isMotionDisabled(): boolean {
@@ -439,6 +456,36 @@ class SharedFluidInkEngine {
 
     window.addEventListener("pointermove", this.handlePointerMove, { passive: true });
     document.addEventListener("visibilitychange", this.handleVisibilityChange, { passive: true });
+
+    // On coarse-pointer (mobile) viewports, run a gentle 0.35Hz autonomous harmonic phase shift when idle
+    this.isCoarsePointer = Boolean(window.matchMedia?.("(pointer: coarse)")?.matches);
+    if (this.isCoarsePointer && !this.ambientIntervalId) {
+      this.ambientIntervalId = setInterval(() => {
+        if (
+          this.isMotionDisabled() ||
+          this.documentHidden ||
+          !this.initialized ||
+          this.targets.size === 0
+        ) {
+          return;
+        }
+        let anyVisible = false;
+        for (const t of this.targets.values()) {
+          if (t.intersecting) {
+            anyVisible = true;
+            break;
+          }
+        }
+        if (!anyVisible) return;
+        const now = performance.now();
+        if (now - this.lastPointerActivityTime < 2200) return;
+        const phase = now * 0.0022; // ~0.35Hz harmonic angular frequency
+        const hx = 0.5 + 0.32 * Math.cos(phase);
+        const hy = 0.5 + 0.24 * Math.sin(phase * 1.3);
+        this.splat(hx, hy, Math.cos(phase) * 0.48, Math.sin(phase) * 0.42, [0.24, 0.38, 0.48]);
+        this.wake(2600);
+      }, 2850);
+    }
   }
 
   private initWebGL2(): void {
@@ -651,6 +698,10 @@ class SharedFluidInkEngine {
 
   private disposeAllResources(): void {
     this.stopLoop();
+    if (this.ambientIntervalId) {
+      clearInterval(this.ambientIntervalId);
+      this.ambientIntervalId = null;
+    }
     if (typeof window !== "undefined") {
       window.removeEventListener("pointermove", this.handlePointerMove);
       document.removeEventListener("visibilitychange", this.handleVisibilityChange);

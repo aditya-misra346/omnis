@@ -1,3 +1,4 @@
+import { COUNTRIES_DATA } from "@/lib/data/global-intelligence";
 import type {
   SimulationCategory,
   SimulationRunOutput,
@@ -371,7 +372,8 @@ function sampleNormal(rand: () => number): number {
 
 function computeScenarioDynamics(
   category: SimulationCategory,
-  values: Record<string, number>
+  values: Record<string, number>,
+  countryIso3?: string
 ): {
   initialVal: number;
   baseDrift: number;
@@ -379,6 +381,7 @@ function computeScenarioDynamics(
   sigma: number;
   additiveMode: boolean;
 } {
+  const country = countryIso3 ? COUNTRIES_DATA[countryIso3.toUpperCase()] : undefined;
   let initialVal = 100.0;
   let baseDrift = 0.032;
   let modDrift = 0.032;
@@ -390,34 +393,52 @@ function computeScenarioDynamics(
     const rate = (values.interestRateDeltaBps ?? 125) / 10000;
     const fiscal = (values.fiscalStimulusPctGdp ?? 2.0) / 100;
     const tariff = (values.tariffRatePct ?? 12) / 100;
-    baseDrift = 0.032;
-    modDrift = baseDrift - 0.042 * oil - 0.36 * rate + 0.44 * fiscal - 0.12 * tariff;
-    sigma = 0.012 + 0.015 * Math.abs(oil) + 0.01 * Math.abs(tariff);
+    baseDrift = country ? Math.max(0.006, country.gdpGrowthPct / 100) : 0.032;
+    const fossilExposure = country
+      ? Math.max(0.4, (100 - country.energyProfile.renewableSharePct) / 68)
+      : 1.0;
+    modDrift =
+      baseDrift -
+      0.042 * fossilExposure * oil -
+      0.36 * rate +
+      0.44 * fiscal -
+      0.12 * tariff;
+    sigma = 0.012 + 0.015 * fossilExposure * Math.abs(oil) + 0.01 * Math.abs(tariff);
   } else if (category === "demographics") {
     const tfr = values.fertilityDelta ?? -0.3;
     const mig = (values.netMigrationPer1000 ?? 4.0) / 1000;
     const part = (values.urbanFemaleParticipationDeltaPct ?? 6) / 100;
-    baseDrift = 0.004;
+    baseDrift = country ? 0.004 + (29 - country.medianAgeYears) * 0.00025 : 0.004;
     modDrift = baseDrift + 0.007 * tfr + 1.2 * mig + 0.14 * part;
     sigma = 0.005;
   } else if (category === "energy") {
-    initialVal = 41.2;
+    initialVal = country
+      ? Number(
+          (
+            country.energyProfile.renewableSharePct + country.energyProfile.nuclearSharePct
+          ).toFixed(1)
+        )
+      : 41.2;
     additiveMode = true;
     const capex = values.renewableCapexDeclinePct ?? 8;
     const nuc = values.nuclearAdditionGw ?? 25;
     const stor = values.storageExpansionPct ?? 30;
-    baseDrift = 1.15;
+    baseDrift = Math.max(0.55, 1.35 - initialVal * 0.006);
     modDrift = 0.14 * capex + 0.035 * nuc + 0.028 * stor;
     sigma = 0.45;
   } else if (category === "technology") {
     const ai = (values.aiEnterpriseAdoptionPct ?? 65) / 100;
     const fab = (values.semiconductorCapexGrowthPct ?? 18) / 100;
     const pwr = (values.datacenterPowerConstraintPct ?? 10) / 100;
-    baseDrift = 0.018;
+    baseDrift = country
+      ? 0.012 +
+        (country.technologyProfile.aiReadinessIndex / 100) * 0.01 +
+        (country.technologyProfile.rdSpendPctGdp / 5) * 0.006
+      : 0.018;
     modDrift = baseDrift + 0.028 * (ai - 0.3) + 0.055 * (fab - 0.1) - 0.032 * (pwr - 0.15);
     sigma = 0.011;
   } else {
-    initialVal = 1.32;
+    initialVal = country ? country.environmentProfile.tempAnomalyC : 1.32;
     additiveMode = true;
     const cut = values.annualEmissionsReductionPct ?? 5.5;
     const ch4 = values.methaneAbatementPct ?? 35;
@@ -455,12 +476,19 @@ export function executeWhatIfSimulation(params: {
   category: SimulationCategory;
   horizonYears: number;
   seed?: number;
+  countryIso3?: string;
   overrides?: Record<string, number>;
 }): SimulationRunOutput {
   const spec =
     SIMULATION_SCENARIOS.find(
       (s) => s.id === params.scenarioId || s.category === params.category
     ) ?? SIMULATION_SCENARIOS[0];
+
+  const country =
+    params.countryIso3 && params.countryIso3 !== "GLOBAL"
+      ? COUNTRIES_DATA[params.countryIso3.toUpperCase()]
+      : undefined;
+  const countryCode = country?.iso3;
 
   const horizon = Math.min(Math.max(params.horizonYears || 15, 5), 50);
   const seed = params.seed ?? 42;
@@ -485,7 +513,8 @@ export function executeWhatIfSimulation(params: {
 
   const { initialVal, baseDrift, modDrift, sigma, additiveMode } = computeScenarioDynamics(
     spec.category,
-    currentValues
+    currentValues,
+    countryCode
   );
 
   const trajectory: SimulationTrajectoryPoint[] = [];
@@ -562,7 +591,11 @@ export function executeWhatIfSimulation(params: {
 
   const sensitivity: SimulationSensitivityItem[] = spec.parameters
     .map((p) => {
-      const lowRun = computeScenarioDynamics(spec.category, { ...currentValues, [p.key]: p.min });
+      const lowRun = computeScenarioDynamics(
+        spec.category,
+        { ...currentValues, [p.key]: p.min },
+        countryCode
+      );
       const lowTerminal = computeExpectedTerminalValue(
         lowRun.initialVal,
         lowRun.modDrift,
@@ -570,7 +603,11 @@ export function executeWhatIfSimulation(params: {
         lowRun.additiveMode,
         spec.category
       );
-      const highRun = computeScenarioDynamics(spec.category, { ...currentValues, [p.key]: p.max });
+      const highRun = computeScenarioDynamics(
+        spec.category,
+        { ...currentValues, [p.key]: p.max },
+        countryCode
+      );
       const highTerminal = computeExpectedTerminalValue(
         highRun.initialVal,
         highRun.modDrift,
@@ -601,6 +638,17 @@ export function executeWhatIfSimulation(params: {
   );
   const spread = Number((terminal.modifiedP90 - terminal.modifiedP10).toFixed(2));
 
+  const baselineLabel = country
+    ? `${country.name} (${country.iso3}) Sovereign Baseline`
+    : "Global Aggregate Baseline";
+
+  const anchoredAssumptions = country
+    ? [
+        `Anchored to ${country.officialName} (${country.iso3}): Real growth +${country.gdpGrowthPct}%, Clean Grid ${country.energyProfile.renewableSharePct}%, AI Index ${country.technologyProfile.aiReadinessIndex}, Temp Anomaly +${country.environmentProfile.tempAnomalyC}°C.`,
+        ...spec.baselineAssumptions,
+      ]
+    : spec.baselineAssumptions;
+
   return {
     scenarioId: spec.id,
     scenarioTitle: spec.title,
@@ -613,7 +661,7 @@ export function executeWhatIfSimulation(params: {
     seed,
     units: spec.units,
     parametersUsed,
-    initialAssumptions: spec.baselineAssumptions,
+    initialAssumptions: anchoredAssumptions,
     trajectory,
     sensitivity,
     summaryMetrics: {
@@ -622,9 +670,9 @@ export function executeWhatIfSimulation(params: {
       percentageDelta: pctDelta,
       uncertaintySpreadP90MinusP10: spread,
     },
-    analyticalExplanation: `Across a ${horizon}-year simulation window (${baseYear}–${
+    analyticalExplanation: `Calibrated for ${baselineLabel} over a ${horizon}-year window (${baseYear}–${
       baseYear + horizon
-    }), the modified parameter vector shifts the terminal median (${
+    }), the modified vector shifts the terminal median (${
       spec.dependentVariableLabel
     }) from ${terminal.baseline} to ${terminal.modifiedP50} (${
       pctDelta >= 0 ? "+" : ""
@@ -634,7 +682,80 @@ export function executeWhatIfSimulation(params: {
     limitations: spec.limitations,
     provenance: {
       ...spec.sourceAttribution,
+      coverage: country ? `${country.officialName} (${country.iso3})` : spec.sourceAttribution.coverage,
       retrievedAt: new Date().toISOString(),
     },
   };
+}
+
+export interface ParsedSimulationPrompt {
+  category?: SimulationCategory;
+  countryIso3?: string;
+  overrides: Record<string, number>;
+}
+
+/**
+ * Parses natural-language simulation prompts (e.g. from /command or ⌘K)
+ * into simulation category, optional sovereign country anchor, and numeric shocks.
+ */
+export function parseSimulationQueryPrompt(query: string): ParsedSimulationPrompt {
+  const lower = query.trim().toLowerCase();
+  const overrides: Record<string, number> = {};
+  if (!lower) return { overrides };
+
+  let category: SimulationCategory | undefined;
+  if (lower.includes("oil") || lower.includes("tariff") || lower.includes("rate") || lower.includes("fiscal") || lower.includes("gdp")) {
+    category = "economics";
+  } else if (lower.includes("fertility") || lower.includes("migration") || lower.includes("age") || lower.includes("demograph")) {
+    category = "demographics";
+  } else if (lower.includes("solar") || lower.includes("nuclear") || lower.includes("energy") || lower.includes("grid") || lower.includes("clean")) {
+    category = "energy";
+  } else if (lower.includes("ai") || lower.includes("semiconductor") || lower.includes("chip") || lower.includes("fab")) {
+    category = "technology";
+  } else if (lower.includes("climate") || lower.includes("carbon") || lower.includes("emission") || lower.includes("warming")) {
+    category = "environment";
+  }
+
+  let countryIso3: string | undefined;
+  const aliasMap: Record<string, string> = {
+    usa: "USA",
+    "united states": "USA",
+    uk: "GBR",
+    "united kingdom": "GBR",
+  };
+  for (const [alias, iso] of Object.entries(aliasMap)) {
+    if (new RegExp(`\\b${alias}\\b`).test(lower)) {
+      countryIso3 = iso;
+      break;
+    }
+  }
+  if (!countryIso3) {
+    for (const country of Object.values(COUNTRIES_DATA)) {
+      if (
+        lower.includes(country.name.toLowerCase()) ||
+        new RegExp(`\\b${country.iso3.toLowerCase()}\\b`).test(lower)
+      ) {
+        countryIso3 = country.iso3;
+        break;
+      }
+    }
+  }
+
+  const oilMatch = lower.match(/oil[^0-9+-]*([+-]?\d+(?:\.\d+)?)\s*%?/);
+  if (oilMatch) {
+    const val = Number(oilMatch[1]);
+    if (Number.isFinite(val)) overrides.oilPriceShockPct = Math.max(-40, Math.min(100, val));
+  }
+  const tariffMatch = lower.match(/tariff[^0-9+-]*([+-]?\d+(?:\.\d+)?)\s*%?/);
+  if (tariffMatch) {
+    const val = Number(tariffMatch[1]);
+    if (Number.isFinite(val)) overrides.tariffRatePct = Math.max(0, Math.min(40, val));
+  }
+  const bpsMatch = lower.match(/(\d+(?:\.\d+)?)\s*bps/);
+  if (bpsMatch) {
+    const val = Number(bpsMatch[1]);
+    if (Number.isFinite(val)) overrides.interestRateDeltaBps = Math.max(-250, Math.min(400, val));
+  }
+
+  return { category, countryIso3, overrides };
 }

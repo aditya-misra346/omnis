@@ -23,7 +23,12 @@ import {
 import { fetchOpenAlexSources } from "@/lib/providers/live-data";
 import type { ResearchSourceItem } from "@/types/omnis";
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
-import { OmnisButton, OmnisModuleHeader } from "@/components/ui/OmnisPrimitives";
+import {
+  OmnisButton,
+  OmnisModuleHeader,
+  OmnisSegmentedControl,
+  OmnisSkeleton,
+} from "@/components/ui/OmnisPrimitives";
 import { OmnisSelect } from "@/components/ui/OmnisSelect";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 
@@ -47,6 +52,9 @@ function ExploreContent() {
   const [activeTab, setActiveTab] = useState("overview");
   const [sourceFilter, setSourceFilter] = useState<UniversalSearchSourceFilter>("all");
   const [openAlexWorks, setOpenAlexWorks] = useState<ResearchSourceItem[]>([]);
+  const [liveFetchState, setLiveFetchState] = useState<
+    "loading" | "verified" | "offline-fallback"
+  >("loading");
 
   const {
     searchHistory,
@@ -70,12 +78,17 @@ function ExploreContent() {
 
   useEffect(() => {
     let active = true;
+    setLiveFetchState("loading");
     fetchOpenAlexSources(activeQuery, 4)
       .then((items) => {
-        if (active) setOpenAlexWorks(items);
+        if (!active) return;
+        setOpenAlexWorks(items);
+        setLiveFetchState(items.length > 0 ? "verified" : "offline-fallback");
       })
       .catch(() => {
-        if (active) setOpenAlexWorks([]);
+        if (!active) return;
+        setOpenAlexWorks([]);
+        setLiveFetchState("offline-fallback");
       });
     return () => {
       active = false;
@@ -176,22 +189,19 @@ function ExploreContent() {
           </div>
         </div>
 
-        {/* Category Filter Tabs */}
-        <div className="flex flex-wrap gap-1.5 pt-1">
-          {RESULT_CATEGORIES.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === tab.id
-                  ? "bg-[var(--accent-blue-solid)] text-white shadow-xs"
-                  : "bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        {/* Category Filter Tabs (OmnisSegmentedControl) */}
+        <div className="pt-1 overflow-x-auto max-w-full">
+          <OmnisSegmentedControl
+            groupId="explore-category-tabs"
+            ariaLabel="Universal Search Category Filter"
+            size="sm"
+            value={activeTab}
+            onChange={setActiveTab}
+            options={RESULT_CATEGORIES.map((tab) => ({
+              value: tab.id,
+              label: tab.label,
+            }))}
+          />
         </div>
       </OmnisModuleHeader>
 
@@ -199,6 +209,7 @@ function ExploreContent() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-8 space-y-6">
           {searchResults.countries.length === 0 &&
+            liveFetchState !== "loading" &&
             openAlexWorks.length === 0 &&
             searchResults.historicalEvents.length === 0 &&
             searchResults.technologiesAndOrganizations.length === 0 && (
@@ -256,12 +267,16 @@ function ExploreContent() {
                   <Globe2 className="w-4 h-4 tone-blue" />
                   Sovereign Country Intelligence Matches ({searchResults.countries.length})
                 </h2>
-                <Link href="/atlas" className="text-xs tone-blue font-semibold hover:underline">
-                  Open 3D Global Atlas →
+                <Link
+                  href="/atlas"
+                  className="omnis-magnetic-arrow text-xs tone-blue font-semibold hover:underline inline-flex items-center gap-1"
+                >
+                  <span>Open 3D Global Atlas</span>
+                  <ArrowRight className="omnis-arrow-glyph w-3.5 h-3.5" />
                 </Link>
               </div>
               {searchResults.countries.length === 0 ? (
-                <div className="omnis-surface-slate p-4 text-xs text-[var(--text-secondary)] flex flex-wrap items-center justify-between gap-2">
+                <div className="py-3 border-t border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] flex flex-wrap items-center justify-between gap-2">
                   <span>
                     No Sovereign Country profiles match the active source filter ({sourceFilter}).
                   </span>
@@ -274,28 +289,33 @@ function ExploreContent() {
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="divide-y divide-[var(--border-subtle)] border-t border-[var(--border-subtle)]">
                   {searchResults.countries.map((c) => (
                     <Link
                       key={c.iso3}
                       href={`/atlas?country=${c.iso3}`}
-                      className="omnis-surface-slate omnis-card-interactive p-4 space-y-2"
+                      className="omnis-magnetic-arrow flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-3.5 px-1 hover:bg-[var(--bg-slate)]/50 transition-colors"
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-bold text-sm text-[var(--text-primary)]">
-                          {c.flagEmoji} {c.officialName}
-                        </span>
-                        <span className="text-[10px] font-bold omnis-mono px-1.5 py-0.5 rounded-md badge-tone-blue shrink-0">
-                          {c.iso3}
-                        </span>
+                      <div className="space-y-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm text-[var(--text-primary)]">
+                            {c.flagEmoji} {c.officialName}
+                          </span>
+                          <span className="text-[10px] font-bold omnis-mono px-1.5 py-0.5 rounded-md badge-tone-blue shrink-0">
+                            {c.iso3}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-[var(--text-muted)] truncate">
+                          Source: {c.provenance.source}
+                        </div>
                       </div>
-                      <div className="text-xs text-[var(--text-secondary)] omnis-tabular">
-                        GDP: <strong className="text-[var(--text-primary)]">${c.gdpUsdBn.toLocaleString()}B</strong>{" "}
-                        (+{c.gdpGrowthPct}%/yr) • Capita: ${c.gdpPerCapitaUsd.toLocaleString()} • Clean:{" "}
-                        {c.energyProfile.renewableSharePct}%
-                      </div>
-                      <div className="text-[10px] text-[var(--text-muted)]">
-                        Source: {c.provenance.source}
+                      <div className="flex items-center gap-3 text-xs text-[var(--text-secondary)] omnis-tabular shrink-0">
+                        <span>
+                          GDP <strong className="omnis-mono text-[var(--text-primary)]">${c.gdpUsdBn.toLocaleString()}B</strong>{" "}
+                          <span className="tone-verified">(+{c.gdpGrowthPct}%)</span>
+                        </span>
+                        <span className="hidden sm:inline">Clean {c.energyProfile.renewableSharePct}%</span>
+                        <ArrowRight className="omnis-arrow-glyph w-3.5 h-3.5 tone-blue" />
                       </div>
                     </Link>
                   ))}
@@ -306,38 +326,63 @@ function ExploreContent() {
 
           {/* Live Peer-Reviewed OpenAlex Literature Section */}
           {(activeTab === "overview" || activeTab === "research") &&
-            (sourceFilter === "all" || sourceFilter === "openalex") &&
-            openAlexWorks.length > 0 && (
+            (sourceFilter === "all" || sourceFilter === "openalex") && (
               <section className="omnis-card p-5 space-y-3">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <h2 className="text-sm font-bold flex items-center gap-2 text-[var(--text-primary)]">
                     <FileSearch className="w-4 h-4 tone-verified" />
                     Live OpenAlex Scholarly Literature ({openAlexWorks.length})
                   </h2>
-                  <span className="px-2 py-0.5 rounded-full badge-tone-verified text-[10px] font-semibold omnis-mono uppercase">
-                    OpenAlex Live
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-semibold omnis-mono uppercase ${
+                      liveFetchState === "verified"
+                        ? "badge-tone-verified"
+                        : liveFetchState === "loading"
+                          ? "badge-tone-cyan"
+                          : "badge-tone-warning"
+                    }`}
+                  >
+                    {liveFetchState === "loading"
+                      ? "Hydrating OpenAlex…"
+                      : liveFetchState === "verified"
+                        ? "Live OpenAlex Verified"
+                        : "Curated Offline Index Active"}
                   </span>
                 </div>
-                <div className="space-y-2.5">
-                  {openAlexWorks.map((work) => (
-                    <a
-                      key={work.id}
-                      href={work.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block omnis-surface-slate omnis-card-interactive p-4 space-y-1.5"
-                    >
-                      <div className="flex items-center justify-between gap-2 text-[11px] omnis-mono">
-                        <span className="tone-verified font-semibold">{work.publishedDate}</span>
-                        <span className="text-[var(--text-muted)] truncate">{work.publisher}</span>
-                      </div>
-                      <div className="font-bold text-sm text-[var(--text-primary)]">{work.title}</div>
-                      <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                        {work.excerpt}
-                      </p>
-                    </a>
-                  ))}
-                </div>
+                {liveFetchState === "loading" ? (
+                  <div className="space-y-2.5 pt-1">
+                    <OmnisSkeleton className="h-14" />
+                    <OmnisSkeleton className="h-14" />
+                  </div>
+                ) : openAlexWorks.length === 0 ? (
+                  <div className="py-3 border-t border-[var(--border-subtle)] text-xs text-[var(--text-secondary)]">
+                    Live OpenAlex query returned no direct DOI matches or was rate-limited. Curated OMNIS historical &amp; sovereign indices remain active above and below.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-[var(--border-subtle)] border-t border-[var(--border-subtle)]">
+                    {openAlexWorks.map((work) => (
+                      <a
+                        key={work.id}
+                        href={work.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="omnis-magnetic-arrow block py-3.5 px-1 space-y-1 hover:bg-[var(--bg-slate)]/50 transition-colors"
+                      >
+                        <div className="flex items-center justify-between gap-2 text-[11px] omnis-mono">
+                          <span className="tone-verified font-semibold">{work.publishedDate}</span>
+                          <span className="text-[var(--text-muted)] truncate">{work.publisher}</span>
+                        </div>
+                        <div className="font-bold text-sm text-[var(--text-primary)] flex items-center justify-between gap-2">
+                          <span>{work.title}</span>
+                          <ArrowRight className="omnis-arrow-glyph w-3.5 h-3.5 tone-blue shrink-0" />
+                        </div>
+                        <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                          {work.excerpt}
+                        </p>
+                      </a>
+                    ))}
+                  </div>
+                )}
               </section>
             )}
 
@@ -349,27 +394,34 @@ function ExploreContent() {
                   <Clock className="w-4 h-4 tone-warning" />
                   Historical Events & Research Milestones ({searchResults.historicalEvents.length})
                 </h2>
-                <Link href="/timeline" className="text-xs tone-blue font-semibold hover:underline">
-                  Open Reality Timeline →
+                <Link
+                  href="/timeline"
+                  className="omnis-magnetic-arrow text-xs tone-blue font-semibold hover:underline inline-flex items-center gap-1"
+                >
+                  <span>Open Reality Timeline</span>
+                  <ArrowRight className="omnis-arrow-glyph w-3.5 h-3.5" />
                 </Link>
               </div>
               {searchResults.historicalEvents.length === 0 ? (
-                <div className="omnis-surface-slate p-4 text-xs text-[var(--text-secondary)]">
+                <div className="py-3 border-t border-[var(--border-subtle)] text-xs text-[var(--text-secondary)]">
                   No timeline events match the active source filter ({sourceFilter}).
                 </div>
               ) : (
-                <div className="space-y-2.5">
+                <div className="divide-y divide-[var(--border-subtle)] border-t border-[var(--border-subtle)]">
                   {searchResults.historicalEvents.map((evt) => (
                     <Link
                       key={evt.id}
                       href={`/timeline?event=${evt.id}`}
-                      className="block omnis-surface-slate omnis-card-interactive p-4 space-y-1.5"
+                      className="omnis-magnetic-arrow block py-3.5 px-1 space-y-1 hover:bg-[var(--bg-slate)]/50 transition-colors"
                     >
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-bold tone-blue omnis-mono">{evt.dateDisplay}</span>
                         <span className="text-[10px] text-[var(--text-muted)]">{evt.location}</span>
                       </div>
-                      <div className="font-bold text-sm text-[var(--text-primary)]">{evt.title}</div>
+                      <div className="font-bold text-sm text-[var(--text-primary)] flex items-center justify-between gap-2">
+                        <span>{evt.title}</span>
+                        <ArrowRight className="omnis-arrow-glyph w-3.5 h-3.5 tone-blue shrink-0" />
+                      </div>
                       <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
                         {evt.description}
                       </p>
@@ -391,13 +443,13 @@ function ExploreContent() {
                 {searchResults.technologiesAndOrganizations.length})
               </h2>
               {searchResults.technologiesAndOrganizations.length === 0 ? (
-                <div className="omnis-surface-slate p-4 text-xs text-[var(--text-secondary)]">
+                <div className="py-3 border-t border-[var(--border-subtle)] text-xs text-[var(--text-secondary)]">
                   No technology or industry benchmarks match the active source filter ({sourceFilter}).
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="divide-y divide-[var(--border-subtle)] border-t border-[var(--border-subtle)]">
                   {searchResults.technologiesAndOrganizations.map((item) => (
-                    <div key={item.id} className="omnis-surface-slate p-4 space-y-2 text-xs">
+                    <div key={item.id} className="py-3.5 px-1 space-y-1 text-xs">
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-bold text-sm text-[var(--text-primary)]">{item.name}</span>
                         <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md badge-tone-violet shrink-0">
@@ -418,7 +470,7 @@ function ExploreContent() {
         <div className="lg:col-span-4 space-y-6">
           <div className="omnis-card p-5 space-y-3">
             <h3 className="text-sm font-bold text-[var(--text-primary)]">Related Exploration Paths</h3>
-            <div className="space-y-2">
+            <div className="divide-y divide-[var(--border-subtle)] border-t border-[var(--border-subtle)]">
               {searchResults.relatedConcepts.map((concept) => (
                 <button
                   key={concept}
@@ -427,10 +479,10 @@ function ExploreContent() {
                     setQueryInput(concept);
                     setActiveQuery(concept);
                   }}
-                  className="w-full text-left omnis-surface-slate omnis-card-interactive p-3 text-xs text-[var(--text-primary)] flex items-center justify-between cursor-pointer"
+                  className="omnis-magnetic-arrow w-full text-left py-2.5 px-1 text-xs text-[var(--text-primary)] flex items-center justify-between cursor-pointer hover:bg-[var(--bg-slate)]/50 transition-colors"
                 >
                   <span className="font-medium truncate pr-2">{concept}</span>
-                  <ArrowRight className="w-3.5 h-3.5 tone-blue shrink-0" />
+                  <ArrowRight className="omnis-arrow-glyph w-3.5 h-3.5 tone-blue shrink-0" />
                 </button>
               ))}
             </div>
@@ -440,7 +492,7 @@ function ExploreContent() {
             <h3 className="text-sm font-bold text-[var(--text-primary)]">
               Saved Searches ({savedSearches.length})
             </h3>
-            <div className="space-y-1.5">
+            <div className="divide-y divide-[var(--border-subtle)] border-t border-[var(--border-subtle)]">
               {savedSearches.map((sq) => (
                 <button
                   key={sq}
@@ -449,7 +501,7 @@ function ExploreContent() {
                     setQueryInput(sq);
                     setActiveQuery(sq);
                   }}
-                  className="w-full text-left omnis-surface-slate omnis-card-interactive p-2.5 text-xs text-[var(--text-primary)] truncate cursor-pointer"
+                  className="w-full text-left py-2 px-1 text-xs text-[var(--text-primary)] truncate cursor-pointer hover:bg-[var(--bg-slate)]/50 transition-colors"
                 >
                   ★ {sq}
                 </button>
@@ -468,7 +520,7 @@ function ExploreContent() {
                 <Trash2 className="w-3 h-3" /> Clear
               </button>
             </div>
-            <div className="space-y-1.5">
+            <div className="divide-y divide-[var(--border-subtle)] border-t border-[var(--border-subtle)]">
               {searchHistory.map((hq) => (
                 <button
                   key={hq}
@@ -477,7 +529,7 @@ function ExploreContent() {
                     setQueryInput(hq);
                     setActiveQuery(hq);
                   }}
-                  className="w-full text-left omnis-surface-slate omnis-card-interactive p-2.5 text-xs text-[var(--text-primary)] truncate cursor-pointer"
+                  className="w-full text-left py-2 px-1 text-xs text-[var(--text-primary)] truncate cursor-pointer hover:bg-[var(--bg-slate)]/50 transition-colors"
                 >
                   {hq}
                 </button>

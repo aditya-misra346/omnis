@@ -8,6 +8,7 @@ interface CacheEntry<T> {
 }
 
 const memoryCache = new Map<string, CacheEntry<unknown>>();
+let openAlexCooldownUntil = 0;
 
 function getCached<T>(key: string): T | null {
   const hit = memoryCache.get(key);
@@ -25,6 +26,7 @@ function setCached<T>(key: string, data: T, ttlMs = 300_000): void {
 
 export function clearLiveCountryCacheForTests(): void {
   memoryCache.clear();
+  openAlexCooldownUntil = 0;
 }
 
 async function fetchJsonWithTimeout<T>(
@@ -411,16 +413,42 @@ interface WorldBankCountryMetaRecord {
 }
 
 export async function fetchOpenAlexSources(query: string, limit = 4): Promise<ResearchSourceItem[]> {
+  if (!query.trim()) return [];
   const cacheKey = `openalex:${query.toLowerCase()}:${limit}`;
   const cached = getCached<ResearchSourceItem[]>(cacheKey);
   if (cached) return cached;
+
+  if (typeof window !== "undefined") {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 3500);
+      const res = await fetch(
+        `/api/v1/sources?provider=openalex-sources&q=${encodeURIComponent(query)}&limit=${limit}`,
+        { signal: controller.signal, headers: { Accept: "application/json" } }
+      );
+      clearTimeout(timer);
+      if (res.ok) {
+        const payload = (await res.json()) as { items?: ResearchSourceItem[] };
+        const items = Array.isArray(payload.items) ? payload.items : [];
+        setCached(cacheKey, items, items.length > 0 ? 600_000 : 60_000);
+        return items;
+      }
+    } catch {
+      // Graceful offline fallback
+    }
+    return [];
+  }
+
+  if (Date.now() < openAlexCooldownUntil) {
+    return [];
+  }
 
   const nowIso = new Date().toISOString();
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 3000);
     const encoded = encodeURIComponent(query);
-    const url = `https://api.openalex.org/works?search=${encoded}&per-page=${limit}&sort=cited_by_count:desc`;
+    const url = `https://api.openalex.org/works?search=${encoded}&per-page=${limit}&sort=cited_by_count:desc&mailto=research@omnis-intelligence.org`;
     const res = await fetch(url, {
       signal: controller.signal,
       headers: {
@@ -429,6 +457,12 @@ export async function fetchOpenAlexSources(query: string, limit = 4): Promise<Re
       },
     });
     clearTimeout(timer);
+
+    if (res.status === 429) {
+      openAlexCooldownUntil = Date.now() + 60_000;
+      setCached(cacheKey, [], 60_000);
+      return [];
+    }
 
     if (res.ok) {
       const data = (await res.json()) as {
@@ -497,12 +531,39 @@ export async function fetchOpenAlexPublicationTrend(
   const cached = getCached<Array<{ year: number; count: number }>>(cacheKey);
   if (cached) return cached;
 
+  if (typeof window !== "undefined") {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 3500);
+      const res = await fetch(
+        `/api/v1/sources?provider=openalex-trend&q=${encodeURIComponent(query)}`,
+        { signal: controller.signal, headers: { Accept: "application/json" } }
+      );
+      clearTimeout(timer);
+      if (res.ok) {
+        const payload = (await res.json()) as {
+          trend?: Array<{ year: number; count: number }>;
+        };
+        const series = Array.isArray(payload.trend) ? payload.trend : [];
+        setCached(cacheKey, series, series.length > 0 ? 600_000 : 60_000);
+        return series;
+      }
+    } catch {
+      // Graceful sparse return when offline
+    }
+    return [];
+  }
+
+  if (Date.now() < openAlexCooldownUntil) {
+    return [];
+  }
+
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 3000);
     const url = `https://api.openalex.org/works?search=${encodeURIComponent(
       query
-    )}&group_by=publication_year`;
+    )}&group_by=publication_year&mailto=research@omnis-intelligence.org`;
     const res = await fetch(url, {
       signal: controller.signal,
       headers: {
@@ -511,6 +572,11 @@ export async function fetchOpenAlexPublicationTrend(
       },
     });
     clearTimeout(timer);
+    if (res.status === 429) {
+      openAlexCooldownUntil = Date.now() + 60_000;
+      setCached(cacheKey, [], 60_000);
+      return [];
+    }
     if (res.ok) {
       const json = (await res.json()) as {
         group_by?: Array<{ key?: string; count?: number }>;
@@ -543,6 +609,30 @@ export async function fetchWikimediaSummary(
   const cacheKey = `wiki:${topic.toLowerCase()}`;
   const cached = getCached<{ title: string; extract: string; url: string }>(cacheKey);
   if (cached) return cached;
+
+  if (typeof window !== "undefined") {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 3000);
+      const res = await fetch(
+        `/api/v1/sources?provider=wikimedia&topic=${encodeURIComponent(topic)}`,
+        { signal: controller.signal, headers: { Accept: "application/json" } }
+      );
+      clearTimeout(timer);
+      if (res.ok) {
+        const payload = (await res.json()) as {
+          summary?: { title: string; extract: string; url: string } | null;
+        };
+        if (payload.summary) {
+          setCached(cacheKey, payload.summary, 600_000);
+          return payload.summary;
+        }
+      }
+    } catch {
+      // Fallback cleanly
+    }
+    return null;
+  }
 
   try {
     const controller = new AbortController();

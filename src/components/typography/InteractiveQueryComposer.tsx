@@ -23,11 +23,13 @@ const FOCUS_TOPICS = [
 interface InteractiveQueryComposerProps {
   onSubmitQuery: (query: string) => void;
   onSyncDraftQuery?: (query: string) => void;
+  showPresetStrip?: boolean;
 }
 
 export function InteractiveQueryComposer({
   onSubmitQuery,
   onSyncDraftQuery,
+  showPresetStrip = true,
 }: InteractiveQueryComposerProps) {
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
@@ -94,22 +96,23 @@ export function InteractiveQueryComposer({
 
   return (
     <div className="space-y-2.5">
-      {/* Classic One-Click Preset Strip */}
-      <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-        <span className="text-[var(--text-muted)] omnis-mono uppercase tracking-wider text-[10px]">
-          Explore:
-        </span>
-        {QUICK_PRESETS.map((chip) => (
-          <button
-            key={chip}
-            type="button"
-            onClick={() => onSubmitQuery(chip)}
-            className="px-2.5 py-1 rounded-full bg-[var(--bg-slate)] hover:border-[var(--border-strong)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-          >
-            {chip}
-          </button>
-        ))}
-      </div>
+      {showPresetStrip && (
+        <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+          <span className="text-[var(--text-muted)] omnis-mono uppercase tracking-wider text-[10px]">
+            Explore:
+          </span>
+          {QUICK_PRESETS.map((chip) => (
+            <button
+              key={chip}
+              type="button"
+              onClick={() => onSubmitQuery(chip)}
+              className="px-2.5 py-1 rounded-full bg-[var(--bg-slate)] hover:border-[var(--border-strong)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+            >
+              {chip}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Modular Research Query Composer */}
       <div className="omnis-surface-slate p-3 space-y-2.5">

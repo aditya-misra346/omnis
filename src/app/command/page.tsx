@@ -107,9 +107,9 @@ export default function CommandCenterPage() {
               className="w-full bg-transparent text-sm focus:outline-none text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
             />
           </div>
-          <OmnisButton type="submit" size="md">
+          <OmnisButton type="submit" size="md" className="omnis-magnetic-arrow">
             <span>Execute Command</span>
-            <ArrowRight className="w-3.5 h-3.5" />
+            <ArrowRight className="omnis-arrow-glyph w-3.5 h-3.5" />
           </OmnisButton>
         </form>
 
@@ -370,8 +370,12 @@ export default function CommandCenterPage() {
                 <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono">
                   Curated Sovereign Developments
                 </h2>
-                <Link href="/timeline" className="text-xs tone-blue font-semibold hover:underline">
-                  Open Reality Timeline →
+                <Link
+                  href="/timeline"
+                  className="omnis-magnetic-arrow text-xs tone-blue font-semibold hover:underline inline-flex items-center gap-1"
+                >
+                  <span>Open Reality Timeline</span>
+                  <ArrowRight className="omnis-arrow-glyph w-3 h-3" />
                 </Link>
               </div>
 
@@ -416,8 +420,12 @@ export default function CommandCenterPage() {
                   <Search className="w-3.5 h-3.5 tone-violet" />
                   Query History
                 </h2>
-                <Link href="/explore" className="text-[11px] tone-blue font-semibold hover:underline">
-                  Search All →
+                <Link
+                  href="/explore"
+                  className="omnis-magnetic-arrow text-[11px] tone-blue font-semibold hover:underline inline-flex items-center gap-1"
+                >
+                  <span>Search All</span>
+                  <ArrowRight className="omnis-arrow-glyph w-3 h-3" />
                 </Link>
               </div>
               <div className="divide-y divide-[var(--border-subtle)]">
@@ -425,10 +433,10 @@ export default function CommandCenterPage() {
                   <Link
                     key={q}
                     href={`/explore?q=${encodeURIComponent(q)}`}
-                    className="flex items-center justify-between py-2 text-xs text-[var(--text-secondary)] hover:text-[var(--accent-blue)] transition-colors gap-2"
+                    className="omnis-magnetic-arrow flex items-center justify-between py-2 text-xs text-[var(--text-secondary)] hover:text-[var(--accent-blue)] transition-colors gap-2"
                   >
                     <span className="truncate font-medium">{q}</span>
-                    <ArrowRight className="w-3 h-3 shrink-0 opacity-70" />
+                    <ArrowRight className="omnis-arrow-glyph w-3 h-3 shrink-0 opacity-70" />
                   </Link>
                 ))}
               </div>

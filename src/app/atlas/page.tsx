@@ -17,13 +17,18 @@ import {
   Landmark,
   FileSearch,
   Network,
+  ArrowRight,
 } from "lucide-react";
 import { COUNTRIES_DATA } from "@/lib/data/global-intelligence";
 import { InteractiveGlobe3D } from "@/components/globe/InteractiveGlobe3D";
 import { HistoricalTrajectoryChart } from "@/components/charts/OmnisCharts";
 import { ProvenancePanel } from "@/components/ui/ProvenancePanel";
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
-import { OmnisButton, OmnisModuleHeader } from "@/components/ui/OmnisPrimitives";
+import {
+  OmnisButton,
+  OmnisModuleHeader,
+  OmnisSegmentedControl,
+} from "@/components/ui/OmnisPrimitives";
 import { OmnisSelect } from "@/components/ui/OmnisSelect";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 import type { CountryIntelligenceProfile, IntelligenceLayerId } from "@/types/omnis";
@@ -135,48 +140,44 @@ function GlobalAtlasContent() {
               href={`/research?q=${encodeURIComponent(
                 `Explain ${country.name}'s economic and technological development`
               )}`}
-              className="px-3.5 py-2 rounded-lg bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-xs font-semibold text-[var(--text-primary)] inline-flex items-center gap-1.5 transition-colors"
+              className="omnis-magnetic-arrow px-3.5 py-2 rounded-lg bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-xs font-semibold text-[var(--text-primary)] inline-flex items-center gap-1.5 transition-colors"
             >
               <FileSearch className="w-3.5 h-3.5 tone-blue" />
               <span>Deep Research</span>
+              <ArrowRight className="omnis-arrow-glyph w-3 h-3 opacity-65" />
             </Link>
             <Link
               href={`/knowledge-graph?topic=${encodeURIComponent(country.name)}`}
-              className="px-3.5 py-2 rounded-lg bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-xs font-semibold text-[var(--text-primary)] inline-flex items-center gap-1.5 transition-colors"
+              className="omnis-magnetic-arrow px-3.5 py-2 rounded-lg bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-xs font-semibold text-[var(--text-primary)] inline-flex items-center gap-1.5 transition-colors"
             >
               <Network className="w-3.5 h-3.5 tone-violet" />
               <span>Knowledge Graph</span>
+              <ArrowRight className="omnis-arrow-glyph w-3 h-3 opacity-65" />
             </Link>
             <Link
               href={`/simulations?category=economics&country=${country.iso3}`}
-              className="px-3.5 py-2 rounded-lg bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-xs font-semibold text-[var(--text-primary)] inline-flex items-center gap-1.5 transition-colors"
+              className="omnis-magnetic-arrow px-3.5 py-2 rounded-lg bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-xs font-semibold text-[var(--text-primary)] inline-flex items-center gap-1.5 transition-colors"
             >
               <TrendingUp className="w-3.5 h-3.5 tone-verified" />
               <span>Simulate Macro Shock</span>
+              <ArrowRight className="omnis-arrow-glyph w-3 h-3 opacity-65" />
             </Link>
           </>
         }
         secondaryControls={
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {LAYERS.map((layer) => {
-              const active = activeLayer === layer.id;
-              return (
-                <button
-                  key={layer.id}
-                  type="button"
-                  title={layer.desc}
-                  onClick={() => setActiveLayer(layer.id)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
-                    active
-                      ? "bg-[var(--accent-blue-solid)] text-white border-transparent shadow-sm"
-                      : "bg-[var(--bg-slate)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]"
-                  }`}
-                >
-                  <Layers className={`w-3 h-3 shrink-0 ${active ? "text-white" : "tone-blue"}`} />
-                  <span>{layer.label}</span>
-                </button>
-              );
-            })}
+          <div className="pt-1 overflow-x-auto max-w-full">
+            <OmnisSegmentedControl
+              groupId="atlas-layer-tabs"
+              ariaLabel="Analytical Intelligence Lens"
+              size="sm"
+              value={activeLayer}
+              onChange={(val) => setActiveLayer(val as IntelligenceLayerId)}
+              options={LAYERS.map((layer) => ({
+                value: layer.id,
+                label: layer.label,
+                icon: <Layers className="w-3 h-3" />,
+              }))}
+            />
           </div>
         }
       />
@@ -214,7 +215,7 @@ function GlobalAtlasContent() {
             <div className="flex items-center gap-3">
               <span className="text-3xl">{country.flagEmoji}</span>
               <div>
-                <h2 className="omnis-display text-2xl font-extrabold text-[var(--text-primary)]">
+                <h2 className="omnis-display-section text-2xl font-extrabold text-[var(--text-primary)]">
                   {country.officialName} ({country.iso3})
                 </h2>
                 <p className="text-xs text-[var(--text-secondary)]">
@@ -239,151 +240,141 @@ function GlobalAtlasContent() {
         {/* Provenance & Methodology Banner */}
         <ProvenancePanel provenance={country.provenance} />
 
-        {/* Multi-Discipline Indicator Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {/* 1. Macroeconomics */}
-          <div className="omnis-surface-slate p-5 space-y-3">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider tone-blue omnis-mono">
-              <TrendingUp className="w-4 h-4" />
-              <span>Macroeconomic Indicators</span>
+        {/* Seamless Architectural 2x3 Sovereign Discipline Grid (De-boxed Hairline Matrix) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 border border-[var(--border-subtle)] rounded-2xl overflow-hidden bg-[var(--bg-obsidian)]/30">
+          {/* 01 / MACROECONOMICS */}
+          <div className="p-5 border-b border-[var(--border-subtle)] md:border-r space-y-3">
+            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider tone-blue omnis-mono">
+              <TrendingUp className="w-3.5 h-3.5" />
+              <span>01 / Macroeconomics</span>
             </div>
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div>
-                <div className="text-[10px] text-[var(--text-muted)]">Nominal GDP</div>
-                <div className="text-base font-bold omnis-mono text-[var(--text-primary)]">
+            <div className="divide-y divide-[var(--border-subtle)] text-xs">
+              <div className="flex items-baseline justify-between py-1.5 gap-2">
+                <span className="text-[var(--text-muted)]">Nominal GDP</span>
+                <span className="font-bold omnis-mono omnis-tabular text-[var(--text-primary)]">
                   ${country.gdpUsdBn.toLocaleString()}B
-                </div>
+                </span>
               </div>
-              <div>
-                <div className="text-[10px] text-[var(--text-muted)]">GDP Per Capita</div>
-                <div className="text-base font-bold omnis-mono text-[var(--text-primary)]">
+              <div className="flex items-baseline justify-between py-1.5 gap-2">
+                <span className="text-[var(--text-muted)]">GDP Per Capita</span>
+                <span className="font-bold omnis-mono omnis-tabular text-[var(--text-primary)]">
                   ${country.gdpPerCapitaUsd.toLocaleString()}
-                </div>
+                </span>
               </div>
-              <div>
-                <div className="text-[10px] text-[var(--text-muted)]">Real GDP Growth</div>
-                <div className="font-bold omnis-mono tone-verified">
+              <div className="flex items-baseline justify-between py-1.5 gap-2">
+                <span className="text-[var(--text-muted)]">Real GDP Growth</span>
+                <span className="font-bold omnis-mono omnis-tabular tone-verified">
                   +{country.gdpGrowthPct}% / yr
-                </div>
+                </span>
               </div>
-              <div>
-                <div className="text-[10px] text-[var(--text-muted)]">CPI Inflation / Unemp.</div>
-                <div className="font-bold omnis-mono text-[var(--text-primary)]">
+              <div className="flex items-baseline justify-between py-1.5 gap-2">
+                <span className="text-[var(--text-muted)]">CPI Inflation / Unemp.</span>
+                <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
                   {country.inflationPct}% / {country.unemploymentPct}%
-                </div>
+                </span>
               </div>
-              <div>
-                <div className="text-[10px] text-[var(--text-muted)]">Public Debt / Gov Exp</div>
-                <div className="font-bold omnis-mono text-[var(--text-primary)]">
-                  {country.publicDebtPctGdp}% / {country.govExpenditurePctGdp}% GDP
-                </div>
+              <div className="flex items-baseline justify-between py-1.5 gap-2">
+                <span className="text-[var(--text-muted)]">Public Debt / Gov Exp</span>
+                <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
+                  {country.publicDebtPctGdp}% / {country.govExpenditurePctGdp}%
+                </span>
               </div>
-              <div>
-                <div className="text-[10px] text-[var(--text-muted)]">FDI Net Inflow / Trade</div>
-                <div className="font-bold omnis-mono text-[var(--text-primary)]">
+              <div className="flex items-baseline justify-between pt-1.5 gap-2">
+                <span className="text-[var(--text-muted)]">FDI Inflow / Trade</span>
+                <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
                   ${country.fdiNetInflowsUsdBn}B / ${country.tradeBalanceUsdBn}B
-                </div>
+                </span>
               </div>
             </div>
           </div>
 
-          {/* 2. Demographics & Social Indicators */}
-          <div className="omnis-surface-slate p-5 space-y-3">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider tone-violet omnis-mono">
-              <Users className="w-4 h-4" />
-              <span>Demographics, Education & Health</span>
+          {/* 02 / DEMOGRAPHICS */}
+          <div className="p-5 border-b border-[var(--border-subtle)] lg:border-r space-y-3">
+            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider tone-violet omnis-mono">
+              <Users className="w-3.5 h-3.5" />
+              <span>02 / Demographics</span>
             </div>
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div>
-                <div className="text-[10px] text-[var(--text-muted)]">Total Population</div>
-                <div className="text-base font-bold omnis-mono text-[var(--text-primary)]">
+            <div className="divide-y divide-[var(--border-subtle)] text-xs">
+              <div className="flex items-baseline justify-between py-1.5 gap-2">
+                <span className="text-[var(--text-muted)]">Total Population</span>
+                <span className="font-bold omnis-mono omnis-tabular text-[var(--text-primary)]">
                   {(country.population / 1e6).toFixed(2)}M
-                </div>
+                </span>
               </div>
-              <div>
-                <div className="text-[10px] text-[var(--text-muted)]">Density / Median Age</div>
-                <div className="font-bold omnis-mono text-[var(--text-primary)]">
+              <div className="flex items-baseline justify-between py-1.5 gap-2">
+                <span className="text-[var(--text-muted)]">Density / Median Age</span>
+                <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
                   {country.populationDensityPerSqKm}/km² • {country.medianAgeYears}y
-                </div>
+                </span>
               </div>
-              <div>
-                <div className="text-[10px] text-[var(--text-muted)]">Urbanisation / Life Exp</div>
-                <div className="font-bold omnis-mono text-[var(--text-primary)]">
-                  {country.urbanisationPct}% • {country.lifeExpectancyYears} yrs
-                </div>
+              <div className="flex items-baseline justify-between py-1.5 gap-2">
+                <span className="text-[var(--text-muted)]">Urbanisation / Life Exp</span>
+                <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
+                  {country.urbanisationPct}% • {country.lifeExpectancyYears}y
+                </span>
               </div>
-              <div>
-                <div className="text-[10px] text-[var(--text-muted)]">Literacy / Tertiary Edu</div>
-                <div className="font-bold omnis-mono text-[var(--text-primary)]">
-                  {country.educationHealthcare.literacyRatePct}% /{" "}
-                  {country.educationHealthcare.tertiaryEnrollmentPct}%
-                </div>
+              <div className="flex items-baseline justify-between py-1.5 gap-2">
+                <span className="text-[var(--text-muted)]">Literacy / Tertiary</span>
+                <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
+                  {country.educationHealthcare.literacyRatePct}% / {country.educationHealthcare.tertiaryEnrollmentPct}%
+                </span>
               </div>
-              <div>
-                <div className="text-[10px] text-[var(--text-muted)]">Education Spend</div>
-                <div className="font-bold omnis-mono text-[var(--text-primary)]">
-                  {country.educationHealthcare.educationSpendPctGdp}% of GDP
-                </div>
+              <div className="flex items-baseline justify-between py-1.5 gap-2">
+                <span className="text-[var(--text-muted)]">Education Spend</span>
+                <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
+                  {country.educationHealthcare.educationSpendPctGdp}% GDP
+                </span>
               </div>
-              <div>
-                <div className="text-[10px] text-[var(--text-muted)]">Healthcare Spend</div>
-                <div className="font-bold omnis-mono text-[var(--text-primary)]">
-                  {country.educationHealthcare.healthcareSpendPctGdp}% GDP (
-                  {country.educationHealthcare.physiciansPer1000} MD/1k)
-                </div>
+              <div className="flex items-baseline justify-between pt-1.5 gap-2">
+                <span className="text-[var(--text-muted)]">Healthcare Spend</span>
+                <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
+                  {country.educationHealthcare.healthcareSpendPctGdp}% ({country.educationHealthcare.physiciansPer1000}/1k)
+                </span>
               </div>
             </div>
           </div>
 
-          {/* 3. Energy & Environment */}
-          <div className="omnis-surface-slate p-5 space-y-3">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider tone-verified omnis-mono">
-              <Zap className="w-4 h-4" />
-              <span>Energy & Environment Profile</span>
+          {/* 03 / ENERGY & CLIMATE */}
+          <div className="p-5 border-b border-[var(--border-subtle)] md:border-r lg:border-r-0 space-y-3">
+            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider tone-verified omnis-mono">
+              <Zap className="w-3.5 h-3.5" />
+              <span>03 / Energy & Climate</span>
             </div>
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div>
-                <div className="text-[10px] text-[var(--text-muted)]">Electricity Generation</div>
-                <div className="text-base font-bold omnis-mono text-[var(--text-primary)]">
+            <div className="divide-y divide-[var(--border-subtle)] text-xs">
+              <div className="flex items-baseline justify-between py-1.5 gap-2">
+                <span className="text-[var(--text-muted)]">Electricity Gen</span>
+                <span className="font-bold omnis-mono omnis-tabular text-[var(--text-primary)]">
                   {country.energyProfile.electricityGenerationTwh} TWh
-                </div>
+                </span>
               </div>
-              <div>
-                <div className="text-[10px] text-[var(--text-muted)]">Renewable / Nuclear</div>
-                <div className="font-bold omnis-mono tone-verified">
+              <div className="flex items-baseline justify-between py-1.5 gap-2">
+                <span className="text-[var(--text-muted)]">Renewable / Nuclear</span>
+                <span className="font-bold omnis-mono omnis-tabular tone-verified">
                   {country.energyProfile.renewableSharePct}% / {country.energyProfile.nuclearSharePct}%
-                </div>
+                </span>
               </div>
-              <div>
-                <div className="text-[10px] text-[var(--text-muted)]">Oil / Natural Gas</div>
-                <div className="font-bold omnis-mono text-[var(--text-primary)]">
+              <div className="flex items-baseline justify-between py-1.5 gap-2">
+                <span className="text-[var(--text-muted)]">Oil / Natural Gas</span>
+                <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
                   {country.energyProfile.oilProductionMbpd} Mbpd / {country.energyProfile.naturalGasBcm} bcm
-                </div>
+                </span>
               </div>
-              <div>
-                <div className="text-[10px] text-[var(--text-muted)]">CO2 Total / Per Capita</div>
-                <div className="font-bold omnis-mono text-[var(--text-primary)]">
+              <div className="flex items-baseline justify-between py-1.5 gap-2">
+                <span className="text-[var(--text-muted)]">CO2 Total / Per Capita</span>
+                <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
                   {country.environmentProfile.co2EmissionsMt} Mt ({country.environmentProfile.co2PerCapitaTons}t)
-                </div>
+                </span>
               </div>
-              <div>
-                <div className="text-[10px] text-[var(--text-muted)]">Forest Cover / PM2.5</div>
-                <div className="font-bold omnis-mono text-[var(--text-primary)]">
-                  {country.environmentProfile.forestCoveragePct}% / {country.environmentProfile.pm25AirQualityUgM3} µg/m³
-                </div>
-              </div>
-              <div>
-                <div className="text-[10px] text-[var(--text-muted)]">Temp Anomaly</div>
-                <div className="font-bold omnis-mono tone-warning">
-                  +{country.environmentProfile.tempAnomalyC}°C
-                </div>
+              <div className="flex items-baseline justify-between py-1.5 gap-2">
+                <span className="text-[var(--text-muted)]">Forest / PM2.5 / Temp</span>
+                <span className="font-semibold omnis-mono omnis-tabular tone-warning">
+                  {country.environmentProfile.forestCoveragePct}% • +{country.environmentProfile.tempAnomalyC}°C
+                </span>
               </div>
             </div>
-
-            {/* Segmented Generation Mix Bar */}
             <div className="space-y-1 pt-1">
-              <div className="flex justify-between text-[10px] omnis-mono text-[var(--text-muted)]">
-                <span>Grid Mix: {country.energyProfile.renewableSharePct}% Clean</span>
+              <div className="flex justify-between text-[10px] omnis-mono omnis-tabular text-[var(--text-muted)]">
+                <span>{country.energyProfile.renewableSharePct}% Clean</span>
                 <span>{country.energyProfile.nuclearSharePct}% Nuclear</span>
                 <span>{fossilShare.toFixed(0)}% Thermal</span>
               </div>
@@ -403,65 +394,70 @@ function GlobalAtlasContent() {
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Technology, Government & International Relations */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <div className="omnis-surface-slate p-5 space-y-2.5 text-xs">
-            <div className="flex items-center gap-2 font-bold uppercase tracking-wider tone-cyan omnis-mono">
-              <Cpu className="w-4 h-4" />
-              <span>Technological & Semiconductor Ecosystem</span>
+          {/* 04 / TECHNOLOGY */}
+          <div className="p-5 border-b lg:border-b-0 border-[var(--border-subtle)] lg:border-r space-y-3 text-xs">
+            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider tone-cyan omnis-mono">
+              <Cpu className="w-3.5 h-3.5" />
+              <span>04 / Technology</span>
             </div>
-            <div>
-              <span className="text-[var(--text-muted)]">Semiconductor Role:</span>{" "}
-              <strong className="text-[var(--text-primary)]">
-                {country.technologyProfile.semiconductorRole}
-              </strong>
-            </div>
-            <div className="grid grid-cols-3 gap-2 py-1">
-              <div className="p-2 rounded-lg bg-[var(--bg-graphite)] border border-[var(--border-subtle)]">
-                <div className="text-[10px] text-[var(--text-muted)]">AI Index</div>
-                <div className="font-bold omnis-mono text-[var(--text-primary)]">
+            <div className="divide-y divide-[var(--border-subtle)]">
+              <div className="flex items-baseline justify-between py-1.5 gap-2">
+                <span className="text-[var(--text-muted)]">AI Readiness Index</span>
+                <span className="font-bold omnis-mono omnis-tabular text-[var(--text-primary)]">
                   {country.technologyProfile.aiReadinessIndex}
-                </div>
+                </span>
               </div>
-              <div className="p-2 rounded-lg bg-[var(--bg-graphite)] border border-[var(--border-subtle)]">
-                <div className="text-[10px] text-[var(--text-muted)]">R&D / GDP</div>
-                <div className="font-bold omnis-mono text-[var(--text-primary)]">
-                  {country.technologyProfile.rdSpendPctGdp}%
-                </div>
+              <div className="flex items-baseline justify-between py-1.5 gap-2">
+                <span className="text-[var(--text-muted)]">R&D Intensity</span>
+                <span className="font-bold omnis-mono omnis-tabular text-[var(--text-primary)]">
+                  {country.technologyProfile.rdSpendPctGdp}% GDP
+                </span>
               </div>
-              <div className="p-2 rounded-lg bg-[var(--bg-graphite)] border border-[var(--border-subtle)]">
-                <div className="text-[10px] text-[var(--text-muted)]">Internet</div>
-                <div className="font-bold omnis-mono text-[var(--text-primary)]">
+              <div className="flex items-baseline justify-between py-1.5 gap-2">
+                <span className="text-[var(--text-muted)]">Internet Penetration</span>
+                <span className="font-bold omnis-mono omnis-tabular text-[var(--text-primary)]">
                   {country.technologyProfile.internetPenetrationPct}%
+                </span>
+              </div>
+              <div className="py-1.5 space-y-0.5">
+                <div className="text-[10px] text-[var(--text-muted)]">Semiconductor Ecosystem</div>
+                <div className="font-semibold text-[var(--text-primary)]">
+                  {country.technologyProfile.semiconductorRole}
                 </div>
               </div>
             </div>
-            <p className="text-[var(--text-secondary)] leading-relaxed">
+            <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
               {country.technologyProfile.digitalInfrastructureSummary}
             </p>
           </div>
 
-          <div className="omnis-surface-slate p-5 space-y-2.5 text-xs">
-            <div className="flex items-center gap-2 font-bold uppercase tracking-wider tone-warning omnis-mono">
-              <Landmark className="w-4 h-4" />
-              <span>Government, Geography & Major Industries</span>
+          {/* 05 / GOVERNANCE & GEOGRAPHY */}
+          <div className="p-5 border-b md:border-b-0 border-[var(--border-subtle)] md:border-r space-y-3 text-xs">
+            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider tone-warning omnis-mono">
+              <Landmark className="w-3.5 h-3.5" />
+              <span>05 / Governance & Geography</span>
             </div>
-            <div>
-              <span className="text-[var(--text-muted)]">Constitutional System:</span>{" "}
-              <strong className="text-[var(--text-primary)]">{country.governmentStructure}</strong>
-            </div>
-            <div className="text-[var(--text-secondary)]">
-              <span className="text-[var(--text-muted)]">Geography:</span> Cities (
-              {country.geographyFeatures.majorCities.slice(0, 4).join(", ")}) • Rivers (
-              {country.geographyFeatures.majorRivers.slice(0, 3).join(", ")})
+            <div className="divide-y divide-[var(--border-subtle)]">
+              <div className="py-1.5 space-y-0.5">
+                <div className="text-[10px] text-[var(--text-muted)]">Constitutional System</div>
+                <div className="font-semibold text-[var(--text-primary)]">
+                  {country.governmentStructure}
+                </div>
+              </div>
+              <div className="py-1.5 space-y-0.5">
+                <div className="text-[10px] text-[var(--text-muted)]">Key Cities & Hydrography</div>
+                <div className="text-[11px] text-[var(--text-secondary)]">
+                  {country.geographyFeatures.majorCities.slice(0, 4).join(", ")} • Rivers:{" "}
+                  {country.geographyFeatures.majorRivers.slice(0, 3).join(", ")}
+                </div>
+              </div>
             </div>
             <div className="flex flex-wrap gap-1.5 pt-1">
               {country.majorIndustries.map((ind) => (
                 <span
                   key={ind}
-                  className="px-2 py-0.5 rounded-md bg-[var(--bg-graphite)] border border-[var(--border-subtle)] text-[11px] text-[var(--text-primary)]"
+                  className="px-2 py-0.5 rounded-md bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[11px] text-[var(--text-primary)]"
                 >
                   {ind}
                 </span>
@@ -469,44 +465,47 @@ function GlobalAtlasContent() {
             </div>
           </div>
 
-          <div className="omnis-surface-slate p-5 space-y-2.5 text-xs">
-            <div className="flex items-center gap-2 font-bold uppercase tracking-wider tone-violet omnis-mono">
-              <Shield className="w-4 h-4" />
-              <span>International Relations & Trade Context</span>
+          {/* 06 / INTERNATIONAL TRADE */}
+          <div className="p-5 space-y-3 text-xs">
+            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider tone-violet omnis-mono">
+              <Shield className="w-3.5 h-3.5" />
+              <span>06 / Trade & Diplomacy</span>
             </div>
-            <p className="text-[var(--text-secondary)] leading-relaxed">
+            <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
               {country.internationalRelations.diplomaticContext}
             </p>
-            <div>
-              <span className="text-[var(--text-muted)]">Top Trade Partners:</span>{" "}
-              <strong className="text-[var(--text-primary)]">
-                {country.internationalRelations.topTradePartners.join(", ")}
-              </strong>
-            </div>
-            <div>
-              <span className="text-[var(--text-muted)]">Treaty Memberships:</span>{" "}
-              <span className="omnis-mono text-[var(--text-primary)]">
-                {country.internationalRelations.treatyMemberships.join(" • ")}
-              </span>
+            <div className="divide-y divide-[var(--border-subtle)]">
+              <div className="py-1.5 space-y-0.5">
+                <div className="text-[10px] text-[var(--text-muted)]">Top Trade Partners</div>
+                <div className="font-semibold text-[var(--text-primary)]">
+                  {country.internationalRelations.topTradePartners.join(", ")}
+                </div>
+              </div>
+              <div className="pt-1.5 space-y-0.5">
+                <div className="text-[10px] text-[var(--text-muted)]">Treaty Memberships</div>
+                <div className="omnis-mono text-[11px] text-[var(--text-primary)]">
+                  {country.internationalRelations.treatyMemberships.join(" • ")}
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Interactive Historical Chart & Side-by-Side Country Comparison */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
-          <div className="lg:col-span-6 omnis-surface-slate p-5 space-y-4">
+        {/* Open Interactive Historical Chart & Peer Comparison Matrix (De-boxed with Horizontal Rule) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-6 border-t border-[var(--border-subtle)]">
+          <div className="lg:col-span-6 space-y-4">
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-sm font-bold text-[var(--text-primary)]">
-                {country.name} Multi-Metric Trajectory (1991–2026)
+                {country.name} vs {compareCountry.name} Historical Trajectory (1991–2026)
               </h3>
               <span className="text-[11px] text-[var(--text-muted)] omnis-mono">
-                Hover points to inspect
+                Dual-Country Interactive Overlay
               </span>
             </div>
-            <HistoricalTrajectoryChart country={country} />
+            <HistoricalTrajectoryChart country={country} compareCountry={compareCountry} />
           </div>
 
-          <div className="lg:col-span-6 omnis-surface-slate p-5 space-y-4">
+          <div className="lg:col-span-6 space-y-4 lg:border-l lg:border-[var(--border-subtle)] lg:pl-8">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-bold flex items-center gap-2 text-[var(--text-primary)]">
                 <ArrowLeftRight className="w-4 h-4 tone-blue" />
@@ -540,7 +539,7 @@ function GlobalAtlasContent() {
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[var(--border-subtle)] omnis-mono text-[var(--text-primary)]">
+                <tbody className="divide-y divide-[var(--border-subtle)] omnis-mono omnis-tabular text-[var(--text-primary)]">
                   <tr>
                     <td className="py-2.5 font-sans text-[var(--text-secondary)]">Nominal GDP</td>
                     <td className="py-2.5 font-bold">${country.gdpUsdBn.toLocaleString()}B</td>
@@ -581,9 +580,10 @@ function GlobalAtlasContent() {
 
             <Link
               href={`/intelligence?left=${country.iso3}&right=${compareCountry.iso3}`}
-              className="inline-flex items-center gap-1 text-xs font-semibold tone-blue hover:underline"
+              className="omnis-magnetic-arrow inline-flex items-center gap-1.5 text-xs font-semibold tone-blue hover:underline"
             >
-              Open Full Multi-Axis Radar & Historical Comparison Engine →
+              <span>Open Full Multi-Axis Radar & Historical Comparison Engine</span>
+              <ArrowRight className="omnis-arrow-glyph w-3.5 h-3.5" />
             </Link>
           </div>
         </div>

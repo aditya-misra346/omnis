@@ -14,7 +14,7 @@ import {
   FileText,
 } from "lucide-react";
 import { useOmnisStore, type WorkspaceSavedItem } from "@/lib/store/use-omnis-store";
-import { OmnisButton, OmnisModuleHeader } from "@/components/ui/OmnisPrimitives";
+import { OmnisButton, OmnisModuleHeader, OmnisSegmentedControl } from "@/components/ui/OmnisPrimitives";
 import { OmnisSelect } from "@/components/ui/OmnisSelect";
 
 export default function WorkspacePage() {
@@ -104,10 +104,17 @@ export default function WorkspacePage() {
       content = [header, ...rows].join("\n");
     } else {
       mime = "text/markdown";
-      content = `# OMNIS Workspace Research Export\nExported: ${new Date().toISOString()}\n\n${filteredItems
+      const folderCounts = filteredItems.reduce<Record<string, number>>((acc, item) => {
+        acc[item.folder] = (acc[item.folder] ?? 0) + 1;
+        return acc;
+      }, {});
+      const folderSummary = Object.entries(folderCounts)
+        .map(([folder, count]) => `- **${folder}:** ${count} item${count === 1 ? "" : "s"}`)
+        .join("\n");
+      content = `# OMNIS Intelligence Executive Brief\n- **Generated:** ${new Date().toISOString()}\n- **Pinned Items:** ${filteredItems.length}\n\n## Folder Distribution\n${folderSummary || "- Empty selection"}\n\n---\n\n${filteredItems
         .map(
-          (i) =>
-            `## [${i.type.toUpperCase()}] ${i.title}\n- **Folder:** ${i.folder}\n- **Summary:** ${
+          (i, idx) =>
+            `## ${String(idx + 1).padStart(2, "0")}. [${i.type.toUpperCase()}] ${i.title}\n- **Folder:** ${i.folder}\n- **Summary:** ${
               i.subtitle
             }\n- **Tags:** ${i.tags.join(", ")}\n- **Created:** ${i.createdAt}\n`
         )
@@ -118,7 +125,10 @@ export default function WorkspacePage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `omnis-workspace-export.${ext}`;
+    a.download =
+      ext === "md"
+        ? `omnis-workspace-brief-${new Date().toISOString().slice(0, 10)}.md`
+        : `omnis-workspace-export.${ext}`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -135,7 +145,7 @@ export default function WorkspacePage() {
           <div className="flex flex-wrap items-center gap-2 no-print">
             <OmnisButton onClick={() => handleExportFormat("md")}>
               <Download className="w-3.5 h-3.5" />
-              <span>Export Markdown</span>
+              <span>Export Markdown Brief (.md)</span>
             </OmnisButton>
             <OmnisButton variant="secondary" onClick={() => handleExportFormat("csv")}>
               <Download className="w-3.5 h-3.5 tone-verified" />
@@ -154,22 +164,17 @@ export default function WorkspacePage() {
       >
         {/* Folder & Type Filters */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-xs">
-          <div className="flex flex-wrap items-center gap-1.5">
-            {["ALL", ...folders].map((f) => (
-              <button
-                key={f}
-                type="button"
-                onClick={() => setSelectedFolder(f)}
-                className={`px-3 py-1.5 rounded-xl font-semibold transition-all cursor-pointer ${
-                  selectedFolder === f
-                    ? "bg-[var(--accent-blue-solid)] text-white shadow-xs"
-                    : "bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                }`}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
+          <OmnisSegmentedControl
+            value={selectedFolder}
+            onChange={setSelectedFolder}
+            groupId="workspace-folder-tabs"
+            ariaLabel="Filter workspace by folder"
+            size="sm"
+            options={["ALL", ...folders].map((f) => ({
+              value: f,
+              label: f,
+            }))}
+          />
 
           <div className="flex flex-wrap items-center gap-2">
             <OmnisSelect

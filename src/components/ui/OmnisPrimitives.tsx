@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { motion } from "framer-motion";
+import { useOmnisStore } from "@/lib/store/use-omnis-store";
 
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 
@@ -163,6 +165,90 @@ export function OmnisSkeleton({ className = "h-24 w-full" }: { className?: strin
       aria-hidden="true"
       className={`animate-pulse rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] ${className}`}
     />
+  );
+}
+
+export interface OmnisSegmentedOption<T extends string = string> {
+  value: T;
+  label: React.ReactNode;
+  badge?: string | number;
+  icon?: React.ReactNode;
+}
+
+export function OmnisSegmentedControl<T extends string = string>({
+  options,
+  value,
+  onChange,
+  groupId,
+  ariaLabel = "Segmented control",
+  className = "",
+  size = "md",
+}: {
+  options: OmnisSegmentedOption<T>[];
+  value: T;
+  onChange: (next: T) => void;
+  groupId: string;
+  ariaLabel?: string;
+  className?: string;
+  size?: "sm" | "md";
+}) {
+  const { motionPaused } = useOmnisStore();
+  const padClass = size === "sm" ? "px-2.5 py-1 text-[11px]" : "px-3 py-1.5 text-xs";
+
+  return (
+    <div
+      role="tablist"
+      aria-label={ariaLabel}
+      className={`inline-flex flex-wrap items-center gap-1 p-1 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] ${className}`}
+    >
+      {options.map((opt) => {
+        const active = opt.value === value;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(opt.value)}
+            className={`relative inline-flex items-center gap-1.5 rounded-lg font-medium transition-colors cursor-pointer whitespace-nowrap min-h-[36px] sm:min-h-0 ${padClass} ${
+              active
+                ? "text-white"
+                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            }`}
+          >
+            {active &&
+              (motionPaused ? (
+                <span
+                  aria-hidden="true"
+                  className="absolute inset-0 rounded-lg bg-[var(--accent-blue-solid)] shadow-sm"
+                />
+              ) : (
+                <motion.span
+                  layoutId={groupId}
+                  transition={{ type: "spring", stiffness: 420, damping: 32 }}
+                  aria-hidden="true"
+                  className="absolute inset-0 rounded-lg bg-[var(--accent-blue-solid)] shadow-sm"
+                />
+              ))}
+            <span className="relative z-10 inline-flex items-center gap-1.5">
+              {opt.icon}
+              <span>{opt.label}</span>
+              {opt.badge !== undefined && (
+                <span
+                  className={`text-[10px] omnis-mono px-1.5 py-0.2 rounded-full ${
+                    active
+                      ? "bg-white/20 text-white"
+                      : "bg-[var(--bg-graphite)] text-[var(--text-muted)]"
+                  }`}
+                >
+                  {opt.badge}
+                </span>
+              )}
+            </span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 

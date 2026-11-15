@@ -17,6 +17,7 @@ import type {
   KnowledgeGraphNode,
   RelationshipType,
 } from "@/types/omnis";
+import { useOmnisStore } from "@/lib/store/use-omnis-store";
 
 const CATEGORY_COLORS: Record<string, string> = {
   "Core Concept": "#2563eb",
@@ -205,6 +206,8 @@ export function KnowledgeGraphCanvas({
   onExpandNode,
   relationshipFilter = "ALL",
   searchFilter = "",
+  highlightedPathNodeIds,
+  highlightedPathEdgeIds,
 }: {
   nodes: KnowledgeGraphNode[];
   edges: KnowledgeGraphEdge[];
@@ -214,7 +217,10 @@ export function KnowledgeGraphCanvas({
   onExpandNode?: (id: string) => void;
   relationshipFilter?: RelationshipType | "ALL";
   searchFilter?: string;
+  highlightedPathNodeIds?: Set<string>;
+  highlightedPathEdgeIds?: Set<string>;
 }) {
+  const motionPaused = useOmnisStore((s) => s.motionPaused);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const nodeGroupRefs = useRef<Map<string, SVGGElement>>(new Map());
   const [canvasSize, setCanvasSize] = useState({ width: 920, height: 560 });
@@ -228,6 +234,7 @@ export function KnowledgeGraphCanvas({
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
   const [panningCanvas, setPanningCanvas] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [packetPhase, setPacketPhase] = useState(0);
 
   useEffect(() => {
     const el = stageRef.current;
@@ -265,7 +272,7 @@ export function KnowledgeGraphCanvas({
     const prefersReduced =
       typeof window !== "undefined" &&
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (prefersReduced || animatedRef.current.length === 0) {
+    if (prefersReduced || motionPaused || animatedRef.current.length === 0) {
       animatedRef.current = basePositions;
       setAnimatedBasePositions(basePositions);
       return;
@@ -304,7 +311,34 @@ export function KnowledgeGraphCanvas({
 
     rafId = requestAnimationFrame(step);
     return () => cancelAnimationFrame(rafId);
-  }, [basePositions]);
+  }, [basePositions, motionPaused]);
+
+  const hasActivePathTrace = Boolean(
+    highlightedPathEdgeIds && highlightedPathEdgeIds.size > 0
+  );
+
+  useEffect(() => {
+    if (!hasActivePathTrace || motionPaused) return;
+    const prefersReduced =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReduced) {
+      setPacketPhase(0.5);
+      return;
+    }
+    let rafId = 0;
+    let start = performance.now();
+    const tick = (now: number) => {
+      const elapsed = (now - start) / 1500;
+      setPacketPhase(elapsed % 1);
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => {
+      start = 0;
+      cancelAnimationFrame(rafId);
+    };
+  }, [hasActivePathTrace, motionPaused]);
 
   const positionedNodes = useMemo(
     () =>
@@ -340,6 +374,26 @@ export function KnowledgeGraphCanvas({
     }
     return set;
   }, [focusNodeId, filteredEdges]);
+
+  const edgePairCurveMap = useMemo(() => {
+    const groups = new Map<string, string[]>();
+    for (const edge of filteredEdges) {
+      const key =
+        edge.source < edge.target
+          ? `${edge.source}--${edge.target}`
+          : `${edge.target}--${edge.source}`;
+      const list = groups.get(key) ?? [];
+      list.push(edge.id);
+      groups.set(key, list);
+    }
+    const offsets = new Map<string, { rank: number; total: number }>();
+    for (const list of groups.values()) {
+      list.forEach((edgeId, idx) => {
+        offsets.set(edgeId, { rank: idx, total: list.length });
+      });
+    }
+    return offsets;
+  }, [filteredEdges]);
 
   const handleFitToScreen = useCallback(() => {
     if (positionedNodes.length === 0) return;
@@ -429,13 +483,13 @@ export function KnowledgeGraphCanvas({
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 omnis-hud-pill px-1.5 py-1 rounded-xl">
           <button
             type="button"
             onClick={() => setZoom((z) => Math.min(2.2, Number((z + 0.15).toFixed(2))))}
             title="Zoom In"
             aria-label="Zoom In"
-            className="min-h-[40px] min-w-[40px] sm:min-h-[32px] sm:min-w-[32px] flex items-center justify-center p-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:border-[var(--border-strong)] cursor-pointer"
+            className="min-h-[38px] min-w-[38px] sm:min-h-[30px] sm:min-w-[30px] flex items-center justify-center p-1.5 rounded-lg hover:bg-[var(--bg-elevated)] cursor-pointer text-[var(--text-primary)]"
           >
             <ZoomIn className="w-3.5 h-3.5" />
           </button>
@@ -444,7 +498,7 @@ export function KnowledgeGraphCanvas({
             onClick={() => setZoom((z) => Math.max(0.45, Number((z - 0.15).toFixed(2))))}
             title="Zoom Out"
             aria-label="Zoom Out"
-            className="min-h-[40px] min-w-[40px] sm:min-h-[32px] sm:min-w-[32px] flex items-center justify-center p-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:border-[var(--border-strong)] cursor-pointer"
+            className="min-h-[38px] min-w-[38px] sm:min-h-[30px] sm:min-w-[30px] flex items-center justify-center p-1.5 rounded-lg hover:bg-[var(--bg-elevated)] cursor-pointer text-[var(--text-primary)]"
           >
             <ZoomOut className="w-3.5 h-3.5" />
           </button>
@@ -453,7 +507,7 @@ export function KnowledgeGraphCanvas({
             onClick={handleFitToScreen}
             title="Fit Graph to Screen"
             aria-label="Fit Graph to Screen"
-            className="min-h-[40px] sm:min-h-[32px] inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:border-[var(--border-strong)] cursor-pointer font-medium"
+            className="min-h-[38px] sm:min-h-[30px] inline-flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-[var(--bg-elevated)] cursor-pointer font-medium text-[var(--text-primary)]"
           >
             <Scan className="w-3.5 h-3.5 tone-blue" />
             <span className="hidden sm:inline">Fit</span>
@@ -467,7 +521,7 @@ export function KnowledgeGraphCanvas({
             }}
             title="Reset Graph Positions & Zoom"
             aria-label="Reset Graph Positions"
-            className="min-h-[40px] min-w-[40px] sm:min-h-[32px] sm:min-w-[32px] flex items-center justify-center p-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:border-[var(--border-strong)] cursor-pointer"
+            className="min-h-[38px] min-w-[38px] sm:min-h-[30px] sm:min-w-[30px] flex items-center justify-center p-1.5 rounded-lg hover:bg-[var(--bg-elevated)] cursor-pointer text-[var(--text-primary)]"
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
@@ -475,7 +529,7 @@ export function KnowledgeGraphCanvas({
             type="button"
             onClick={handleExportSvg}
             title="Export Knowledge Graph as SVG"
-            className="min-h-[40px] sm:min-h-[32px] inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:border-[var(--border-strong)] cursor-pointer font-medium"
+            className="min-h-[38px] sm:min-h-[30px] inline-flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-[var(--bg-elevated)] cursor-pointer font-medium text-[var(--text-primary)]"
           >
             <Download className="w-3.5 h-3.5 tone-blue" />
             <span>SVG</span>
@@ -485,7 +539,7 @@ export function KnowledgeGraphCanvas({
             onClick={() => setIsFullscreen((f) => !f)}
             title="Toggle Fullscreen Graph Exploration"
             aria-label="Toggle Fullscreen Graph"
-            className="min-h-[40px] min-w-[40px] sm:min-h-[32px] sm:min-w-[32px] flex items-center justify-center p-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:border-[var(--border-strong)] cursor-pointer"
+            className="min-h-[38px] min-w-[38px] sm:min-h-[30px] sm:min-w-[30px] flex items-center justify-center p-1.5 rounded-lg hover:bg-[var(--bg-elevated)] cursor-pointer text-[var(--text-primary)]"
           >
             {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
           </button>
@@ -552,43 +606,109 @@ export function KnowledgeGraphCanvas({
             >
               <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--chart-violet)" />
             </marker>
+            <marker
+              id="arrow-path"
+              viewBox="0 0 10 10"
+              refX="23"
+              refY="5"
+              markerWidth="6.5"
+              markerHeight="6.5"
+              orient="auto-start-reverse"
+            >
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--accent-cyan)" />
+            </marker>
           </defs>
 
           <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
-            {/* Curved Bezier Semantic Relationships */}
-            {filteredEdges.map((edge, edgeIdx) => {
+            {/* Curved Bezier Semantic Relationships (Parallel & Bidirectional De-conflicted) */}
+            {filteredEdges.map((edge) => {
               const src = nodeById.get(edge.source);
               const tgt = nodeById.get(edge.target);
               if (!src || !tgt) return null;
 
               const isRelated = edge.source === focusNodeId || edge.target === focusNodeId;
-              const dx = tgt.x - src.x;
-              const dy = tgt.y - src.y;
-              const dist = Math.hypot(dx, dy) || 1;
-              const curveOffset = (edgeIdx % 2 === 0 ? 1 : -1) * Math.min(28, dist * 0.14);
-              const nx = -dy / dist;
-              const ny = dx / dist;
-              const cx = (src.x + tgt.x) / 2 + nx * curveOffset;
-              const cy = (src.y + tgt.y) / 2 + ny * curveOffset;
+              const isPathEdge = Boolean(highlightedPathEdgeIds?.has(edge.id));
+
+              // Canonical undirected normal orientation so A->B and B->A separate symmetrically
+              const canonA = edge.source < edge.target ? src : tgt;
+              const canonB = edge.source < edge.target ? tgt : src;
+              const cdx = canonB.x - canonA.x;
+              const cdy = canonB.y - canonA.y;
+              const cDist = Math.hypot(cdx, cdy) || 1;
+              const cnx = -cdy / cDist;
+              const cny = cdx / cDist;
+
+              const pairMeta = edgePairCurveMap.get(edge.id) ?? { rank: 0, total: 1 };
+              const curveOffset =
+                pairMeta.total === 1
+                  ? (edge.source < edge.target ? 1 : -1) * Math.min(24, cDist * 0.12)
+                  : (pairMeta.rank - (pairMeta.total - 1) / 2) * 32;
+
+              const cx = (src.x + tgt.x) / 2 + cnx * curveOffset;
+              const cy = (src.y + tgt.y) / 2 + cny * curveOffset;
               const mx = 0.25 * src.x + 0.5 * cx + 0.25 * tgt.x;
               const my = 0.25 * src.y + 0.5 * cy + 0.25 * tgt.y;
 
+              const tP = packetPhase;
+              const px =
+                (1 - tP) * (1 - tP) * src.x + 2 * (1 - tP) * tP * cx + tP * tP * tgt.x;
+              const py =
+                (1 - tP) * (1 - tP) * src.y + 2 * (1 - tP) * tP * cy + tP * tP * tgt.y;
+
               const formattedRel = edge.relationshipType.replace(/_/g, " ");
               const pillWidth = Math.max(60, formattedRel.length * 6.2 + 16);
+              const edgeOpacity = isPathEdge
+                ? 1
+                : isRelated
+                  ? hasActivePathTrace
+                    ? 0.85
+                    : 0.96
+                  : hasActivePathTrace
+                    ? 0.22
+                    : 0.24;
 
               return (
-                <g key={edge.id} opacity={isRelated ? 1 : 0.18}>
+                <g key={edge.id} opacity={edgeOpacity}>
+                  {isPathEdge ? (
+                    <path
+                      d={`M ${src.x} ${src.y} Q ${cx} ${cy} ${tgt.x} ${tgt.y}`}
+                      fill="none"
+                      stroke="var(--accent-cyan)"
+                      strokeWidth={6}
+                      strokeOpacity={0.26}
+                    />
+                  ) : null}
                   <path
                     d={`M ${src.x} ${src.y} Q ${cx} ${cy} ${tgt.x} ${tgt.y}`}
                     fill="none"
-                    stroke={edge.isHypothesis ? "var(--chart-violet)" : "var(--chart-blue)"}
-                    strokeWidth={isRelated ? 2.2 : 1.4}
+                    stroke={
+                      isPathEdge
+                        ? "var(--accent-cyan)"
+                        : edge.isHypothesis
+                          ? "var(--chart-violet)"
+                          : "var(--chart-blue)"
+                    }
+                    strokeWidth={isPathEdge ? 2.6 : isRelated ? 2.2 : 1.4}
                     strokeDasharray={edge.isHypothesis ? "5,4" : undefined}
                     markerEnd={
-                      edge.isHypothesis ? "url(#arrow-hypothesis)" : "url(#arrow-verified)"
+                      isPathEdge
+                        ? "url(#arrow-path)"
+                        : edge.isHypothesis
+                          ? "url(#arrow-hypothesis)"
+                          : "url(#arrow-verified)"
                     }
                   />
-                  {isRelated ? (
+                  {isPathEdge ? (
+                    <circle
+                      cx={px}
+                      cy={py}
+                      r={4}
+                      fill="var(--accent-cyan)"
+                      stroke="var(--bg-obsidian)"
+                      strokeWidth={1.25}
+                    />
+                  ) : null}
+                  {isRelated || isPathEdge ? (
                     <g>
                       <rect
                         x={mx - pillWidth / 2}
@@ -597,13 +717,19 @@ export function KnowledgeGraphCanvas({
                         height={18}
                         rx={5}
                         fill="var(--bg-graphite)"
-                        stroke="var(--border-subtle)"
+                        stroke={isPathEdge ? "var(--accent-cyan)" : "var(--border-subtle)"}
                       />
                       <text
                         x={mx}
                         y={my + 2.5}
                         textAnchor="middle"
-                        fill={edge.isHypothesis ? "var(--accent-violet)" : "var(--accent-blue)"}
+                        fill={
+                          isPathEdge
+                            ? "var(--accent-cyan)"
+                            : edge.isHypothesis
+                              ? "var(--accent-violet)"
+                              : "var(--accent-blue)"
+                        }
                         fontSize="8.5"
                         fontWeight="600"
                         className="omnis-mono"
@@ -616,17 +742,110 @@ export function KnowledgeGraphCanvas({
               );
             })}
 
-            {/* Differentiated Category Nodes with 1-hop & Keyboard Accessibility */}
+            {/* Semantic Category Shapes with Path Halo & Dual-Theme Contrast */}
             {positionedNodes.map((node, idx) => {
               const isSelected = node.id === selectedNodeId;
               const isConnected = connectedNodeIds.has(node.id);
+              const isPathNode = Boolean(highlightedPathNodeIds?.has(node.id));
               const matchesSearch =
                 !searchFilter.trim() ||
                 node.label.toLowerCase().includes(searchFilter.toLowerCase());
               const color = CATEGORY_COLORS[node.category] ?? "#2563eb";
-              const radius = idx === 0 ? 23 : isSelected ? 19 : 14.5;
+              const radius = idx === 0 ? 22 : isSelected || isPathNode ? 18 : 14.5;
+              const isHypothesis = node.verificationStatus === "ai_hypothesis";
+              const nodeFill = isHypothesis ? "var(--bg-slate)" : color;
+              const nodeStroke = isPathNode
+                ? "var(--accent-cyan)"
+                : isSelected
+                  ? "var(--text-primary)"
+                  : color;
+              const strokeW = isPathNode ? 2.5 : isSelected ? 2.4 : 1.75;
 
-              const effectiveOpacity = !matchesSearch ? 0.18 : isConnected ? 1 : 0.18;
+              const effectiveOpacity = !matchesSearch
+                ? 0.22
+                : isPathNode || isConnected
+                  ? 1
+                  : 0.36;
+
+              const hexPts = Array.from({ length: 6 }, (_, k) => {
+                const a = (Math.PI / 3) * k - Math.PI / 6;
+                return `${(radius * 1.08 * Math.cos(a)).toFixed(1)},${(radius * 1.08 * Math.sin(a)).toFixed(1)}`;
+              }).join(" ");
+
+              const diamondR = radius * 1.16;
+              const diamondPts = `0,${-diamondR.toFixed(1)} ${diamondR.toFixed(1)},0 0,${diamondR.toFixed(1)} ${(-diamondR).toFixed(1)},0`;
+
+              const renderSemanticShape = () => {
+                if (isHypothesis || node.category === "Scenario Hypothesis") {
+                  return (
+                    <>
+                      <circle
+                        r={radius + 4}
+                        fill="none"
+                        stroke={color}
+                        strokeWidth={1.25}
+                        strokeDasharray="3,2.5"
+                        strokeOpacity={0.8}
+                      />
+                      <circle
+                        r={radius}
+                        fill={nodeFill}
+                        fillOpacity={0.94}
+                        stroke={nodeStroke}
+                        strokeWidth={strokeW}
+                        strokeDasharray="3,2"
+                      />
+                    </>
+                  );
+                }
+                if (node.category === "Technology" || node.category === "Energy") {
+                  return (
+                    <polygon
+                      points={hexPts}
+                      fill={nodeFill}
+                      fillOpacity={0.92}
+                      stroke={nodeStroke}
+                      strokeWidth={strokeW}
+                    />
+                  );
+                }
+                if (node.category === "Geopolitics" || node.category === "History") {
+                  return (
+                    <polygon
+                      points={diamondPts}
+                      fill={nodeFill}
+                      fillOpacity={0.92}
+                      stroke={nodeStroke}
+                      strokeWidth={strokeW}
+                    />
+                  );
+                }
+                if (node.category === "Economics" || node.category === "Institution") {
+                  const s = radius * 1.82;
+                  return (
+                    <rect
+                      x={-s / 2}
+                      y={-s / 2}
+                      width={s}
+                      height={s}
+                      rx={5.5}
+                      fill={nodeFill}
+                      fillOpacity={0.92}
+                      stroke={nodeStroke}
+                      strokeWidth={strokeW}
+                    />
+                  );
+                }
+                return (
+                  <circle
+                    r={radius}
+                    fill={nodeFill}
+                    fillOpacity={0.92}
+                    stroke={nodeStroke}
+                    strokeWidth={strokeW}
+                  />
+                );
+              };
 
               return (
                 <g
@@ -671,35 +890,30 @@ export function KnowledgeGraphCanvas({
                   }}
                   onDoubleClick={() => onExpandNode?.(node.id)}
                 >
+                  {isPathNode ? (
+                    <circle
+                      r={radius + 9}
+                      fill="none"
+                      stroke="var(--accent-cyan)"
+                      strokeWidth="2.2"
+                      strokeOpacity={0.55}
+                    />
+                  ) : null}
                   {isSelected ? (
                     <circle
-                      r={radius + 7}
+                      r={radius + 6.5}
                       fill="none"
                       stroke={color}
                       strokeWidth="2"
                       strokeDasharray="3.5,3"
                     />
                   ) : null}
+                  {renderSemanticShape()}
                   <circle
-                    r={radius}
-                    fill={node.verificationStatus === "ai_hypothesis" ? "var(--bg-slate)" : color}
-                    fillOpacity={node.verificationStatus === "ai_hypothesis" ? 0.92 : 0.9}
-                    stroke={isSelected ? "var(--text-primary)" : color}
-                    strokeWidth={isSelected ? 2.5 : 1.75}
-                    strokeDasharray={node.verificationStatus === "ai_hypothesis" ? "3,2" : undefined}
+                    r={idx === 0 ? 5.5 : 3.2}
+                    fill={isHypothesis ? color : "var(--bg-slate)"}
+                    fillOpacity={0.92}
                   />
-                  {idx === 0 ? <circle r={6} fill="#ffffff" fillOpacity={0.92} /> : null}
-                  {node.category === "Geopolitics" && idx !== 0 ? (
-                    <rect
-                      x={-4}
-                      y={-4}
-                      width={8}
-                      height={8}
-                      rx={1.5}
-                      fill="#ffffff"
-                      fillOpacity={0.9}
-                    />
-                  ) : null}
 
                   {(() => {
                     const displayLabel =
@@ -709,21 +923,27 @@ export function KnowledgeGraphCanvas({
                       <>
                         <rect
                           x={-pillW / 2}
-                          y={radius + 4}
+                          y={radius + 5}
                           width={pillW}
                           height={17}
                           rx={5}
                           fill="var(--bg-graphite)"
-                          fillOpacity={0.86}
-                          stroke={isSelected ? color : "var(--border-subtle)"}
-                          strokeWidth={isSelected ? 1.1 : 0.7}
+                          fillOpacity={0.92}
+                          stroke={
+                            isPathNode
+                              ? "var(--accent-cyan)"
+                              : isSelected
+                                ? color
+                                : "var(--border-subtle)"
+                          }
+                          strokeWidth={isSelected || isPathNode ? 1.2 : 0.7}
                         />
                         <text
-                          y={radius + 15.5}
+                          y={radius + 16.5}
                           textAnchor="middle"
                           fill="var(--text-primary)"
                           fontSize="10.5"
-                          fontWeight={isSelected || idx === 0 ? "700" : "600"}
+                          fontWeight={isSelected || idx === 0 || isPathNode ? "700" : "600"}
                         >
                           {displayLabel}
                         </text>
@@ -737,25 +957,25 @@ export function KnowledgeGraphCanvas({
         </svg>
 
         {/* Bottom Legend & Expansion Bar */}
-        <div className="absolute bottom-3 left-3 right-3 flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-xl omnis-glass-panel text-[11px]">
-          <div className="flex flex-wrap items-center gap-3.5 text-[var(--text-secondary)]">
+        <div className="absolute bottom-3 left-3 right-3 flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-xl omnis-hud-pill text-[11px]">
+          <div className="flex flex-wrap items-center gap-3 text-[var(--text-secondary)]">
             <span className="inline-flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-[var(--chart-blue)]" />
-              Verified Evidence (Solid Arc)
+              Verified Arc
             </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full border-2 border-dashed border-[var(--chart-violet)]" />
-              AI Hypothesis (Dashed Arc)
+              AI Hypothesis
             </span>
-            <span className="hidden sm:inline text-[var(--text-muted)]">
-              Scroll to zoom • Drag canvas to pan • Tab/Arrows to focus nodes
+            <span className="hidden md:inline text-[var(--text-muted)] omnis-mono text-[10px]">
+              Hex=Tech/Energy • Diamond=Geo • Square=Econ • Circle=Core
             </span>
           </div>
           {onExpandNode ? (
             <button
               type="button"
               onClick={() => onExpandNode(selectedNodeId)}
-              className="min-h-[40px] sm:min-h-[32px] inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--accent-blue-solid)] hover:brightness-110 text-white font-semibold cursor-pointer"
+              className="min-h-[38px] sm:min-h-[30px] inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--accent-blue-solid)] hover:brightness-110 text-white font-semibold cursor-pointer"
             >
               <PlusCircle className="w-3.5 h-3.5" />
               <span>Expand Node (+4)</span>

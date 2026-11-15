@@ -158,6 +158,16 @@ const ISO3_TO_NUMERIC: Record<string, string> = {
   ZWE: "716",
 };
 
+const NUMERIC_TO_ISO3: Record<string, string> = Object.fromEntries(
+  Object.entries(ISO3_TO_NUMERIC).map(([iso3, numId]) => [numId, iso3])
+);
+
+interface PickCountryEntry {
+  iso3: string;
+  numId: string;
+  name: string;
+}
+
 const CITY_NIGHT_CLUSTERS: [number, number, number][] = [
   [28.61, 77.2, 1.0],
   [19.07, 72.87, 1.0],
@@ -284,6 +294,8 @@ export function getLayerMetricForCountry(
 interface GlobeSceneHandle {
   earthCanvas: HTMLCanvasElement;
   earthTexture: THREE.CanvasTexture;
+  roughnessCanvas: HTMLCanvasElement;
+  roughnessTexture: THREE.CanvasTexture;
   nightCanvas: HTMLCanvasElement;
   nightTexture: THREE.CanvasTexture;
   cloudCanvas: HTMLCanvasElement;
@@ -295,12 +307,18 @@ interface GlobeSceneHandle {
   ambientLight: THREE.AmbientLight;
   sunLight: THREE.DirectionalLight;
   rimLight: THREE.DirectionalLight;
+  globeGroup: THREE.Group;
   markersGroup: THREE.Group;
   arcsGroup: THREE.Group;
   atlasCountries: GeoJSON.FeatureCollection<GeoJSON.Geometry, { name?: string }>;
+  pickBuffer: Uint8ClampedArray;
+  pickWidth: number;
+  pickHeight: number;
+  pickIndexToEntry: (PickCountryEntry | null)[];
   sunUniforms: {
     uSunDirection: { value: THREE.Vector3 };
     uCityLightsEnabled: { value: number };
+    uIsLightMode: { value: number };
   };
 }
 
@@ -342,7 +360,8 @@ export function InteractiveGlobe3D({
   } | null>(null);
 
   const rotationRef = useRef({ x: 0.28, y: -2.95 });
-  const targetRotationRef = useRef<{ x: number; y: number } | null>(null);
+  const targetQuatRef = useRef<THREE.Quaternion | null>(null);
+  const flightTotalAngleRef = useRef(0);
   const isDraggingRef = useRef(false);
   const engagedRef = useRef(false);
   const pointerDownPosRef = useRef({ x: 0, y: 0 });
@@ -356,11 +375,21 @@ export function InteractiveGlobe3D({
   const wheelZoomModeRef = useRef(wheelZoomMode);
   const isFullscreenRef = useRef(isFullscreen);
   const onSelectCountryRef = useRef(onSelectCountry);
+  const themeRef = useRef(theme);
+  const selectedIso3Ref = useRef(selectedIso3);
+  const activeLayerRef = useRef(activeLayer);
+  const countriesRef = useRef(countries);
+  const hoveredIso3Ref = useRef<string | null>(null);
   const hitMeshesRef = useRef<THREE.Mesh[]>([]);
   const arcPulsesRef = useRef<
     { curve: THREE.QuadraticBezierCurve3; mesh: THREE.Mesh; offset: number }[]
   >([]);
   const sceneHandleRef = useRef<GlobeSceneHandle | null>(null);
+
+  themeRef.current = theme;
+  selectedIso3Ref.current = selectedIso3;
+  activeLayerRef.current = activeLayer;
+  countriesRef.current = countries;
 
   const selectedCountry = useMemo(
     () => countries.find((c) => c.iso3 === selectedIso3) ?? countries[0],
@@ -408,7 +437,10 @@ export function InteractiveGlobe3D({
     if (target) {
       const nextX = Math.max(-0.85, Math.min(0.85, (target.lat * Math.PI) / 180 * 0.65));
       const rawY = -((target.lng + 90) * Math.PI) / 180;
-      targetRotationRef.current = { x: nextX, y: rawY };
+      const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(nextX, rawY, 0, "XYZ"));
+      targetQuatRef.current = q;
+      const handle = sceneHandleRef.current;
+      flightTotalAngleRef.current = handle ? handle.globeGroup.quaternion.angleTo(q) : 0.8;
     }
   }, [selectedIso3, countries]);
 
@@ -428,13 +460,20 @@ export function InteractiveGlobe3D({
     return () => window.removeEventListener("resize", updateRailScrollState);
   }, [countries.length, activeLayer, updateRailScrollState]);
 
-  // Helper: paint theme-aware Earth surface, clouds, night city lights & lighting in-place
+  // Helper: paint theme-aware Earth surface, roughness map, clouds, night city lights & lighting in-place
   const paintEarthSurfaceAndAtmosphere = useCallback(
-    (handle: GlobeSceneHandle, currentTheme: "dark" | "light", currentSelectedIso3: string) => {
+    (
+      handle: GlobeSceneHandle,
+      currentTheme: "dark" | "light",
+      currentSelectedIso3: string,
+      currentHoveredIso3: string | null = hoveredIso3Ref.current
+    ) => {
       const isLight = currentTheme === "light";
       const {
         earthCanvas,
         earthTexture,
+        roughnessCanvas,
+        roughnessTexture,
         nightCanvas,
         nightTexture,
         cloudCanvas,
@@ -482,8 +521,11 @@ export function InteractiveGlobe3D({
         ctx.stroke();
 
         const selectedNumId = ISO3_TO_NUMERIC[currentSelectedIso3];
+        const hoveredNumId = currentHoveredIso3 ? ISO3_TO_NUMERIC[currentHoveredIso3] : undefined;
         for (const feat of atlasCountries.features) {
-          const isTarget = Boolean(selectedNumId && String(feat.id ?? "") === selectedNumId);
+          const featId = String(feat.id ?? "").padStart(3, "0");
+          const isTarget = Boolean(selectedNumId && featId === selectedNumId);
+          const isHovered = Boolean(hoveredNumId && !isTarget && featId === hoveredNumId);
           ctx.beginPath();
           pathGen(feat);
           if (isTarget) {
@@ -491,6 +533,12 @@ export function InteractiveGlobe3D({
             ctx.fill();
             ctx.strokeStyle = isLight ? "#ffffff" : "#93c5fd";
             ctx.lineWidth = 2.0;
+            ctx.stroke();
+          } else if (isHovered) {
+            ctx.fillStyle = isLight ? "rgba(29, 78, 216, 0.20)" : "rgba(96, 165, 250, 0.28)";
+            ctx.fill();
+            ctx.strokeStyle = isLight ? "#1D4ED8" : "#93C5FD";
+            ctx.lineWidth = 1.6;
             ctx.stroke();
           } else {
             ctx.fillStyle = isLight ? "#F4F1EA" : "#10223b";
@@ -509,24 +557,44 @@ export function InteractiveGlobe3D({
         earthTexture.needsUpdate = true;
       }
 
+      // Procedural Ocean Specular & Matte Land Roughness Map (1024x512)
+      const rCtx = roughnessCanvas.getContext("2d");
+      if (rCtx) {
+        const rW = roughnessCanvas.width;
+        const rH = roughnessCanvas.height;
+        const rProj = geoEquirectangular().fitExtent(
+          [
+            [0, 0],
+            [rW, rH],
+          ],
+          { type: "Sphere" }
+        );
+        const rPath = geoPath(rProj, rCtx);
+        rCtx.fillStyle = "rgb(68, 68, 68)"; // specular ocean (~0.27 roughness)
+        rCtx.fillRect(0, 0, rW, rH);
+        rCtx.fillStyle = "rgb(225, 225, 225)"; // matte land terrain (~0.88 roughness)
+        rCtx.beginPath();
+        rPath(atlasCountries);
+        rCtx.fill();
+        roughnessTexture.needsUpdate = true;
+      }
+
       const nightCtx = nightCanvas.getContext("2d");
       if (nightCtx) {
         nightCtx.fillStyle = "#000000";
         nightCtx.fillRect(0, 0, nightCanvas.width, nightCanvas.height);
-        if (!isLight) {
-          for (const [lat, lng, intensity] of CITY_NIGHT_CLUSTERS) {
-            const px = ((lng + 180) / 360) * nightCanvas.width;
-            const py = ((90 - lat) / 180) * nightCanvas.height;
-            const rad = 11 * intensity;
-            const glow = nightCtx.createRadialGradient(px, py, 0.5, px, py, rad);
-            glow.addColorStop(0, `rgba(253, 224, 130, ${0.85 * intensity})`);
-            glow.addColorStop(0.4, `rgba(245, 158, 11, ${0.35 * intensity})`);
-            glow.addColorStop(1, "rgba(0, 0, 0, 0)");
-            nightCtx.fillStyle = glow;
-            nightCtx.beginPath();
-            nightCtx.arc(px, py, rad, 0, Math.PI * 2);
-            nightCtx.fill();
-          }
+        for (const [lat, lng, intensity] of CITY_NIGHT_CLUSTERS) {
+          const px = ((lng + 180) / 360) * nightCanvas.width;
+          const py = ((90 - lat) / 180) * nightCanvas.height;
+          const rad = 11 * intensity;
+          const glow = nightCtx.createRadialGradient(px, py, 0.5, px, py, rad);
+          glow.addColorStop(0, `rgba(253, 224, 130, ${0.88 * intensity})`);
+          glow.addColorStop(0.4, `rgba(245, 158, 11, ${0.38 * intensity})`);
+          glow.addColorStop(1, "rgba(0, 0, 0, 0)");
+          nightCtx.fillStyle = glow;
+          nightCtx.beginPath();
+          nightCtx.arc(px, py, rad, 0, Math.PI * 2);
+          nightCtx.fill();
         }
         nightTexture.needsUpdate = true;
       }
@@ -550,14 +618,16 @@ export function InteractiveGlobe3D({
         cloudTexture.needsUpdate = true;
       }
 
-      sphereMat.roughness = isLight ? 0.72 : 0.62;
-      sphereMat.metalness = isLight ? 0.04 : 0.12;
-      sphereMat.emissive.setHex(isLight ? 0x000000 : 0xffb347);
+      sphereMat.roughnessMap = roughnessTexture;
+      sphereMat.roughness = 1.0;
+      sphereMat.metalness = 0.18;
+      sphereMat.emissive.setHex(0xffb347);
       sphereMat.emissiveMap = nightTexture;
-      sphereMat.emissiveIntensity = isLight ? 0 : 0.92;
+      sphereMat.emissiveIntensity = isLight ? 0.85 : 0.92;
       sphereMat.needsUpdate = true;
 
-      sunUniforms.uCityLightsEnabled.value = isLight ? 0.0 : 1.0;
+      sunUniforms.uCityLightsEnabled.value = isLight ? 0.48 : 1.0;
+      sunUniforms.uIsLightMode.value = isLight ? 1.0 : 0.0;
 
       cloudMat.opacity = isLight ? 0.36 : 0.44;
       atmosMat.uniforms.glowColor.value.setHex(isLight ? 0x60a5fa : 0x3b82f6);
@@ -610,6 +680,9 @@ export function InteractiveGlobe3D({
     const earthCanvas = document.createElement("canvas");
     earthCanvas.width = 2048;
     earthCanvas.height = 1024;
+    const roughnessCanvas = document.createElement("canvas");
+    roughnessCanvas.width = 1024;
+    roughnessCanvas.height = 512;
     const nightCanvas = document.createElement("canvas");
     nightCanvas.width = 1024;
     nightCanvas.height = 512;
@@ -620,6 +693,7 @@ export function InteractiveGlobe3D({
     const earthTexture = new THREE.CanvasTexture(earthCanvas);
     earthTexture.colorSpace = THREE.SRGBColorSpace;
     earthTexture.anisotropy = 4;
+    const roughnessTexture = new THREE.CanvasTexture(roughnessCanvas);
     const nightTexture = new THREE.CanvasTexture(nightCanvas);
     const cloudTexture = new THREE.CanvasTexture(cloudCanvas);
 
@@ -629,24 +703,69 @@ export function InteractiveGlobe3D({
         .countries
     ) as unknown as GeoJSON.FeatureCollection<GeoJSON.Geometry, { name?: string }>;
 
+    // Build 1024x512 Country ID Pick Buffer once for universal 130-country hover/click selection
+    const pickWidth = 1024;
+    const pickHeight = 512;
+    const pickCanvas = document.createElement("canvas");
+    pickCanvas.width = pickWidth;
+    pickCanvas.height = pickHeight;
+    const pickIndexToEntry: (PickCountryEntry | null)[] = [null];
+    let pickBuffer = new Uint8ClampedArray(pickWidth * pickHeight * 4);
+    const pCtx = pickCanvas.getContext("2d", { willReadFrequently: true });
+    if (pCtx) {
+      pCtx.imageSmoothingEnabled = false;
+      pCtx.fillStyle = "rgb(0, 0, 0)";
+      pCtx.fillRect(0, 0, pickWidth, pickHeight);
+      const pickProjection = geoEquirectangular().fitExtent(
+        [
+          [0, 0],
+          [pickWidth, pickHeight],
+        ],
+        { type: "Sphere" }
+      );
+      const pickPath = geoPath(pickProjection, pCtx);
+      let nextIdx = 1;
+      for (const feat of atlasCountries.features) {
+        const numId = String(feat.id ?? "").padStart(3, "0");
+        const iso3 = NUMERIC_TO_ISO3[numId];
+        if (!iso3) continue;
+        const idx = nextIdx++;
+        pickIndexToEntry[idx] = {
+          iso3,
+          numId,
+          name: feat.properties?.name || iso3,
+        };
+        const r = idx & 255;
+        const g = (idx >> 8) & 255;
+        pCtx.beginPath();
+        pickPath(feat);
+        pCtx.fillStyle = `rgb(${r}, ${g}, 255)`;
+        pCtx.fill();
+      }
+      pickBuffer = pCtx.getImageData(0, 0, pickWidth, pickHeight).data;
+    }
+
     const sunUniforms = {
       uSunDirection: { value: new THREE.Vector3(1, 0.35, 0.5).normalize() },
       uCityLightsEnabled: { value: 1.0 },
+      uIsLightMode: { value: 0.0 },
     };
 
     const sphereGeo = new THREE.SphereGeometry(1, 64, 64);
     const sphereMat = new THREE.MeshStandardMaterial({
       map: earthTexture,
-      roughness: 0.62,
-      metalness: 0.12,
+      roughnessMap: roughnessTexture,
+      roughness: 1.0,
+      metalness: 0.18,
       emissive: new THREE.Color(0xffb347),
       emissiveMap: nightTexture,
       emissiveIntensity: 0.92,
     });
-    sphereMat.customProgramCacheKey = () => "omnis-solar-terminator-v1";
+    sphereMat.customProgramCacheKey = () => "omnis-solar-terminator-v2";
     sphereMat.onBeforeCompile = (shader) => {
       shader.uniforms.uSunDirection = sunUniforms.uSunDirection;
       shader.uniforms.uCityLightsEnabled = sunUniforms.uCityLightsEnabled;
+      shader.uniforms.uIsLightMode = sunUniforms.uIsLightMode;
       shader.vertexShader = shader.vertexShader
         .replace(
           "#include <common>",
@@ -664,7 +783,18 @@ vWorldNormal = normalize(mat3(modelMatrix) * objectNormal);`
           `#include <common>
 uniform vec3 uSunDirection;
 uniform float uCityLightsEnabled;
+uniform float uIsLightMode;
 varying vec3 vWorldNormal;`
+        )
+        .replace(
+          "#include <map_fragment>",
+          `#include <map_fragment>
+float omnisLightDot = dot(normalize(vWorldNormal), normalize(uSunDirection));
+float omnisDayFactor = clamp((omnisLightDot + 0.22) / 0.57, 0.0, 1.0);
+if (uIsLightMode > 0.5 && omnisDayFactor < 0.999) {
+  vec3 twilightTint = mix(vec3(0.18, 0.24, 0.35), vec3(1.0), smoothstep(0.0, 0.35, omnisDayFactor));
+  diffuseColor.rgb *= mix(twilightTint, vec3(1.0), 0.18);
+}`
         )
         .replace(
           "#include <emissivemap_fragment>",
@@ -757,6 +887,8 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
     const handle: GlobeSceneHandle = {
       earthCanvas,
       earthTexture,
+      roughnessCanvas,
+      roughnessTexture,
       nightCanvas,
       nightTexture,
       cloudCanvas,
@@ -768,13 +900,20 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
       ambientLight,
       sunLight,
       rimLight,
+      globeGroup,
       markersGroup,
       arcsGroup,
       atlasCountries,
+      pickBuffer,
+      pickWidth,
+      pickHeight,
+      pickIndexToEntry,
       sunUniforms,
     };
     sceneHandleRef.current = handle;
 
+    const scratchEuler = new THREE.Euler(0, 0, 0, "XYZ");
+    const scratchQuat = new THREE.Quaternion();
     let animFrameId = 0;
     let clockTime = 0;
     const animate = () => {
@@ -782,25 +921,38 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
       const motionIdle = reducedMotionRef.current || motionPausedRef.current;
       clockTime += motionIdle ? 0 : 0.004;
 
-      if (targetRotationRef.current && !isDraggingRef.current) {
-        const dx = targetRotationRef.current.x - rotationRef.current.x;
-        let dy = targetRotationRef.current.y - rotationRef.current.y;
-        while (dy > Math.PI) dy -= 2 * Math.PI;
-        while (dy < -Math.PI) dy += 2 * Math.PI;
-        rotationRef.current.x += dx * 0.08;
-        rotationRef.current.y += dy * 0.08;
-        if (Math.abs(dx) < 0.002 && Math.abs(dy) < 0.002) {
-          targetRotationRef.current = null;
+      let cameraFlightLift = 0;
+      if (targetQuatRef.current && !isDraggingRef.current) {
+        const angleRemaining = globeGroup.quaternion.angleTo(targetQuatRef.current);
+        globeGroup.quaternion.slerp(targetQuatRef.current, 0.085);
+        scratchEuler.setFromQuaternion(globeGroup.quaternion, "XYZ");
+        rotationRef.current.x = scratchEuler.x;
+        rotationRef.current.y = scratchEuler.y;
+        const totalAngle = flightTotalAngleRef.current;
+        if (totalAngle > 0.15) {
+          const flightProgress = Math.max(0, Math.min(1, 1 - angleRemaining / totalAngle));
+          cameraFlightLift = Math.sin(flightProgress * Math.PI) * 0.24;
         }
-      } else if (autoRotateRef.current && !isDraggingRef.current && !motionIdle) {
-        rotationRef.current.y += 0.0014;
+        if (angleRemaining < 0.003) {
+          globeGroup.quaternion.copy(targetQuatRef.current);
+          scratchEuler.setFromQuaternion(globeGroup.quaternion, "XYZ");
+          rotationRef.current.x = scratchEuler.x;
+          rotationRef.current.y = scratchEuler.y;
+          targetQuatRef.current = null;
+          flightTotalAngleRef.current = 0;
+        }
+      } else {
+        if (autoRotateRef.current && !isDraggingRef.current && !motionIdle) {
+          rotationRef.current.y += 0.0014;
+        }
+        scratchEuler.set(rotationRef.current.x, rotationRef.current.y, 0, "XYZ");
+        scratchQuat.setFromEuler(scratchEuler);
+        globeGroup.quaternion.copy(scratchQuat);
       }
 
       zoomRef.current += (targetZoomRef.current - zoomRef.current) * 0.12;
-      globeGroup.rotation.x = rotationRef.current.x;
-      globeGroup.rotation.y = rotationRef.current.y;
       cloudMesh.rotation.y = clockTime * 0.18;
-      camera.position.z = zoomRef.current;
+      camera.position.z = zoomRef.current + cameraFlightLift;
 
       const rad = (lightAngleRef.current * Math.PI) / 180;
       sunLight.position.set(Math.cos(rad) * 5, 1.9, Math.sin(rad) * 5);
@@ -835,10 +987,36 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
 
+    const samplePickBufferAtUv = (uv: THREE.Vector2): PickCountryEntry | null => {
+      const px = Math.max(0, Math.min(pickWidth - 1, Math.floor(uv.x * pickWidth)));
+      const py = Math.max(0, Math.min(pickHeight - 1, Math.floor((1 - uv.y) * pickHeight)));
+      const offset = (py * pickWidth + px) * 4;
+      const b = pickBuffer[offset + 2];
+      if (b < 245) return null; // Reject ocean background and anti-aliased edge blends
+      const idx = pickBuffer[offset] | (pickBuffer[offset + 1] << 8);
+      if (idx <= 0 || idx >= pickIndexToEntry.length) return null;
+      return pickIndexToEntry[idx] ?? null;
+    };
+
+    const setHoveredIsoAndRepaint = (nextIso3: string | null) => {
+      if (hoveredIso3Ref.current === nextIso3) return;
+      hoveredIso3Ref.current = nextIso3;
+      const currentHandle = sceneHandleRef.current;
+      if (currentHandle) {
+        paintEarthSurfaceAndAtmosphere(
+          currentHandle,
+          themeRef.current,
+          selectedIso3Ref.current,
+          nextIso3
+        );
+      }
+    };
+
     const onPointerDown = (e: PointerEvent) => {
       engagedRef.current = true;
       isDraggingRef.current = true;
-      targetRotationRef.current = null;
+      targetQuatRef.current = null;
+      flightTotalAngleRef.current = 0;
       pointerDownPosRef.current = { x: e.clientX, y: e.clientY };
       prevMouseRef.current = { x: e.clientX, y: e.clientY };
     };
@@ -855,6 +1033,7 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
         );
         prevMouseRef.current = { x: e.clientX, y: e.clientY };
         setHoveredCountry(null);
+        setHoveredIsoAndRepaint(null);
         return;
       }
 
@@ -870,9 +1049,31 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
           x: e.clientX - rect.left,
           y: e.clientY - rect.top,
         });
+        setHoveredIsoAndRepaint(hit.object.userData.iso3);
+        renderer.domElement.style.cursor = "pointer";
+        return;
+      }
+
+      // Universal 130-country surface raycast fallback using Country ID Pick Buffer
+      const earthHits = raycaster.intersectObject(earthMesh, false);
+      const surfaceHit = earthHits[0];
+      const picked = surfaceHit?.uv ? samplePickBufferAtUv(surfaceHit.uv) : null;
+      if (picked) {
+        const matchedProfile = countriesRef.current.find((c) => c.iso3 === picked.iso3);
+        const layerMeta = matchedProfile
+          ? getLayerMetricForCountry(matchedProfile, activeLayerRef.current)
+          : null;
+        setHoveredCountry({
+          name: matchedProfile ? `${matchedProfile.flagEmoji} ${matchedProfile.name}` : `${picked.name} (${picked.iso3})`,
+          metric: layerMeta ? layerMeta.value : `Sovereign Dossier • Click to inspect ${picked.iso3}`,
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top,
+        });
+        setHoveredIsoAndRepaint(picked.iso3);
         renderer.domElement.style.cursor = "pointer";
       } else {
         setHoveredCountry(null);
+        setHoveredIsoAndRepaint(null);
         renderer.domElement.style.cursor = "grab";
       }
     };
@@ -895,6 +1096,12 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
         const hitWithIso = hits.find((h) => h.object.userData?.iso3);
         if (hitWithIso?.object.userData?.iso3) {
           onSelectCountryRef.current(hitWithIso.object.userData.iso3);
+          return;
+        }
+        const earthHits = raycaster.intersectObject(earthMesh, false);
+        const picked = earthHits[0]?.uv ? samplePickBufferAtUv(earthHits[0].uv) : null;
+        if (picked?.iso3) {
+          onSelectCountryRef.current(picked.iso3);
         }
       }
     };
@@ -938,6 +1145,7 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
       sphereGeo.dispose();
       sphereMat.dispose();
       earthTexture.dispose();
+      roughnessTexture.dispose();
       nightTexture.dispose();
       cloudGeo.dispose();
       cloudMat.dispose();
@@ -1061,10 +1269,12 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
     setZoomDistance(DEFAULT_ZOOM);
     const target = countries.find((c) => c.iso3 === selectedIso3);
     if (target) {
-      targetRotationRef.current = {
-        x: Math.max(-0.85, Math.min(0.85, (target.lat * Math.PI) / 180 * 0.65)),
-        y: -((target.lng + 90) * Math.PI) / 180,
-      };
+      const nextX = Math.max(-0.85, Math.min(0.85, (target.lat * Math.PI) / 180 * 0.65));
+      const rawY = -((target.lng + 90) * Math.PI) / 180;
+      const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(nextX, rawY, 0, "XYZ"));
+      targetQuatRef.current = q;
+      const handle = sceneHandleRef.current;
+      flightTotalAngleRef.current = handle ? handle.globeGroup.quaternion.angleTo(q) : 0.8;
     }
   };
 
@@ -1096,7 +1306,7 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
 
       {hoveredCountry ? (
         <div
-          className="pointer-events-none absolute z-20 max-w-[196px] omnis-glass-panel px-2.5 py-1.5 rounded-lg text-xs shadow-lg"
+          className="pointer-events-none absolute z-20 max-w-[216px] omnis-hud-pill px-2.5 py-1.5 rounded-lg text-xs"
           style={{ left: tooltipLeft, top: tooltipTop }}
         >
           <div className="font-bold text-[var(--text-primary)] truncate">{hoveredCountry.name}</div>
@@ -1108,7 +1318,7 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
 
       {/* Top HUD Bar */}
       <div className="absolute top-2.5 sm:top-3.5 inset-x-2.5 sm:inset-x-3.5 flex items-start justify-between gap-2 pointer-events-none">
-        <div className="min-w-0 max-w-[192px] sm:max-w-[260px] omnis-glass-panel px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-xl space-y-1">
+        <div className="min-w-0 max-w-[168px] sm:max-w-[260px] omnis-hud-pill px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-xl space-y-1">
           <div className="flex items-center gap-1.5 text-[10px] sm:text-[10.5px] font-bold uppercase tracking-wider tone-blue omnis-mono truncate">
             <Layers className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
             <span className="truncate">Layer: {activeLayer}</span>
@@ -1137,15 +1347,15 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
           ) : null}
         </div>
 
-        <div className="pointer-events-auto shrink-0 flex items-center gap-0.5 sm:gap-1 omnis-glass-panel p-1 sm:p-1.5 rounded-xl text-xs">
+        <div className="pointer-events-auto shrink-0 flex flex-wrap justify-end items-center gap-0.5 sm:gap-1 omnis-hud-pill p-1 sm:p-1.5 rounded-xl text-xs max-w-[58%] sm:max-w-none">
           <button
             type="button"
             onClick={() => setAutoRotate((prev) => !prev)}
             title={autoRotate ? "Pause Orbital Rotation" : "Resume Orbital Rotation"}
             aria-label={autoRotate ? "Pause Orbital Rotation" : "Resume Orbital Rotation"}
-            className="p-1 sm:p-1.5 rounded-lg hover:bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+            className="min-h-[38px] min-w-[38px] sm:min-h-[34px] sm:min-w-[34px] inline-flex items-center justify-center rounded-md hover:bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
           >
-            {autoRotate ? <Pause className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> : <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
+            {autoRotate ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
           </button>
           <button
             type="button"
@@ -1154,9 +1364,9 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
             }
             title="Zoom In"
             aria-label="Zoom In"
-            className="p-1 sm:p-1.5 rounded-lg hover:bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+            className="min-h-[38px] min-w-[38px] sm:min-h-[34px] sm:min-w-[34px] inline-flex items-center justify-center rounded-md hover:bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
           >
-            <ZoomIn className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+            <ZoomIn className="w-3.5 h-3.5" />
           </button>
           <button
             type="button"
@@ -1165,9 +1375,9 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
             }
             title="Zoom Out"
             aria-label="Zoom Out"
-            className="min-h-[40px] min-w-[40px] sm:min-h-[32px] sm:min-w-[32px] flex items-center justify-center p-1 sm:p-1.5 rounded-lg hover:bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+            className="min-h-[38px] min-w-[38px] sm:min-h-[34px] sm:min-w-[34px] inline-flex items-center justify-center rounded-md hover:bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
           >
-            <ZoomOut className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+            <ZoomOut className="w-3.5 h-3.5" />
           </button>
           <div className="flex items-center gap-1.5 px-1 sm:px-2 py-0.5 rounded-lg bg-[var(--bg-slate)]/75 border border-[var(--border-subtle)]">
             <button
@@ -1178,9 +1388,9 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
               }}
               title="Orbital UTC Solar Terminator Time (Click to cycle / scrub)"
               aria-label="Orbital UTC Solar Terminator Scrubber"
-              className="min-h-[38px] sm:min-h-[28px] inline-flex items-center gap-1 px-1 rounded hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+              className="min-h-[38px] sm:min-h-[30px] inline-flex items-center gap-1 px-1 rounded-md hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
             >
-              <Sun className="w-3 h-3 sm:w-3.5 sm:h-3.5 tone-warning shrink-0" />
+              <Sun className="w-3.5 h-3.5 tone-warning shrink-0" />
               <span className="text-[10.5px] omnis-mono omnis-tabular font-semibold whitespace-nowrap">
                 {(() => {
                   const totalMins = Math.round((((dayLightAngle % 360) + 360) % 360) * 4) % 1440;
@@ -1209,24 +1419,24 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
             onClick={handleResetView}
             title="Reset View"
             aria-label="Reset View"
-            className="min-h-[40px] min-w-[40px] sm:min-h-[32px] sm:min-w-[32px] flex items-center justify-center p-1 sm:p-1.5 rounded-lg hover:bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+            className="min-h-[38px] min-w-[38px] sm:min-h-[34px] sm:min-w-[34px] inline-flex items-center justify-center rounded-md hover:bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
           >
-            <RotateCcw className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+            <RotateCcw className="w-3.5 h-3.5" />
           </button>
           <button
             type="button"
             onClick={() => setIsFullscreen((f) => !f)}
             title={isFullscreen ? "Exit Fullscreen" : "Fullscreen Globe"}
             aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen Globe"}
-            className="min-h-[40px] min-w-[40px] sm:min-h-[32px] sm:min-w-[32px] flex items-center justify-center p-1 sm:p-1.5 rounded-lg hover:bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+            className="min-h-[38px] min-w-[38px] sm:min-h-[34px] sm:min-w-[34px] inline-flex items-center justify-center rounded-md hover:bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
           >
-            {isFullscreen ? <Minimize2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> : <Maximize2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
+            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
           </button>
         </div>
       </div>
 
       {/* Bottom Interactive Country Coordinate Selector Rail with Scroll Affordances */}
-      <div className="absolute bottom-3 left-3 right-3 flex items-center gap-1 py-1.5 px-1.5 rounded-xl omnis-glass-panel">
+      <div className="absolute bottom-3 left-3 right-3 flex items-center gap-1 py-1.5 px-1.5 rounded-xl omnis-hud-pill">
         {railScrollState.left ? (
           <button
             type="button"

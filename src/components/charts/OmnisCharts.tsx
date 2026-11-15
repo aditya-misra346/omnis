@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import { OmnisSegmentedControl } from "@/components/ui/OmnisPrimitives";
 import type {
   CountryIntelligenceProfile,
   SimulationSensitivityItem,
@@ -41,13 +42,18 @@ const METRIC_META: Record<
 
 export function HistoricalTrajectoryChart({
   country,
+  compareCountry,
 }: {
   country: CountryIntelligenceProfile;
+  compareCountry?: CountryIntelligenceProfile | null;
 }) {
   const [metric, setMetric] = useState<MetricKey>("gdpUsdBn");
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
   const series = country.historicalSeries;
+  const compareSeries = compareCountry && compareCountry.iso3 !== country.iso3
+    ? compareCountry.historicalSeries
+    : [];
   const meta = METRIC_META[metric];
 
   if (series.length === 0) {
@@ -58,16 +64,22 @@ export function HistoricalTrajectoryChart({
     );
   }
 
+  const compareByYear = new Map(compareSeries.map((pt) => [pt.year, Number(pt[metric] ?? 0)]));
+  const compareValues = compareSeries.length > 0
+    ? series.map((s) => compareByYear.get(s.year)).filter((v): v is number => v !== undefined)
+    : [];
+
   const values = series.map((s) => Number(s[metric] ?? 0));
-  const minVal = Math.min(...values, 0);
-  const rawMax = Math.max(...values, 1);
+  const combinedValues = [...values, ...compareValues];
+  const minVal = Math.min(...combinedValues, 0);
+  const rawMax = Math.max(...combinedValues, 1);
   const maxVal = rawMax === minVal ? minVal + 1 : rawMax * 1.12;
 
   const w = 640;
-  const h = 235;
+  const h = 248;
   const padL = 56;
   const padR = 20;
-  const padT = 20;
+  const padT = 26;
   const padB = 34;
 
   const toX = (i: number) =>
@@ -80,10 +92,24 @@ export function HistoricalTrajectoryChart({
     y: toY(values[i]),
     year: s.year,
     val: values[i],
+    compareVal: compareByYear.get(s.year),
     growth: s.gdpGrowthPct,
   }));
 
+  const comparePoints = points
+    .filter((p) => p.compareVal !== undefined)
+    .map((p) => ({
+      x: p.x,
+      y: toY(p.compareVal!),
+      year: p.year,
+      val: p.compareVal!,
+    }));
+
   const linePath = points
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
+    .join(" ");
+
+  const compareLinePath = comparePoints
     .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
     .join(" ");
 
@@ -93,38 +119,73 @@ export function HistoricalTrajectoryChart({
       : "";
 
   const activePoint = hoverIdx !== null ? points[hoverIdx] : points[points.length - 1];
+  const firstYear = series[0]?.year ?? 1970;
+  const lastYear = series[series.length - 1]?.year ?? 2025;
+  const inflectionMarkers = [
+    { year: 1991, label: "1991 Shift" },
+    { year: 2008, label: "2008 GFC" },
+    { year: 2020, label: "2020 COVID" },
+  ]
+    .filter((m) => m.year >= firstYear && m.year <= lastYear && lastYear > firstYear)
+    .map((m) => {
+      const exactIdx = series.findIndex((s) => s.year === m.year);
+      const frac =
+        exactIdx >= 0
+          ? exactIdx / Math.max(1, series.length - 1)
+          : (m.year - firstYear) / Math.max(1, lastYear - firstYear);
+      return {
+        ...m,
+        x: padL + frac * (w - padL - padR),
+      };
+    });
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap gap-1.5">
-          {(Object.keys(METRIC_META) as MetricKey[]).map((key) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setMetric(key)}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
-                metric === key
-                  ? "bg-[var(--accent-blue-solid)] text-white shadow-xs"
-                  : "bg-[var(--bg-graphite)] text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:text-[var(--text-primary)]"
-              }`}
-            >
-              {METRIC_META[key].label}
-            </button>
-          ))}
+        <OmnisSegmentedControl<MetricKey>
+          groupId={`hist-metric-${country.iso3}`}
+          ariaLabel="Historical Trajectory Metric"
+          size="sm"
+          value={metric}
+          onChange={setMetric}
+          options={(Object.keys(METRIC_META) as MetricKey[]).map((key) => ({
+            value: key,
+            label: METRIC_META[key].label,
+          }))}
+        />
+
+        <div className="flex flex-wrap items-center gap-3 text-xs omnis-mono">
+          {compareCountry && comparePoints.length > 0 && (
+            <div className="inline-flex items-center gap-2 px-2 py-0.5 rounded-md bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[10.5px]">
+              <span className="inline-flex items-center gap-1 text-[var(--text-primary)] font-semibold">
+                <span className="w-2.5 h-0.5 inline-block" style={{ backgroundColor: meta.colorVar }} />
+                {country.iso3}
+              </span>
+              <span className="text-[var(--text-muted)]">vs</span>
+              <span className="inline-flex items-center gap-1 tone-violet font-semibold">
+                <span className="w-3 border-b-2 border-dashed border-[var(--chart-violet)] inline-block" />
+                {compareCountry.iso3}
+              </span>
+            </div>
+          )}
+          {activePoint && (
+            <div className="flex items-center gap-2">
+              <span className="text-[var(--text-muted)]">{activePoint.year}:</span>
+              <span className="font-bold text-[var(--text-primary)]">
+                {meta.format(activePoint.val)}
+              </span>
+              {activePoint.compareVal !== undefined && compareCountry && (
+                <span className="tone-violet font-semibold">
+                  / {compareCountry.iso3}: {meta.format(activePoint.compareVal)}
+                </span>
+              )}
+              <span className={activePoint.growth >= 0 ? "tone-verified" : "tone-danger"}>
+                ({activePoint.growth >= 0 ? "+" : ""}
+                {activePoint.growth}% GDP/yr)
+              </span>
+            </div>
+          )}
         </div>
-        {activePoint && (
-          <div className="text-xs omnis-mono flex items-center gap-2">
-            <span className="text-[var(--text-muted)]">{activePoint.year}:</span>
-            <span className="font-bold text-[var(--text-primary)]">
-              {meta.format(activePoint.val)}
-            </span>
-            <span className={activePoint.growth >= 0 ? "tone-verified" : "tone-danger"}>
-              ({activePoint.growth >= 0 ? "+" : ""}
-              {activePoint.growth}% GDP/yr)
-            </span>
-          </div>
-        )}
       </div>
 
       <div className="relative rounded-xl bg-[var(--bg-graphite)] border border-[var(--border-subtle)] p-2">
@@ -167,6 +228,30 @@ export function HistoricalTrajectoryChart({
             );
           })}
 
+          {inflectionMarkers.map((m) => (
+            <g key={m.year}>
+              <line
+                x1={m.x}
+                y1={padT}
+                x2={m.x}
+                y2={h - padB}
+                stroke="var(--status-warning)"
+                strokeDasharray="2,3"
+                strokeOpacity="0.55"
+              />
+              <text
+                x={m.x}
+                y={padT - 7}
+                textAnchor="middle"
+                fontSize="8.5"
+                fill="var(--status-warning)"
+                className="omnis-mono"
+              >
+                {m.label}
+              </text>
+            </g>
+          ))}
+
           {areaPath && (
             <path d={areaPath} fill={`url(#area-grad-${country.iso3}-${metric})`} />
           )}
@@ -176,6 +261,17 @@ export function HistoricalTrajectoryChart({
               fill="none"
               stroke={meta.colorVar}
               strokeWidth="2.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          )}
+          {compareLinePath && (
+            <path
+              d={compareLinePath}
+              fill="none"
+              stroke="var(--chart-violet)"
+              strokeWidth="2.1"
+              strokeDasharray="5,4"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
@@ -191,6 +287,18 @@ export function HistoricalTrajectoryChart({
               strokeDasharray="3,3"
             />
           )}
+
+          {comparePoints.map((cp, idx) => (
+            <circle
+              key={`cmp-${cp.year}`}
+              cx={cp.x}
+              cy={cp.y}
+              r={hoverIdx === idx ? 4.5 : 3}
+              fill="var(--bg-graphite)"
+              stroke="var(--chart-violet)"
+              strokeWidth="1.8"
+            />
+          ))}
 
           {points.map((p, idx) => {
             const hovered = hoverIdx === idx;

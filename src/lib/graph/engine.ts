@@ -1810,3 +1810,86 @@ export function buildInfiniteKnowledgeGraph(params: {
     },
   };
 }
+
+export interface CausalPathResult {
+  reachable: boolean;
+  nodeIds: string[];
+  edgeIds: string[];
+  hops: number;
+}
+
+/**
+ * Deterministic breadth-first shortest causal path tracer across knowledge graph edges.
+ * Considers directed forward transitions first before reverse links within equal hop depths.
+ */
+export function findShortestCausalPath(
+  edges: KnowledgeGraphEdge[],
+  startId: string,
+  targetId: string
+): CausalPathResult {
+  if (!startId || !targetId) {
+    return { reachable: false, nodeIds: [], edgeIds: [], hops: 0 };
+  }
+  if (startId === targetId) {
+    return { reachable: true, nodeIds: [startId], edgeIds: [], hops: 0 };
+  }
+
+  const adj = new Map<string, Array<{ nextId: string; edgeId: string }>>();
+  const pushAdj = (from: string, to: string, edgeId: string) => {
+    const list = adj.get(from) ?? [];
+    list.push({ nextId: to, edgeId });
+    adj.set(from, list);
+  };
+
+  for (const edge of edges) {
+    pushAdj(edge.source, edge.target, edge.id);
+  }
+  for (const edge of edges) {
+    pushAdj(edge.target, edge.source, edge.id);
+  }
+
+  const visited = new Set<string>([startId]);
+  const parent = new Map<string, { prevId: string; edgeId: string }>();
+  const queue: string[] = [startId];
+
+  let found = false;
+  while (queue.length > 0) {
+    const cur = queue.shift()!;
+    const neighbors = adj.get(cur) ?? [];
+    for (const { nextId, edgeId } of neighbors) {
+      if (visited.has(nextId)) continue;
+      visited.add(nextId);
+      parent.set(nextId, { prevId: cur, edgeId });
+      if (nextId === targetId) {
+        found = true;
+        break;
+      }
+      queue.push(nextId);
+    }
+    if (found) break;
+  }
+
+  if (!found) {
+    return { reachable: false, nodeIds: [], edgeIds: [], hops: 0 };
+  }
+
+  const nodeIds: string[] = [targetId];
+  const edgeIds: string[] = [];
+  let cursor = targetId;
+  while (cursor !== startId) {
+    const step = parent.get(cursor);
+    if (!step) break;
+    edgeIds.push(step.edgeId);
+    nodeIds.push(step.prevId);
+    cursor = step.prevId;
+  }
+  nodeIds.reverse();
+  edgeIds.reverse();
+
+  return {
+    reachable: true,
+    nodeIds,
+    edgeIds,
+    hops: edgeIds.length,
+  };
+}

@@ -7,18 +7,40 @@ import {
   Search,
   Network,
   ExternalLink,
-  Bookmark,
   Check,
   Columns,
   Rows,
   Sparkles,
+  ChevronUp,
+  X,
+  ArrowRight,
+  Pin,
 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { TIMELINE_EVENTS } from "@/lib/data/global-intelligence";
+import {
+  findNearestEventByPercent,
+  mapYearToTimelinePercent,
+} from "@/lib/timeline/scale";
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
-import { OmnisButton, OmnisModuleHeader } from "@/components/ui/OmnisPrimitives";
+import {
+  OmnisButton,
+  OmnisModuleHeader,
+  OmnisSegmentedControl,
+} from "@/components/ui/OmnisPrimitives";
 import { OmnisSelect } from "@/components/ui/OmnisSelect";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 import type { TimelineEra } from "@/types/omnis";
+
+const DOMAIN_TICK_COLORS: Record<string, string> = {
+  "Scientific Discovery": "var(--chart-violet)",
+  "Political Development": "var(--chart-amber)",
+  "Economic Transformation": "var(--chart-blue)",
+  "Technological Breakthrough": "var(--accent-cyan)",
+  "Conflict & Geopolitics": "var(--status-danger)",
+  "International Agreement": "var(--chart-emerald)",
+  "Cultural Milestone": "var(--accent-violet)",
+};
 
 const ERAS: { id: TimelineEra | "all"; label: string; range: string }[] = [
   { id: "all", label: "All Eras", range: "2600 BCE – 2026 CE" },
@@ -40,6 +62,9 @@ function TimelineContent() {
   const [viewOrientation, setViewOrientation] = useState<"vertical" | "horizontal">("vertical");
   const [selectedEventId, setSelectedEventId] = useState(initialEventId);
   const [savedToast, setSavedToast] = useState(false);
+  const [scrubbing, setScrubbing] = useState(false);
+  const [mobileDossierOpen, setMobileDossierOpen] = useState(false);
+  const scrubberRef = React.useRef<HTMLDivElement | null>(null);
 
   const { addWorkspaceItem, setActiveContext } = useOmnisStore();
 
@@ -117,39 +142,26 @@ function TimelineContent() {
               )}
             </OmnisButton>
             <OmnisButton onClick={handleSaveEvent}>
-              {savedToast ? <Check className="w-3.5 h-3.5" /> : <Bookmark className="w-3.5 h-3.5" />}
-              <span>{savedToast ? "Saved Event" : "Save Event"}</span>
+              {savedToast ? <Check className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
+              <span>{savedToast ? "Pinned to Workspace" : "Pin to Workspace"}</span>
             </OmnisButton>
           </>
         }
         secondaryControls={
           <div className="space-y-3 pt-1">
-            {/* Era Selector Tabs */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-              {ERAS.map((era) => {
-                const active = selectedEra === era.id;
-                return (
-                  <button
-                    key={era.id}
-                    type="button"
-                    onClick={() => setSelectedEra(era.id)}
-                    className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${
-                      active
-                        ? "bg-[var(--accent-blue-solid)] text-white border-transparent shadow-sm"
-                        : "bg-[var(--bg-slate)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]"
-                    }`}
-                  >
-                    <div className="text-xs font-bold">{era.label}</div>
-                    <div
-                      className={`text-[10px] omnis-mono ${
-                        active ? "text-white/80" : "text-[var(--text-muted)]"
-                      }`}
-                    >
-                      {era.range}
-                    </div>
-                  </button>
-                );
-              })}
+            {/* Era Selector Segmented Bar */}
+            <div className="overflow-x-auto max-w-full">
+              <OmnisSegmentedControl
+                groupId="timeline-era-tabs"
+                ariaLabel="Historical Era Filter"
+                size="sm"
+                value={selectedEra}
+                onChange={(val) => setSelectedEra(val as TimelineEra | "all")}
+                options={ERAS.map((era) => ({
+                  value: era.id,
+                  label: era.label,
+                }))}
+              />
             </div>
 
             {/* Search, Category & Milestone Filters */}
@@ -230,8 +242,129 @@ function TimelineContent() {
         </div>
       )}
 
+      {/* Piecewise-Logarithmic 5,000-Year Temporal Scrubber */}
+      {(() => {
+        const scrubFromPointer = (clientX: number) => {
+          const track = scrubberRef.current;
+          if (!track || filteredEvents.length === 0) return;
+          const rect = track.getBoundingClientRect();
+          const pct = ((clientX - rect.left) / Math.max(1, rect.width)) * 100;
+          const nearest = findNearestEventByPercent(filteredEvents, pct);
+          if (nearest && nearest.id !== selectedEventId) {
+            setSelectedEventId(nearest.id);
+          }
+        };
+        const activePct = mapYearToTimelinePercent(activeEvent.yearNumeric);
+        return (
+          <div className="omnis-card p-4 sm:p-5 space-y-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-[10.5px] font-bold uppercase tracking-wider tone-cyan omnis-mono">
+                  5,000-Year Logarithmic Temporal Scrubber
+                </span>
+                <span className="text-[11px] omnis-mono px-2 py-0.5 rounded badge-tone-blue font-semibold">
+                  Active: {activeEvent.dateDisplay}
+                </span>
+              </div>
+              <span className="text-[10.5px] text-[var(--text-muted)] omnis-mono hidden sm:inline">
+                Drag track or tap milestone tick • Compressed Ancient → Expanded 1800–2026 CE
+              </span>
+            </div>
+
+            <div
+              ref={scrubberRef}
+              role="slider"
+              tabIndex={0}
+              aria-label="5000 Year Temporal Scrubber"
+              aria-valuemin={-3000}
+              aria-valuemax={2026}
+              aria-valuenow={activeEvent.yearNumeric}
+              onPointerDown={(e) => {
+                setScrubbing(true);
+                scrubFromPointer(e.clientX);
+              }}
+              onPointerMove={(e) => {
+                if (scrubbing) scrubFromPointer(e.clientX);
+              }}
+              onPointerUp={() => setScrubbing(false)}
+              onPointerLeave={() => setScrubbing(false)}
+              onKeyDown={(e) => {
+                const idx = filteredEvents.findIndex((evt) => evt.id === activeEvent.id);
+                if (idx === -1) return;
+                if (e.key === "ArrowRight") {
+                  e.preventDefault();
+                  const next = filteredEvents[Math.min(filteredEvents.length - 1, idx + 1)];
+                  if (next) setSelectedEventId(next.id);
+                } else if (e.key === "ArrowLeft") {
+                  e.preventDefault();
+                  const prev = filteredEvents[Math.max(0, idx - 1)];
+                  if (prev) setSelectedEventId(prev.id);
+                }
+              }}
+              className="relative h-11 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] cursor-ew-resize select-none touch-none px-3 flex items-center"
+            >
+              <div className="relative w-full h-1.5 rounded-full bg-[var(--bg-graphite)]">
+                {/* Era Segment Dividers (500 CE @ 22%, 1800 CE @ 45%) */}
+                <span
+                  style={{ left: "22%" }}
+                  className="absolute top-1/2 -translate-y-1/2 h-4 w-px bg-[var(--border-strong)]"
+                />
+                <span
+                  style={{ left: "45%" }}
+                  className="absolute top-1/2 -translate-y-1/2 h-4 w-px bg-[var(--border-strong)]"
+                />
+
+                {/* Event Density & Category Ticks */}
+                {filteredEvents.map((evt) => {
+                  const pct = mapYearToTimelinePercent(evt.yearNumeric);
+                  const isActive = evt.id === activeEvent.id;
+                  const tickColor = DOMAIN_TICK_COLORS[evt.category] ?? "var(--accent-blue)";
+                  return (
+                    <button
+                      key={evt.id}
+                      type="button"
+                      title={`${evt.dateDisplay}: ${evt.title}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedEventId(evt.id);
+                      }}
+                      style={{
+                        left: `${pct}%`,
+                        backgroundColor: tickColor,
+                      }}
+                      className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full transition-all cursor-pointer ${
+                        isActive
+                          ? "w-3.5 h-3.5 ring-4 ring-[var(--accent-cyan)]/35 z-20 scale-110"
+                          : "w-1.5 h-4 opacity-80 hover:opacity-100 hover:scale-125 z-10"
+                      }`}
+                    />
+                  );
+                })}
+
+                {/* Active Scrubbing Indicator Ring */}
+                <div
+                  style={{ left: `${activePct}%` }}
+                  className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full border-2 border-[var(--accent-cyan)] pointer-events-none z-10"
+                />
+              </div>
+            </div>
+
+            <div className="relative h-4 text-[10px] omnis-mono omnis-tabular text-[var(--text-muted)]">
+              <span className="absolute left-0">3000 BCE</span>
+              <span style={{ left: "22%" }} className="absolute -translate-x-1/2">
+                500 CE
+              </span>
+              <span style={{ left: "45%" }} className="absolute -translate-x-1/2">
+                1800 CE
+              </span>
+              <span className="absolute right-0">2026 CE</span>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Main Chronological Stream + Event Intelligence Inspector */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pb-16 lg:pb-0">
         {/* Left Chronological Timeline List */}
         <div className="lg:col-span-5 omnis-card p-5 space-y-3 max-h-[680px] overflow-y-auto">
           <div className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
@@ -271,8 +404,8 @@ function TimelineContent() {
           </div>
         </div>
 
-        {/* Right Detailed Historical Event Dossier */}
-        <div className="lg:col-span-7 omnis-card p-6 space-y-5">
+        {/* Right Detailed Historical Event Dossier (De-boxed Editorial Callouts & Hairlines) */}
+        <div className="lg:col-span-7 omnis-card p-6 sm:p-7 space-y-6">
           <div className="space-y-2 pb-4 border-b border-[var(--border-subtle)]">
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
               <span className="px-2.5 py-0.5 rounded-full badge-tone-blue font-bold omnis-mono">
@@ -280,40 +413,40 @@ function TimelineContent() {
               </span>
               <span className="text-[var(--text-muted)] font-medium">{activeEvent.location}</span>
             </div>
-            <h2 className="omnis-display text-2xl font-extrabold text-[var(--text-primary)]">
+            <h2 className="omnis-display-section text-2xl font-extrabold text-[var(--text-primary)]">
               {activeEvent.title}
             </h2>
-            <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+            <p className="omnis-prose text-[var(--text-secondary)]">
               {activeEvent.description}
             </p>
           </div>
 
-          <div className="omnis-surface-slate p-4 space-y-1.5 text-xs">
+          <div className="border-l-2 border-[var(--accent-blue)] pl-4 py-1 space-y-1.5 text-xs">
             <div className="font-bold uppercase tracking-wider tone-blue omnis-mono">
-              Historical Context & Structural Significance
+              Historical Context &amp; Structural Significance
             </div>
-            <p className="text-[var(--text-secondary)] leading-relaxed">
+            <p className="omnis-prose text-[var(--text-secondary)]">
               {activeEvent.historicalContext}
             </p>
           </div>
 
-          {/* Causes & Consequences */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-            <div className="omnis-surface-slate p-4 space-y-2">
+          {/* Causes & Consequences (Architectural Split Hairline Grid) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 border border-[var(--border-subtle)] rounded-xl overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-[var(--border-subtle)] text-xs bg-[var(--bg-obsidian)]/30">
+            <div className="p-4 space-y-2">
               <div className="font-bold uppercase tracking-wider tone-warning omnis-mono">
                 Antecedent Causes
               </div>
-              <ul className="space-y-1.5 list-disc pl-4 text-[var(--text-secondary)]">
+              <ul className="space-y-1.5 list-disc pl-4 text-[var(--text-secondary)] leading-relaxed">
                 {activeEvent.causes.map((c) => (
                   <li key={c}>{c}</li>
                 ))}
               </ul>
             </div>
-            <div className="omnis-surface-slate p-4 space-y-2">
+            <div className="p-4 space-y-2">
               <div className="font-bold uppercase tracking-wider tone-verified omnis-mono">
                 Systemic Consequences
               </div>
-              <ul className="space-y-1.5 list-disc pl-4 text-[var(--text-secondary)]">
+              <ul className="space-y-1.5 list-disc pl-4 text-[var(--text-secondary)] leading-relaxed">
                 {activeEvent.consequences.map((c) => (
                   <li key={c}>{c}</li>
                 ))}
@@ -324,7 +457,7 @@ function TimelineContent() {
           {/* Major Participants */}
           <div className="space-y-2 text-xs">
             <div className="font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
-              Major Historical Participants & Institutions
+              Major Historical Participants &amp; Institutions
             </div>
             <div className="flex flex-wrap gap-2">
               {activeEvent.majorParticipants.map((p) => (
@@ -339,7 +472,7 @@ function TimelineContent() {
           </div>
 
           {/* Connected History -> Transition into Infinite Knowledge Graph */}
-          <div className="omnis-surface-slate p-4 space-y-2.5">
+          <div className="border-t border-[var(--border-subtle)] pt-4 space-y-2.5">
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
               <span className="font-bold tone-violet flex items-center gap-1.5">
                 <Network className="w-4 h-4" />
@@ -357,41 +490,124 @@ function TimelineContent() {
                   onClick={() =>
                     router.push(`/knowledge-graph?topic=${encodeURIComponent(topic)}`)
                   }
-                  className="px-3 py-1.5 rounded-lg badge-tone-violet hover:brightness-105 text-xs font-semibold inline-flex items-center gap-1.5 transition-all cursor-pointer"
+                  className="omnis-magnetic-arrow px-3 py-1.5 rounded-lg badge-tone-violet hover:brightness-105 text-xs font-semibold inline-flex items-center gap-1.5 transition-all cursor-pointer"
                 >
                   <Sparkles className="w-3 h-3" />
                   <span>{topic}</span>
+                  <ArrowRight className="omnis-arrow-glyph w-3 h-3 opacity-75" />
                 </button>
               ))}
             </div>
           </div>
 
           {/* Primary & Academic Sources */}
-          <div className="space-y-2 text-xs">
+          <div className="space-y-2 text-xs border-t border-[var(--border-subtle)] pt-4">
             <div className="font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
-              Verified Primary & Academic Sources
+              Verified Primary &amp; Academic Sources
             </div>
-            {activeEvent.sources.map((src) => (
-              <a
-                key={src.title}
-                href={src.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between omnis-surface-slate p-3 hover:border-[var(--border-strong)]"
-              >
-                <div className="min-w-0 pr-3">
-                  <div className="font-bold tone-blue truncate">{src.title}</div>
-                  <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
-                    {src.author ? `${src.author} • ` : ""}
-                    {src.publisher} ({src.year}) • {src.sourceType}
+            <div className="divide-y divide-[var(--border-subtle)] border-t border-[var(--border-subtle)]">
+              {activeEvent.sources.map((src) => (
+                <a
+                  key={src.title}
+                  href={src.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="omnis-magnetic-arrow flex items-center justify-between py-2.5 hover:bg-[var(--bg-slate)]/50 transition-colors"
+                >
+                  <div className="min-w-0 pr-3">
+                    <div className="font-bold tone-blue truncate">{src.title}</div>
+                    <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                      {src.author ? `${src.author} • ` : ""}
+                      {src.publisher} ({src.year}) • {src.sourceType}
+                    </div>
                   </div>
-                </div>
-                <ExternalLink className="w-4 h-4 tone-blue shrink-0" />
-              </a>
-            ))}
+                  <ExternalLink className="omnis-arrow-glyph w-4 h-4 tone-blue shrink-0" />
+                </a>
+              ))}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Mobile Sticky Bottom Historical Event Inspector Bar (< 1024px) */}
+      <div className="lg:hidden fixed bottom-3 left-3 right-3 z-40">
+        <button
+          type="button"
+          onClick={() => setMobileDossierOpen(true)}
+          className="w-full omnis-hud-pill rounded-2xl px-4 py-3 flex items-center justify-between gap-3 text-left text-xs cursor-pointer"
+        >
+          <div className="min-w-0">
+            <div className="text-[10px] omnis-mono font-bold tone-blue">
+              {activeEvent.dateDisplay}
+            </div>
+            <div className="font-bold text-[var(--text-primary)] truncate">
+              {activeEvent.title}
+            </div>
+          </div>
+          <span className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--accent-blue-solid)] text-white font-semibold">
+            <span>Open Dossier</span>
+            <ChevronUp className="w-3.5 h-3.5" />
+          </span>
+        </button>
+      </div>
+
+      {/* Mobile Historical Dossier Sheet Drawer */}
+      <AnimatePresence>
+        {mobileDossierOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="lg:hidden fixed inset-0 z-50 omnis-modal-scrim backdrop-blur-sm flex items-end"
+            onClick={() => setMobileDossierOpen(false)}
+          >
+            <motion.div
+              initial={{ y: 40, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 40, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 380, damping: 34 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-h-[75vh] overflow-y-auto rounded-t-2xl bg-[var(--bg-graphite)] border-t border-[var(--border-strong)] p-5 space-y-4"
+            >
+              <div className="flex items-center justify-between gap-2 pb-2 border-b border-[var(--border-subtle)]">
+                <div>
+                  <div className="text-[10px] omnis-mono font-bold tone-blue">
+                    {activeEvent.dateDisplay} • {activeEvent.location}
+                  </div>
+                  <div className="font-bold text-base text-[var(--text-primary)]">
+                    {activeEvent.title}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Close Historical Event Dossier"
+                  onClick={() => setMobileDossierOpen(false)}
+                  className="p-2 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                {activeEvent.historicalContext}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {activeEvent.connectedGraphTopics.map((topic) => (
+                  <button
+                    key={topic}
+                    type="button"
+                    onClick={() =>
+                      router.push(`/knowledge-graph?topic=${encodeURIComponent(topic)}`)
+                    }
+                    className="px-2.5 py-1 rounded-lg badge-tone-violet text-xs font-semibold cursor-pointer"
+                  >
+                    {topic} →
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -11,6 +11,8 @@ import {
   Bookmark,
   Check,
   TrendingUp,
+  Pin,
+  ArrowRight,
 } from "lucide-react";
 import {
   COMPARABLE_ENTITIES,
@@ -130,15 +132,77 @@ const ALL_TOPICS = [
   "Biotechnology & Genomics",
 ];
 
+function parseCountriesFromCompareQuery(query: string): [string, string] | null {
+  const clean = query.trim().toLowerCase();
+  if (!clean) return null;
+  const aliases: Record<string, string> = {
+    usa: "USA",
+    "united states": "USA",
+    america: "USA",
+    us: "USA",
+    uk: "GBR",
+    britain: "GBR",
+    "united kingdom": "GBR",
+    south: "KOR",
+    korea: "KOR",
+    india: "IND",
+    china: "CHN",
+    germany: "DEU",
+    japan: "JPN",
+    france: "FRA",
+    brazil: "BRA",
+    singapore: "SGP",
+    nigeria: "NGA",
+  };
+  const hits: Array<{ idx: number; iso3: string }> = [];
+  for (const country of Object.values(COUNTRIES_DATA)) {
+    const isoPos = clean.search(new RegExp(`\\b${country.iso3.toLowerCase()}\\b`));
+    if (isoPos !== -1) hits.push({ idx: isoPos, iso3: country.iso3 });
+    const namePos = clean.indexOf(country.name.toLowerCase());
+    if (namePos !== -1) hits.push({ idx: namePos, iso3: country.iso3 });
+  }
+  for (const [alias, iso3] of Object.entries(aliases)) {
+    const pos = clean.search(new RegExp(`\\b${alias}\\b`));
+    if (pos !== -1) hits.push({ idx: pos, iso3 });
+  }
+  hits.sort((a, b) => a.idx - b.idx);
+  const ordered: string[] = [];
+  for (const h of hits) {
+    if (!ordered.includes(h.iso3)) ordered.push(h.iso3);
+  }
+  if (ordered.length >= 2) return [ordered[0], ordered[1]];
+  if (ordered.length === 1) {
+    const first = ordered[0];
+    return [first, first === "IND" ? "CHN" : "IND"];
+  }
+  return null;
+}
+
 function IntelligenceCompareContent() {
   const searchParams = useSearchParams();
-  const initialLeft = searchParams.get("left")?.toUpperCase() || "IND";
-  const initialRight = searchParams.get("right")?.toUpperCase() || "CHN";
+  const queryParam = searchParams.get("q") || "";
+  const parsedFromQuery = parseCountriesFromCompareQuery(queryParam);
+  const initialLeft =
+    searchParams.get("left")?.toUpperCase() || parsedFromQuery?.[0] || "IND";
+  const initialRight =
+    searchParams.get("right")?.toUpperCase() || parsedFromQuery?.[1] || "CHN";
 
   const [leftIso, setLeftIso] = useState(COUNTRIES_DATA[initialLeft] ? initialLeft : "IND");
   const [rightIso, setRightIso] = useState(COUNTRIES_DATA[initialRight] ? initialRight : "CHN");
   const [savedNotice, setSavedNotice] = useState(false);
+  const [pinnedTopics, setPinnedTopics] = useState<Record<string, boolean>>({});
   const [liveBriefings, setLiveBriefings] = useState<Record<string, ResearchSourceItem | null>>({});
+
+  useEffect(() => {
+    const q = searchParams.get("q") || "";
+    const parsed = parseCountriesFromCompareQuery(q);
+    const leftParam = searchParams.get("left")?.toUpperCase();
+    const rightParam = searchParams.get("right")?.toUpperCase();
+    const nextLeft = leftParam || parsed?.[0];
+    const nextRight = rightParam || parsed?.[1];
+    if (nextLeft && COUNTRIES_DATA[nextLeft]) setLeftIso(nextLeft);
+    if (nextRight && COUNTRIES_DATA[nextRight]) setRightIso(nextRight);
+  }, [searchParams]);
 
   const { followedTopics, toggleFollowedTopic, addWorkspaceItem, setActiveContext } =
     useOmnisStore();
@@ -206,7 +270,7 @@ function IntelligenceCompareContent() {
         actions={
           <OmnisButton onClick={handleSaveComparison}>
             {savedNotice ? <Check className="w-3.5 h-3.5" /> : <Bookmark className="w-3.5 h-3.5" />}
-            <span>{savedNotice ? "Comparison Saved" : "Save Comparison"}</span>
+            <span>{savedNotice ? "Pinned to Workspace" : "Pin to Workspace"}</span>
           </OmnisButton>
         }
       >
@@ -356,30 +420,37 @@ function IntelligenceCompareContent() {
         </div>
       </div>
 
-      {/* Technology & Industry Comparable Entities */}
+      {/* Technology & Industry Comparable Entities (De-boxed 2x2 Architectural Grid) */}
       <div className="omnis-card p-6 space-y-4">
         <h2 className="text-sm font-bold flex items-center gap-2 text-[var(--text-primary)]">
           <TrendingUp className="w-4 h-4 tone-verified" />
           Cross-Sector Technology & Industrial Benchmark Matrix
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {COMPARABLE_ENTITIES.map((ent) => (
-            <div key={ent.id} className="omnis-surface-slate p-4 space-y-2.5 text-xs">
+        <div className="grid grid-cols-1 md:grid-cols-2 border border-[var(--border-subtle)] rounded-2xl overflow-hidden bg-[var(--bg-obsidian)]/30">
+          {COMPARABLE_ENTITIES.map((ent, idx) => (
+            <div
+              key={ent.id}
+              className={`p-5 space-y-2.5 text-xs ${
+                idx < COMPARABLE_ENTITIES.length - 1 ? "border-b border-[var(--border-subtle)]" : ""
+              } ${idx % 2 === 0 ? "md:border-r md:border-[var(--border-subtle)]" : ""}`}
+            >
               <div className="flex items-center justify-between gap-2">
                 <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md badge-tone-blue omnis-mono">
                   {ent.category}
                 </span>
-                <span className="omnis-mono text-[11px] tone-verified font-semibold">
+                <span className="omnis-mono omnis-tabular text-[11px] tone-verified font-semibold">
                   Velocity: {ent.metrics.growthVelocity}/100
                 </span>
               </div>
               <h3 className="font-bold text-sm text-[var(--text-primary)]">{ent.name}</h3>
               <p className="text-[var(--text-secondary)] leading-relaxed">{ent.subtitle}</p>
-              <div className="pt-2 border-t border-[var(--border-subtle)] space-y-1">
+              <div className="pt-2 border-t border-[var(--border-subtle)] divide-y divide-[var(--border-subtle)]">
                 {Object.entries(ent.keyAttributes).map(([k, v]) => (
-                  <div key={k} className="flex justify-between gap-2 text-[11px]">
-                    <span className="text-[var(--text-muted)]">{k}:</span>
-                    <span className="font-semibold text-[var(--text-primary)] text-right">{v}</span>
+                  <div key={k} className="flex justify-between gap-2 py-1 text-[11px]">
+                    <span className="text-[var(--text-muted)]">{k}</span>
+                    <span className="font-semibold omnis-tabular text-[var(--text-primary)] text-right">
+                      {v}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -422,7 +493,7 @@ function IntelligenceCompareContent() {
           })}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+        <div className="divide-y divide-[var(--border-subtle)] border-y border-[var(--border-subtle)]">
           {followedTopics.map((topic) => {
             const liveWork = liveBriefings[topic];
             const cached = resolveCachedTopicBriefing(topic);
@@ -433,11 +504,15 @@ function IntelligenceCompareContent() {
               ? `Published ${liveWork.publishedDate}`
               : cached.dateLabel;
             const sourceText = liveWork ? liveWork.publisher : cached.sourceLabel;
+            const isPinned = Boolean(pinnedTopics[topic]);
 
             return (
-              <div key={topic} className="omnis-surface-slate p-4 flex flex-col justify-between gap-2.5 text-xs">
-                <div className="space-y-2">
-                  <div className="flex flex-wrap items-center justify-between gap-1.5 text-[10px] omnis-mono font-semibold">
+              <div
+                key={topic}
+                className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+              >
+                <div className="space-y-1.5 min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2 text-[10px] omnis-mono font-semibold">
                     <span
                       className={`px-1.5 py-0.5 rounded uppercase ${
                         isLive ? "badge-tone-verified" : "badge-tone-cyan"
@@ -445,27 +520,44 @@ function IntelligenceCompareContent() {
                     >
                       {isLive ? "Live OpenAlex" : "Cached Archive"}
                     </span>
-                    <span className="text-[var(--text-muted)]">{dateBadge}</span>
+                    <span className="tone-blue uppercase tracking-wider">{topic}</span>
+                    <span className="text-[var(--text-muted)]">• {dateBadge}</span>
                   </div>
-                  <div className="text-[10.5px] font-semibold uppercase tracking-wider tone-blue omnis-mono">
-                    {topic}
-                  </div>
-                  <h3 className="font-bold text-sm text-[var(--text-primary)] leading-snug line-clamp-2">
+                  <h3 className="font-bold text-sm text-[var(--text-primary)] leading-snug">
                     {title}
                   </h3>
-                  <p className="text-[var(--text-secondary)] leading-relaxed line-clamp-3">
+                  <p className="text-[var(--text-secondary)] leading-relaxed line-clamp-2 omnis-prose">
                     {summary}
                   </p>
-                </div>
-                <div className="flex items-center justify-between gap-2 pt-2 border-t border-[var(--border-subtle)]">
-                  <span className="text-[10px] text-[var(--text-muted)] truncate">
+                  <div className="text-[10px] text-[var(--text-muted)]">
                     Source: {sourceText}
-                  </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      addWorkspaceItem({
+                        type: "report",
+                        title: `Briefing: ${topic}`,
+                        subtitle: title,
+                        folder: "AI & Frontier Tech",
+                        tags: [topic, isLive ? "OpenAlex" : "Curated"],
+                        href: `/research?q=${encodeURIComponent(topic)}`,
+                      });
+                      setPinnedTopics((p) => ({ ...p, [topic]: true }));
+                    }}
+                    className="px-2.5 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] hover:border-[var(--border-strong)] text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <Pin className="w-3 h-3 tone-blue" />
+                    <span>{isPinned ? "Pinned" : "Pin to Workspace"}</span>
+                  </button>
                   <Link
                     href={`/research?q=${encodeURIComponent(topic)}`}
-                    className="tone-blue hover:underline font-semibold shrink-0"
+                    className="omnis-magnetic-arrow tone-blue hover:underline font-semibold inline-flex items-center gap-1"
                   >
-                    Investigate →
+                    <span>Investigate</span>
+                    <ArrowRight className="omnis-arrow-glyph w-3.5 h-3.5" />
                   </Link>
                 </div>
               </div>

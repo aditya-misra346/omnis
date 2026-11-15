@@ -73,7 +73,7 @@ export default function SettingsPage() {
       <OmnisModuleHeader
         moduleTag="SYSTEM SETTINGS, VISUAL THEME & PRIVACY GOVERNANCE"
         title="Account Security, Theme Calibration & Data Provider Telemetry"
-        subtitle="Calibrate Obsidian Dark vs Alabaster Light interfaces, manage institutional sessions, and audit live upstream API providers."
+        subtitle="Calibrate Obsidian Dark (#05070C) vs Archival Pearl Light (#FAF8F5) interfaces, manage institutional sessions, and audit live upstream API providers."
         icon={<Settings className="w-3.5 h-3.5" />}
       />
 
@@ -89,10 +89,11 @@ export default function SettingsPage() {
         <div className="omnis-card p-6 space-y-4">
           <h2 className="text-base font-bold text-[var(--text-primary)]">Visual Theme Calibration</h2>
           <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-            Switch between OMNIS Obsidian Dark and Alabaster Light themes. Both palettes are
-            engineered for WCAG 2.2 AA contrast across charts, 3D overlays, and typography.
+            Switch between OMNIS Obsidian Dark (#05070C) and Archival Pearl Light (#FAF8F5) themes.
+            Both palettes are engineered for WCAG 2.2 AA contrast across charts, 3D overlays, and
+            typography.
           </p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               type="button"
               onClick={() => setTheme("dark")}
@@ -104,10 +105,10 @@ export default function SettingsPage() {
             >
               <div className="flex items-center gap-2 text-xs font-bold text-[var(--text-primary)]">
                 <Moon className="w-4 h-4 tone-blue" />
-                <span>Obsidian Dark</span>
+                <span>Obsidian Dark (#05070C)</span>
               </div>
               <div className="text-[11px] text-[var(--text-muted)]">
-                Deep obsidian (#07090E) & precision blue
+                Deep obsidian (#05070C) & precision cobalt blue
               </div>
             </button>
 
@@ -122,12 +123,40 @@ export default function SettingsPage() {
             >
               <div className="flex items-center gap-2 text-xs font-bold text-[var(--text-primary)]">
                 <Sun className="w-4 h-4 tone-warning" />
-                <span>Alabaster Light</span>
+                <span>Archival Pearl Light (#FAF8F5)</span>
               </div>
               <div className="text-[11px] text-[var(--text-muted)]">
-                High-contrast daylight editorial surfaces
+                High-contrast daylight archival surfaces (#FAF8F5)
               </div>
             </button>
+          </div>
+
+          <div className="pt-3 border-t border-[var(--border-subtle)] space-y-2">
+            <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-[var(--text-muted)]">
+              Live Design Token Swatch Chips ({theme.toUpperCase()})
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { token: "--bg-obsidian", label: "Obsidian" },
+                { token: "--bg-graphite", label: "Graphite" },
+                { token: "--bg-slate", label: "Slate" },
+                { token: "--accent-blue", label: "Accent Blue" },
+                { token: "--status-cyan", label: "Accent Cyan" },
+              ].map((swatch) => (
+                <div
+                  key={swatch.token}
+                  className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[10px] font-mono text-[var(--text-secondary)]"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="w-3 h-3 rounded-full border border-[var(--border-strong)]"
+                    style={{ backgroundColor: `var(${swatch.token})` }}
+                  />
+                  <span>{swatch.label}</span>
+                  <span className="text-[var(--text-muted)]">{swatch.token}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 

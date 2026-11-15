@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Globe2,
   Network,
@@ -24,20 +24,21 @@ import {
   Cpu,
   Pause,
   Play,
+  ChevronDown,
 } from "lucide-react";
 import { COUNTRIES_DATA } from "@/lib/data/global-intelligence";
 import { InteractiveGlobe3D } from "@/components/globe/InteractiveGlobe3D";
 import { ProvenancePanel } from "@/components/ui/ProvenancePanel";
 import { OmnisParameterSlider } from "@/components/ui/OmnisParameterSlider";
 import { OmnisWordmark } from "@/components/brand/OmnisLogo";
-import { OmnisStatTile } from "@/components/ui/OmnisPrimitives";
+import { OmnisStatTile, OmnisSegmentedControl } from "@/components/ui/OmnisPrimitives";
 import { ElasticMagneticText } from "@/components/typography/ElasticMagneticText";
 import { ClipMaskHeading } from "@/components/typography/ClipMaskHeading";
 import { ScrollFocusNarrative } from "@/components/typography/ScrollFocusNarrative";
 import { IntelligenceSpecimenTicker } from "@/components/typography/IntelligenceSpecimenTicker";
 import { InteractiveQueryComposer } from "@/components/typography/InteractiveQueryComposer";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
-import type { IntelligenceLayerId } from "@/types/omnis";
+import type { CountryIntelligenceProfile, IntelligenceLayerId } from "@/types/omnis";
 
 const FLAGSHIP_MODULES = [
   {
@@ -154,13 +155,36 @@ export default function LandingPage() {
   const router = useRouter();
   const { motionPaused, toggleMotionPaused } = useOmnisStore();
   const [heroQuery, setHeroQuery] = useState("");
+  const [builderOpen, setBuilderOpen] = useState(false);
   const [selectedIso3, setSelectedIso3] = useState("IND");
+  const [hydratedCountries, setHydratedCountries] = useState<
+    Record<string, CountryIntelligenceProfile>
+  >({});
   const [activeLayer, setActiveLayer] = useState<IntelligenceLayerId>("economics");
   const [simOilShock, setSimOilShock] = useState(30);
   const [activeGraphNodeIdx, setActiveGraphNodeIdx] = useState(0);
 
-  const countriesList = Object.values(COUNTRIES_DATA);
-  const activeCountry = COUNTRIES_DATA[selectedIso3] ?? COUNTRIES_DATA.IND;
+  useEffect(() => {
+    if (COUNTRIES_DATA[selectedIso3] || hydratedCountries[selectedIso3]) return;
+    let active = true;
+    fetch(`/api/v1/countries/${encodeURIComponent(selectedIso3)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!active || !data?.country) return;
+        setHydratedCountries((prev) => ({ ...prev, [selectedIso3]: data.country }));
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [selectedIso3, hydratedCountries]);
+
+  const countriesList = useMemo(
+    () => [...Object.values(COUNTRIES_DATA), ...Object.values(hydratedCountries)],
+    [hydratedCountries]
+  );
+  const activeCountry =
+    COUNTRIES_DATA[selectedIso3] ?? hydratedCountries[selectedIso3] ?? COUNTRIES_DATA.IND;
   const formattedCoords = `${Math.abs(activeCountry.lat).toFixed(2)}°${
     activeCountry.lat >= 0 ? "N" : "S"
   }, ${Math.abs(activeCountry.lng).toFixed(2)}°${activeCountry.lng >= 0 ? "E" : "W"}`;
@@ -232,41 +256,40 @@ export default function LandingPage() {
     <div className="min-h-screen flex flex-col">
       {/* SECTION 1 & 2: ARCHITECTURAL HERO + LIVE 3D PLANETARY STAGE */}
       <section className="relative py-12 lg:py-20 px-4 sm:px-8 border-b border-[var(--border-subtle)] omnis-grid-bg overflow-hidden">
-        {/* Subtle studio radial ambient lighting (restrained, non-generic) */}
+        {/* Subtle theme-calibrated atmospheric wash */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -top-40 right-0 w-[680px] h-[680px] rounded-full opacity-35 blur-3xl"
+          className="pointer-events-none absolute -top-40 right-0 w-[680px] h-[680px] rounded-full opacity-90 blur-3xl"
           style={{
-            background:
-              "radial-gradient(circle, rgba(37, 99, 235, 0.22) 0%, rgba(124, 58, 237, 0.08) 45%, transparent 72%)",
+            background: "var(--bg-hero-radial)",
           }}
         />
 
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center relative z-10">
-          <div className="lg:col-span-6 space-y-6">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center relative z-10">
+          <div className="lg:col-span-6 space-y-5">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full badge-tone-blue text-[11px] font-semibold uppercase tracking-wider omnis-mono">
               <Sparkles className="w-3.5 h-3.5" />
               <span>OMNIS Global Intelligence Platform • v2.0</span>
             </div>
 
-            <div className="space-y-3.5">
+            <div className="space-y-3">
               <ElasticMagneticText
                 as="h1"
-                className="omnis-display text-4xl sm:text-5xl lg:text-[54px] font-extrabold tracking-tight leading-[1.06] text-[var(--text-primary)]"
+                className="omnis-display-hero font-extrabold text-[var(--text-primary)]"
                 segments={[
                   { text: "Understand Anything." },
                   { text: "Connect Everything.", editorial: true, fluidInk: true },
                 ]}
               />
-              <p className="text-base sm:text-lg text-[var(--text-secondary)] leading-relaxed max-w-xl">
+              <p className="text-base sm:text-[17px] text-[var(--text-secondary)] leading-relaxed max-w-xl">
                 OMNIS transforms static walls of text into interactive, source-traceable global
                 intelligence—unifying a 3D Natural Earth Atlas, Infinite Knowledge Graphs, Monte
                 Carlo Scenario Simulations, Deep Research, and a Digital Scientific Laboratory.
               </p>
             </div>
 
-            {/* Universal Natural Language Search Bar */}
-            <div className="space-y-3">
+            {/* Universal Natural Language Search Bar & Collapsible Query Builder */}
+            <div className="space-y-2.5">
               <form
                 onSubmit={handleHeroSearch}
                 className="omnis-card p-1.5 sm:p-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 border-[var(--border-strong)]"
@@ -283,34 +306,81 @@ export default function LandingPage() {
                 </div>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-[var(--accent-blue-solid)] hover:brightness-110 text-white text-xs font-semibold tracking-wide transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                  className="group px-5 py-2.5 rounded-xl bg-[var(--accent-blue-solid)] hover:brightness-110 text-white text-xs font-semibold tracking-wide transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
                 >
                   <span>Investigate</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <ArrowRight className="w-3.5 h-3.5 omnis-magnetic-arrow" />
                 </button>
               </form>
 
-              <InteractiveQueryComposer
-                onSubmitQuery={submitHeroExplore}
-                onSyncDraftQuery={setHeroQuery}
-              />
+              <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                <span className="text-[var(--text-muted)] omnis-mono uppercase tracking-wider text-[10px]">
+                  Explore:
+                </span>
+                {[
+                  "Explain India's economic development since 1991",
+                  "Compare India and China economically",
+                  "Semiconductor geopolitics",
+                ].map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    onClick={() => submitHeroExplore(chip)}
+                    className="px-2.5 py-1 rounded-full bg-[var(--bg-slate)] hover:border-[var(--border-strong)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                  >
+                    {chip}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setBuilderOpen((prev) => !prev)}
+                  aria-expanded={builderOpen}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full badge-tone-blue text-[11px] font-semibold cursor-pointer hover:brightness-105 transition-all"
+                >
+                  <span>Structured Query Builder</span>
+                  <ChevronDown
+                    className={`w-3 h-3 transition-transform duration-200 ${
+                      builderOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <AnimatePresence initial={false}>
+                {builderOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                    className="overflow-hidden"
+                  >
+                    <InteractiveQueryComposer
+                      showPresetStrip={false}
+                      onSubmitQuery={submitHeroExplore}
+                      onSyncDraftQuery={setHeroQuery}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Primary & Secondary CTAs */}
             <div className="flex flex-wrap items-center gap-3 pt-1">
               <Link
                 href="/command"
-                className="px-5 py-3 rounded-xl bg-[var(--accent-blue-solid)] hover:brightness-110 text-white text-xs sm:text-sm font-semibold inline-flex items-center gap-2 shadow-md transition-all"
+                className="group px-5 py-3 rounded-xl bg-[var(--accent-blue-solid)] hover:brightness-110 text-white text-xs sm:text-sm font-semibold inline-flex items-center gap-2 shadow-md transition-all"
               >
                 <span>Launch Intelligence Command Center</span>
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-4 h-4 omnis-magnetic-arrow" />
               </Link>
               <Link
                 href="/atlas"
-                className="px-5 py-3 rounded-xl bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-xs sm:text-sm font-semibold text-[var(--text-primary)] inline-flex items-center gap-2 transition-all"
+                className="group px-5 py-3 rounded-xl bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-xs sm:text-sm font-semibold text-[var(--text-primary)] inline-flex items-center gap-2 transition-all"
               >
                 <Globe2 className="w-4 h-4 tone-blue" />
                 <span>Explore 3D Global Atlas</span>
+                <span aria-hidden="true" data-diagonal="true" className="omnis-magnetic-arrow text-xs tone-blue">↗</span>
               </Link>
             </div>
 
@@ -338,30 +408,22 @@ export default function LandingPage() {
                 <Layers className="w-3.5 h-3.5 tone-blue" />
                 Live 3D Planetary Intelligence Preview
               </span>
-              <div className="flex flex-wrap gap-1">
-                {(
+              <OmnisSegmentedControl<IntelligenceLayerId>
+                groupId="hero-layer-seg"
+                ariaLabel="Planetary Intelligence Layer"
+                size="sm"
+                value={activeLayer}
+                onChange={setActiveLayer}
+                options={(
                   [
-                    "economics",
-                    "demographics",
-                    "energy",
-                    "environment",
-                    "technology",
-                  ] as IntelligenceLayerId[]
-                ).map((layer) => (
-                  <button
-                    key={layer}
-                    type="button"
-                    onClick={() => setActiveLayer(layer)}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] capitalize font-semibold transition-all cursor-pointer ${
-                      activeLayer === layer
-                        ? "bg-[var(--accent-blue-solid)] text-white shadow-2xs"
-                        : "bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                    }`}
-                  >
-                    {layer}
-                  </button>
-                ))}
-              </div>
+                    { value: "economics", label: "Economics" },
+                    { value: "demographics", label: "Demographics" },
+                    { value: "energy", label: "Energy" },
+                    { value: "environment", label: "Environment" },
+                    { value: "technology", label: "Technology" },
+                  ] as const
+                ).map((item) => ({ value: item.value, label: item.label }))}
+              />
             </div>
 
             <InteractiveGlobe3D
@@ -384,7 +446,7 @@ export default function LandingPage() {
               <div className="text-xs font-bold uppercase tracking-widest tone-blue omnis-mono">
                 01 / Architectural Vision
               </div>
-              <ClipMaskHeading className="omnis-display text-2xl sm:text-3xl font-bold text-[var(--text-primary)]">
+              <ClipMaskHeading className="omnis-display-section font-bold text-[var(--text-primary)]">
                 Six Major Disciplines Integrated Into{" "}
                 <span className="omnis-editorial font-normal text-[1.12em]">
                   One Cohesive System
@@ -434,7 +496,7 @@ export default function LandingPage() {
               <div className="text-xs font-bold uppercase tracking-widest tone-blue omnis-mono">
                 02 / Flagship Modules
               </div>
-              <ClipMaskHeading className="omnis-display text-2xl sm:text-3xl font-bold mt-1 text-[var(--text-primary)]">
+              <ClipMaskHeading className="omnis-display-section font-bold mt-1 text-[var(--text-primary)]">
                 Explore the Six Flagship{" "}
                 <span className="omnis-editorial font-normal text-[1.12em]">
                   Intelligence Environments
@@ -443,9 +505,9 @@ export default function LandingPage() {
             </div>
             <Link
               href="/command"
-              className="text-xs font-semibold tone-blue hover:underline inline-flex items-center gap-1"
+              className="group text-xs font-semibold tone-blue hover:underline inline-flex items-center gap-1"
             >
-              Open Command Center <ArrowRight className="w-3.5 h-3.5" />
+              Open Command Center <ArrowRight className="w-3.5 h-3.5 omnis-magnetic-arrow" />
             </Link>
           </div>
 
@@ -532,7 +594,7 @@ export default function LandingPage() {
             <div className="text-xs font-bold uppercase tracking-widest tone-blue omnis-mono">
               03 / Live Interactive Demonstrations
             </div>
-            <ClipMaskHeading className="omnis-display text-2xl sm:text-3xl font-bold text-[var(--text-primary)]">
+            <ClipMaskHeading className="omnis-display-section font-bold text-[var(--text-primary)]">
               Country Intelligence, Knowledge Graph, Research &{" "}
               <span className="omnis-editorial font-normal text-[1.12em]">
                 Scenario Simulation
@@ -558,22 +620,20 @@ export default function LandingPage() {
                     </span>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {["IND", "USA", "CHN", "DEU", "JPN"].map((iso) => (
-                    <button
-                      key={iso}
-                      type="button"
-                      onClick={() => setSelectedIso3(iso)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold omnis-mono transition-colors cursor-pointer ${
-                        selectedIso3 === iso
-                          ? "bg-[var(--accent-blue-solid)] text-white shadow-2xs"
-                          : "bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                      }`}
-                    >
-                      {iso}
-                    </button>
-                  ))}
-                </div>
+                <OmnisSegmentedControl<string>
+                  groupId="sandbox-country-seg"
+                  ariaLabel="Sandbox Country Selection"
+                  size="sm"
+                  value={selectedIso3}
+                  onChange={setSelectedIso3}
+                  options={(["IND", "USA", "CHN", "DEU", "JPN"].includes(selectedIso3)
+                    ? ["IND", "USA", "CHN", "DEU", "JPN"]
+                    : ["IND", "USA", "CHN", "DEU", "JPN", selectedIso3]
+                  ).map((iso) => ({
+                    value: iso,
+                    label: <span className="omnis-mono">{iso}</span>,
+                  }))}
+                />
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -615,10 +675,10 @@ export default function LandingPage() {
               <div className="flex flex-wrap gap-3 pt-1">
                 <Link
                   href={`/atlas?country=${activeCountry.iso3}`}
-                  className="px-4 py-2 rounded-xl bg-[var(--accent-blue-solid)] hover:brightness-110 text-white text-xs font-semibold inline-flex items-center gap-1.5 shadow-sm transition-all"
+                  className="group px-4 py-2 rounded-xl bg-[var(--accent-blue-solid)] hover:brightness-110 text-white text-xs font-semibold inline-flex items-center gap-1.5 shadow-sm transition-all"
                 >
                   Open Full {activeCountry.name} Intelligence Dossier{" "}
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <ArrowRight className="w-3.5 h-3.5 omnis-magnetic-arrow" />
                 </Link>
                 <Link
                   href={`/intelligence?left=${activeCountry.iso3}&right=${
@@ -720,9 +780,10 @@ export default function LandingPage() {
                 </div>
                 <Link
                   href={`/simulations?category=economics&oilShock=${simOilShock}&country=${activeCountry.iso3}`}
-                  className="text-xs font-semibold tone-blue hover:underline inline-flex items-center gap-1"
+                  className="omnis-magnetic-arrow text-xs font-semibold tone-blue hover:underline inline-flex items-center gap-1"
                 >
-                  Open Full 5-Domain Simulation Workspace <ArrowRight className="w-3.5 h-3.5" />
+                  <span>Open Full 5-Domain Simulation Workspace</span>
+                  <ArrowRight className="omnis-arrow-glyph w-3.5 h-3.5" />
                 </Link>
               </div>
 
@@ -854,15 +915,17 @@ export default function LandingPage() {
                     href={`/research?q=${encodeURIComponent(
                       `Explain ${activeCountry.name}'s economic and energy trajectory`
                     )}`}
-                    className="px-3.5 py-2 rounded-xl badge-tone-verified hover:brightness-105 text-xs font-semibold transition-all"
+                    className="omnis-magnetic-arrow px-3.5 py-2 rounded-xl badge-tone-verified hover:brightness-105 text-xs font-semibold inline-flex items-center gap-1.5 transition-all"
                   >
-                    Launch Deep Research
+                    <span>Launch Deep Research</span>
+                    <ArrowRight className="omnis-arrow-glyph w-3 h-3" />
                   </Link>
                   <Link
                     href={`/knowledge-graph?topic=${encodeURIComponent(activeCountry.name)}`}
-                    className="px-3.5 py-2 rounded-xl badge-tone-blue hover:brightness-105 text-xs font-semibold transition-all"
+                    className="omnis-magnetic-arrow px-3.5 py-2 rounded-xl badge-tone-blue hover:brightness-105 text-xs font-semibold inline-flex items-center gap-1.5 transition-all"
                   >
-                    Launch Knowledge Graph
+                    <span>Launch Knowledge Graph</span>
+                    <ArrowRight className="omnis-arrow-glyph w-3 h-3" />
                   </Link>
                 </div>
               </div>
@@ -958,7 +1021,7 @@ export default function LandingPage() {
       {/* SECTION 11: FINAL CALL TO ACTION */}
       <section className="py-16 px-4 sm:px-8 border-b border-[var(--border-subtle)] bg-gradient-to-b from-[var(--bg-obsidian)] to-[var(--bg-graphite)] text-center">
         <div className="max-w-3xl mx-auto space-y-5">
-          <ClipMaskHeading className="omnis-display text-3xl sm:text-4xl font-extrabold tracking-tight text-[var(--text-primary)]">
+          <ClipMaskHeading className="omnis-display-section text-3xl sm:text-4xl font-extrabold text-[var(--text-primary)]">
             Ready to Explore an Entirely New Way of{" "}
             <span className="omnis-editorial font-normal text-[1.12em]">
               Understanding the World?
@@ -971,16 +1034,17 @@ export default function LandingPage() {
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <Link
               href="/command"
-              className="px-6 py-3 rounded-xl bg-[var(--accent-blue-solid)] hover:brightness-110 text-white text-sm font-semibold inline-flex items-center gap-2 shadow-md transition-all"
+              className="omnis-magnetic-arrow px-6 py-3 rounded-xl bg-[var(--accent-blue-solid)] hover:brightness-110 text-white text-sm font-semibold inline-flex items-center gap-2 shadow-md transition-all"
             >
               <span>Enter Intelligence Command Center</span>
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="omnis-arrow-glyph w-4 h-4" />
             </Link>
             <Link
               href="/explore"
-              className="px-6 py-3 rounded-xl bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-sm font-semibold text-[var(--text-primary)] transition-all"
+              className="omnis-magnetic-arrow px-6 py-3 rounded-xl bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-sm font-semibold text-[var(--text-primary)] inline-flex items-center gap-2 transition-all"
             >
-              Open Universal Search Engine
+              <span>Open Universal Search Engine</span>
+              <ArrowRight className="omnis-arrow-glyph w-3.5 h-3.5 opacity-75" />
             </Link>
           </div>
         </div>

@@ -13,7 +13,11 @@ import {
 } from "lucide-react";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
-import { OmnisButton, OmnisModuleHeader } from "@/components/ui/OmnisPrimitives";
+import {
+  OmnisButton,
+  OmnisModuleHeader,
+  OmnisSegmentedControl,
+} from "@/components/ui/OmnisPrimitives";
 import { OmnisParameterSlider } from "@/components/ui/OmnisParameterSlider";
 import { OmnisMathBlock } from "@/components/ui/OmnisMathBlock";
 
@@ -162,9 +166,16 @@ function LaboratoryContent() {
   const [p2, setP2] = useState(exp.param2.defaultVal);
   const [p3, setP3] = useState(exp.param3.defaultVal);
 
-  const { theme, addWorkspaceItem, setActiveContext } = useOmnisStore();
+  const { theme, motionPaused, addWorkspaceItem, setActiveContext } = useOmnisStore();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 720, height: 320 });
+  const simTimeRef = useRef(0);
+  const pendulumRef = useRef({ theta: 0.65, omega: 0, dragging: false });
+  const orbitDraggingRef = useRef(false);
+  const [activeTrussPanel, setActiveTrussPanel] = useState<number | null>(2);
+  const [hoverTrussPanel, setHoverTrussPanel] = useState<number | null>(null);
+  const [interactiveReadout, setInteractiveReadout] = useState<string | null>(null);
+  const [manualDrawTick, setManualDrawTick] = useState(0);
 
   useEffect(() => {
     const el = canvasRef.current;
@@ -192,10 +203,13 @@ function LaboratoryContent() {
     setP1(exp.param1.defaultVal);
     setP2(exp.param2.defaultVal);
     setP3(exp.param3.defaultVal);
+    pendulumRef.current = { theta: 0.65, omega: 0, dragging: false };
+    orbitDraggingRef.current = false;
+    setInteractiveReadout(null);
     setActiveContext("Digital World Laboratory", exp.title);
   }, [exp, setActiveContext]);
 
-  // Real-time interactive High-DPI & Dual-Theme Canvas Solver Loop
+  // Real-time interactive High-DPI & Dual-Theme Canvas Solver Loop (Motion-Paused Safe)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -210,7 +224,7 @@ function LaboratoryContent() {
     canvas.height = H * dpr;
 
     const palette = {
-      bg: isLight ? "#F8FAFC" : "#060913",
+      bg: isLight ? "#FAF8F5" : "#05070C",
       grid: isLight ? "rgba(15, 23, 42, 0.08)" : "rgba(148, 163, 184, 0.11)",
       ink: isLight ? "#0F172A" : "#F8FAFC",
       muted: isLight ? "#475569" : "#94A3B8",
@@ -222,13 +236,12 @@ function LaboratoryContent() {
       rod: isLight ? "#334155" : "#94A3B8",
     };
 
+    const isAnimating = running && !motionPaused && !pendulumRef.current.dragging && !orbitDraggingRef.current;
     let frameId = 0;
-    let t = 0;
-    let theta = 0.65;
-    let omega = 0;
 
     const render = () => {
-      if (running) t += 0.025;
+      if (isAnimating) simTimeRef.current += 0.025;
+      const t = simTimeRef.current;
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.fillStyle = palette.bg;
@@ -251,11 +264,12 @@ function LaboratoryContent() {
       }
 
       if (activeId === "physics") {
-        if (running) {
-          const alpha = -(p1 / p2) * Math.sin(theta) - p3 * omega;
-          omega += alpha * 0.035;
-          theta += omega * 0.035;
+        if (isAnimating) {
+          const alpha = -(p1 / p2) * Math.sin(pendulumRef.current.theta) - p3 * pendulumRef.current.omega;
+          pendulumRef.current.omega += alpha * 0.035;
+          pendulumRef.current.theta += pendulumRef.current.omega * 0.035;
         }
+        const theta = pendulumRef.current.theta;
         const pivotX = W * 0.28;
         const pivotY = 56;
         const rodPx = Math.min(200, p2 * 52);
@@ -275,7 +289,7 @@ function LaboratoryContent() {
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Rod + Bob
+        // Rod + Interactive Bob Handle
         ctx.strokeStyle = palette.rod;
         ctx.lineWidth = 3;
         ctx.beginPath();
@@ -283,10 +297,20 @@ function LaboratoryContent() {
         ctx.lineTo(bobX, bobY);
         ctx.stroke();
 
+        ctx.strokeStyle = palette.cyan;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(bobX, bobY, 22, 0, Math.PI * 2);
+        ctx.stroke();
+
         ctx.fillStyle = palette.blue;
         ctx.beginPath();
-        ctx.arc(bobX, bobY, 18, 0, Math.PI * 2);
+        ctx.arc(bobX, bobY, 17, 0, Math.PI * 2);
         ctx.fill();
+
+        ctx.fillStyle = palette.ink;
+        ctx.font = "600 11px monospace";
+        ctx.fillText(`θ = ${((theta * 180) / Math.PI).toFixed(1)}°`, Math.max(12, bobX - 28), Math.min(H - 12, bobY + 34));
 
         // Harmonic wave trace on right side
         ctx.strokeStyle = palette.emerald;
@@ -306,7 +330,7 @@ function LaboratoryContent() {
 
         ctx.fillStyle = palette.muted;
         ctx.font = "600 11px monospace";
-        ctx.fillText("Oscillatory Phase-Wave Envelope", W * 0.52, 34);
+        ctx.fillText("Oscillatory Phase-Wave Envelope (Drag bob to set θ)", W * 0.52, 34);
       } else if (activeId === "space") {
         const cx = W / 2 + 28;
         const cy = H / 2;
@@ -316,7 +340,7 @@ function LaboratoryContent() {
         const cFocus = aPx * e;
 
         // Orbit ellipse
-        ctx.strokeStyle = isLight ? "rgba(29, 78, 216, 0.55)" : "rgba(59, 130, 246, 0.55)";
+        ctx.strokeStyle = isLight ? "rgba(29, 78, 216, 0.6)" : "rgba(59, 130, 246, 0.65)";
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.ellipse(cx, cy, aPx, bPx, 0, 0, Math.PI * 2);
@@ -348,9 +372,12 @@ function LaboratoryContent() {
         ctx.arc(px, py, 10, 0, Math.PI * 2);
         ctx.fill();
 
+        const peri = (p3 * (1 - p2)).toFixed(2);
+        const apo = (p3 * (1 + p2)).toFixed(2);
         ctx.fillStyle = palette.muted;
         ctx.font = "600 11px monospace";
         ctx.fillText(`Focus Star (${p1.toFixed(1)} M☉)`, starX - 42, starY + 34);
+        ctx.fillText(`Periapsis: ${peri} AU  |  Apoapsis: ${apo} AU  |  Drag orbit to reshape a/e`, 24, 28);
       } else if (activeId === "chemistry") {
         const cx = W / 2;
         const cy = H / 2 - 18;
@@ -372,20 +399,17 @@ function LaboratoryContent() {
         ctx.lineTo(h2x, h2y);
         ctx.stroke();
 
-        // Bond angle arc
         ctx.strokeStyle = palette.amber;
         ctx.lineWidth = 1.6;
         ctx.beginPath();
         ctx.arc(cx, cy, 46, Math.PI / 2 - halfRad, Math.PI / 2 + halfRad);
         ctx.stroke();
 
-        // Central Oxygen/Carbon atom
         ctx.fillStyle = palette.danger;
         ctx.beginPath();
         ctx.arc(cx, cy, 26, 0, Math.PI * 2);
         ctx.fill();
 
-        // Ligand atoms
         ctx.fillStyle = palette.blue;
         ctx.beginPath();
         ctx.arc(h1x, h1y, 17, 0, Math.PI * 2);
@@ -431,11 +455,9 @@ function LaboratoryContent() {
         const forcing = 5.35 * Math.log(p1 / 280);
         const eqTempC = 14.0 + forcing * 0.8 - (p2 - 0.3) * 85 + (p3 - 1361) * 0.07;
 
-        // Earth surface layer
         ctx.fillStyle = eqTempC > 16 ? "#b45309" : "#1d4ed8";
         ctx.fillRect(0, H - 64, W, 64);
 
-        // Solar incoming rays
         ctx.strokeStyle = palette.amber;
         ctx.lineWidth = 3;
         for (let i = 0; i < 5; i++) {
@@ -446,7 +468,6 @@ function LaboratoryContent() {
           ctx.stroke();
         }
 
-        // Greenhouse IR trapping layer
         ctx.fillStyle = `rgba(220, 38, 38, ${Math.min(0.42, Math.max(0.09, (p1 - 260) / 1400))})`;
         ctx.fillRect(0, H - 165, W, 101);
 
@@ -458,7 +479,7 @@ function LaboratoryContent() {
           44
         );
       } else {
-        // Pratt Truss Bridge Structural Analysis
+        // Pratt Truss Bridge Structural Analysis with interactive bay highlighting
         const leftX = 72;
         const rightX = W - 72;
         const baseY = H * 0.66;
@@ -467,30 +488,38 @@ function LaboratoryContent() {
 
         const panels = 6;
         const panelW = (rightX - leftX) / panels;
+        const focusedBay = hoverTrussPanel ?? activeTrussPanel;
 
-        ctx.lineWidth = 3;
         for (let i = 0; i < panels; i++) {
           const x1 = leftX + i * panelW;
           const x2 = leftX + (i + 1) * panelW;
           const def1 = Math.sin((i / panels) * Math.PI) * deflection * 14;
           const def2 = Math.sin(((i + 1) / panels) * Math.PI) * deflection * 14;
+          const isBayFocused = focusedBay === i;
+
+          ctx.lineWidth = isBayFocused ? 5 : 3;
+
+          if (isBayFocused) {
+            ctx.fillStyle = isLight ? "rgba(2, 132, 199, 0.12)" : "rgba(56, 189, 248, 0.14)";
+            ctx.fillRect(x1, baseY - depthPx - 4, panelW, depthPx + Math.max(def1, def2) + 8);
+          }
 
           // Bottom chord (tension)
-          ctx.strokeStyle = palette.blue;
+          ctx.strokeStyle = isBayFocused ? palette.cyan : palette.blue;
           ctx.beginPath();
           ctx.moveTo(x1, baseY + def1);
           ctx.lineTo(x2, baseY + def2);
           ctx.stroke();
 
           // Top chord (compression)
-          ctx.strokeStyle = palette.amber;
+          ctx.strokeStyle = isBayFocused ? palette.cyan : palette.amber;
           ctx.beginPath();
           ctx.moveTo(x1, baseY - depthPx + def1);
           ctx.lineTo(x2, baseY - depthPx + def2);
           ctx.stroke();
 
           // Verticals & diagonals
-          ctx.strokeStyle = palette.rod;
+          ctx.strokeStyle = isBayFocused ? palette.cyan : palette.rod;
           ctx.beginPath();
           ctx.moveTo(x1, baseY + def1);
           ctx.lineTo(x1, baseY - depthPx + def1);
@@ -503,15 +532,113 @@ function LaboratoryContent() {
         ctx.fillStyle = palette.blue;
         ctx.fillText("━ Bottom Chord (Tension)", 72, 32);
         ctx.fillStyle = palette.amber;
-        ctx.fillText("━ Top Chord (Compression)", 290, 32);
+        ctx.fillText("━ Top Chord (Compression) • Click bay to inspect strut force", 270, 32);
       }
 
-      frameId = requestAnimationFrame(render);
+      if (isAnimating) {
+        frameId = requestAnimationFrame(render);
+      }
     };
 
-    frameId = requestAnimationFrame(render);
+    render();
     return () => cancelAnimationFrame(frameId);
-  }, [activeId, p1, p2, p3, running, theme, canvasSize]);
+  }, [activeId, p1, p2, p3, running, motionPaused, theme, canvasSize, activeTrussPanel, hoverTrussPanel, manualDrawTick]);
+
+  const handleCanvasPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+
+    if (activeId === "physics") {
+      const pivotX = canvasSize.width * 0.28;
+      const pivotY = 56;
+      if (cx < canvasSize.width * 0.55) {
+        pendulumRef.current.dragging = true;
+        const theta = Math.max(-1.42, Math.min(1.42, Math.atan2(cx - pivotX, Math.max(12, cy - pivotY))));
+        pendulumRef.current.theta = theta;
+        pendulumRef.current.omega = 0;
+        setInteractiveReadout(`Pendulum Bob Angle θ = ${((theta * 180) / Math.PI).toFixed(1)}° (Released from rest)`);
+        setManualDrawTick((k) => k + 1);
+      }
+    } else if (activeId === "space") {
+      orbitDraggingRef.current = true;
+      const centerX = canvasSize.width / 2 + 28;
+      const centerY = canvasSize.height / 2;
+      const dist = Math.hypot(cx - centerX, cy - centerY);
+      const nextA = Math.max(0.6, Math.min(2.2, Number((dist / 95).toFixed(1))));
+      const nextE = Math.max(
+        0.0,
+        Math.min(0.75, Number((Math.abs(cx - centerX) / Math.max(90, dist) * 0.65).toFixed(2)))
+      );
+      setP3(nextA);
+      setP2(nextE);
+      setInteractiveReadout(
+        `Adjusted Orbit: a = ${nextA.toFixed(1)} AU, e = ${nextE.toFixed(2)} (Peri ${(nextA * (1 - nextE)).toFixed(2)} AU / Apo ${(nextA * (1 + nextE)).toFixed(2)} AU)`
+      );
+    } else if (activeId === "engineering") {
+      const leftX = 72;
+      const rightX = canvasSize.width - 72;
+      const panelW = (rightX - leftX) / 6;
+      const bayIdx = Math.max(0, Math.min(5, Math.floor((cx - leftX) / Math.max(1, panelW))));
+      setActiveTrussPanel(bayIdx);
+      const momentFactor = Math.sin(((bayIdx + 0.5) / 6) * Math.PI);
+      const axialForceKn = ((p1 * (p2 / 4) * momentFactor) / Math.max(1, p3)).toFixed(1);
+      const localSf = Math.max(0.8, (350 * p3) / (p1 * 1.4 * Math.max(0.55, momentFactor))).toFixed(2);
+      setInteractiveReadout(
+        `Truss Bay #${bayIdx + 1}: Axial Load ${axialForceKn} kN (Bottom Chord TENSION / Top COMPRESSION) • Local SF ${localSf}x`
+      );
+    }
+  };
+
+  const handleCanvasPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+
+    if (activeId === "physics" && pendulumRef.current.dragging) {
+      const pivotX = canvasSize.width * 0.28;
+      const pivotY = 56;
+      const theta = Math.max(-1.42, Math.min(1.42, Math.atan2(cx - pivotX, Math.max(12, cy - pivotY))));
+      pendulumRef.current.theta = theta;
+      pendulumRef.current.omega = 0;
+      setInteractiveReadout(`Dragging Pendulum θ = ${((theta * 180) / Math.PI).toFixed(1)}°`);
+      setManualDrawTick((k) => k + 1);
+    } else if (activeId === "space" && orbitDraggingRef.current) {
+      const centerX = canvasSize.width / 2 + 28;
+      const centerY = canvasSize.height / 2;
+      const dist = Math.hypot(cx - centerX, cy - centerY);
+      const nextA = Math.max(0.6, Math.min(2.2, Number((dist / 95).toFixed(1))));
+      setP3(nextA);
+      setInteractiveReadout(
+        `Orbital Semi-Major Axis a = ${nextA.toFixed(1)} AU (Peri ${(nextA * (1 - p2)).toFixed(2)} AU)`
+      );
+    } else if (activeId === "engineering") {
+      const leftX = 72;
+      const rightX = canvasSize.width - 72;
+      if (cx >= leftX && cx <= rightX) {
+        const panelW = (rightX - leftX) / 6;
+        const bayIdx = Math.max(0, Math.min(5, Math.floor((cx - leftX) / Math.max(1, panelW))));
+        if (hoverTrussPanel !== bayIdx) setHoverTrussPanel(bayIdx);
+      } else if (hoverTrussPanel !== null) {
+        setHoverTrussPanel(null);
+      }
+    }
+  };
+
+  const handleCanvasPointerUp = () => {
+    if (pendulumRef.current.dragging) {
+      pendulumRef.current.dragging = false;
+      setManualDrawTick((k) => k + 1);
+    }
+    if (orbitDraggingRef.current) {
+      orbitDraggingRef.current = false;
+      setManualDrawTick((k) => k + 1);
+    }
+  };
 
   const handleSaveLab = () => {
     addWorkspaceItem({
@@ -554,22 +681,18 @@ function LaboratoryContent() {
           </OmnisButton>
         }
       >
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pt-1">
-          {LAB_EXPERIMENTS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setActiveId(item.id)}
-              className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${
-                activeId === item.id
-                  ? "bg-[var(--accent-blue-solid)] text-white border-transparent shadow-sm"
-                  : "bg-[var(--bg-slate)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]"
-              }`}
-            >
-              <div className="text-xs font-bold">{item.category}</div>
-              <div className="text-[10px] opacity-80 truncate">{item.title}</div>
-            </button>
-          ))}
+        <div className="pt-1 overflow-x-auto max-w-full">
+          <OmnisSegmentedControl
+            groupId="lab-discipline-tabs"
+            ariaLabel="Digital World Laboratory Discipline"
+            size="sm"
+            value={activeId}
+            onChange={(val) => setActiveId(val as LabCategoryId)}
+            options={LAB_EXPERIMENTS.map((item) => ({
+              value: item.id,
+              label: item.category,
+            }))}
+          />
         </div>
       </OmnisModuleHeader>
 
@@ -648,9 +771,28 @@ function LaboratoryContent() {
               <span className="omnis-mono tone-verified font-semibold">{observationText}</span>
             </div>
 
-            <div className="rounded-xl border border-[var(--border-subtle)] overflow-hidden">
-              <canvas ref={canvasRef} className="w-full h-72 block" />
+            <div className="rounded-xl border border-[var(--border-subtle)] overflow-hidden relative">
+              <canvas
+                ref={canvasRef}
+                onPointerDown={handleCanvasPointerDown}
+                onPointerMove={handleCanvasPointerMove}
+                onPointerUp={handleCanvasPointerUp}
+                onPointerCancel={handleCanvasPointerUp}
+                onPointerLeave={handleCanvasPointerUp}
+                className="w-full h-72 block touch-none cursor-crosshair"
+              />
+              {motionPaused ? (
+                <span className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-md omnis-hud-pill text-[10px] omnis-mono font-semibold tone-warning">
+                  Motion Paused
+                </span>
+              ) : null}
             </div>
+
+            {interactiveReadout ? (
+              <div className="px-3 py-2 rounded-lg badge-tone-cyan text-xs omnis-mono font-semibold">
+                {interactiveReadout}
+              </div>
+            ) : null}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">

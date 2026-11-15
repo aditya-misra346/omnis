@@ -19,7 +19,12 @@ import {
 } from "lucide-react";
 import { VerificationBadge } from "@/components/ui/ProvenancePanel";
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
-import { OmnisButton, OmnisModuleHeader, OmnisSkeleton } from "@/components/ui/OmnisPrimitives";
+import {
+  OmnisButton,
+  OmnisModuleHeader,
+  OmnisSegmentedControl,
+  OmnisSkeleton,
+} from "@/components/ui/OmnisPrimitives";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 import type { ResearchMode, ResearchReportData } from "@/types/omnis";
 
@@ -37,9 +42,13 @@ function ResearchContent() {
   const router = useRouter();
   const initialQuery =
     searchParams.get("q") || "Explain India's economic development since 1991";
+  const urlModeParam = searchParams.get("mode") as ResearchMode | null;
+  const resolvedInitialMode: ResearchMode = RESEARCH_MODES.some((m) => m.id === urlModeParam)
+    ? (urlModeParam as ResearchMode)
+    : "deep";
 
   const [queryInput, setQueryInput] = useState(initialQuery);
-  const [mode, setMode] = useState<ResearchMode>("deep");
+  const [mode, setMode] = useState<ResearchMode>(resolvedInitialMode);
   const [report, setReport] = useState<ResearchReportData | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -49,6 +58,7 @@ function ResearchContent() {
   const [copiedToast, setCopiedToast] = useState(false);
   const [typographyStyle, setTypographyStyle] = useState<"editorial" | "sans">("editorial");
   const [activeSourceId, setActiveSourceId] = useState<string | null>(null);
+  const [hoveredCitationKey, setHoveredCitationKey] = useState<string | null>(null);
   const sourceRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const inspectCitation = (sourceId: string) => {
@@ -62,9 +72,15 @@ function ResearchContent() {
   const { addWorkspaceItem, addSearchQuery, setActiveContext } = useOmnisStore();
 
   const runResearch = useCallback(
-    async (q: string, m: ResearchMode) => {
+    async (q: string, m: ResearchMode, syncUrl = false) => {
       const clean = q.trim();
       if (!clean) return;
+      if (syncUrl) {
+        router.replace(
+          `/research?q=${encodeURIComponent(clean)}&mode=${encodeURIComponent(m)}`,
+          { scroll: false }
+        );
+      }
       setLoading(true);
       setErrorMsg(null);
       try {
@@ -87,17 +103,19 @@ function ResearchContent() {
         setLoading(false);
       }
     },
-    [setActiveContext]
+    [router, setActiveContext]
   );
 
   useEffect(() => {
-    runResearch(initialQuery, "deep");
-  }, [initialQuery, runResearch]);
+    setQueryInput(initialQuery);
+    setMode(resolvedInitialMode);
+    runResearch(initialQuery, resolvedInitialMode, false);
+  }, [initialQuery, resolvedInitialMode, runResearch]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     addSearchQuery(queryInput);
-    runResearch(queryInput, mode);
+    runResearch(queryInput, mode, true);
   };
 
   const handleSaveReport = () => {
@@ -193,35 +211,23 @@ ${report.sources
           ) : undefined
         }
       >
-        {/* 6 Research Modes */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pt-1">
-          {RESEARCH_MODES.map((m) => {
-            const active = mode === m.id;
-            return (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => {
-                  setMode(m.id);
-                  runResearch(queryInput, m.id);
-                }}
-                className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${
-                  active
-                    ? "bg-[var(--accent-blue-solid)] text-white border-transparent shadow-sm"
-                    : "bg-[var(--bg-slate)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]"
-                }`}
-              >
-                <div className="text-xs font-bold">{m.label}</div>
-                <div
-                  className={`text-[10px] line-clamp-1 ${
-                    active ? "text-white/80" : "text-[var(--text-muted)]"
-                  }`}
-                >
-                  {m.desc}
-                </div>
-              </button>
-            );
-          })}
+        {/* 6 Research Modes (OmnisSegmentedControl) */}
+        <div className="pt-1 overflow-x-auto max-w-full">
+          <OmnisSegmentedControl
+            groupId="research-mode-tabs"
+            ariaLabel="Deep Research Synthesis Mode"
+            size="sm"
+            value={mode}
+            onChange={(val) => {
+              const nextMode = val as ResearchMode;
+              setMode(nextMode);
+              runResearch(queryInput, nextMode, true);
+            }}
+            options={RESEARCH_MODES.map((m) => ({
+              value: m.id,
+              label: m.label,
+            }))}
+          />
         </div>
 
         {/* Query Form */}
@@ -266,7 +272,7 @@ ${report.sources
 
       {report && (
         <div className="space-y-6">
-          {/* Multi-Step Orchestration Trace */}
+          {/* Multi-Step Orchestration Trace (Architectural Hairline Grid) */}
           <div className="omnis-card p-5 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
               <span className="font-bold uppercase tracking-wider tone-blue omnis-mono">
@@ -276,9 +282,9 @@ ${report.sources
                 Objective: {report.researchObjective}
               </span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 border border-[var(--border-subtle)] rounded-xl overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-[var(--border-subtle)] bg-[var(--bg-obsidian)]/30">
               {report.decomposedTasks.map((t) => (
-                <div key={t.step} className="omnis-surface-slate p-3.5 text-xs space-y-1.5">
+                <div key={t.step} className="p-3.5 text-xs space-y-1.5">
                   <div className="flex items-center justify-between text-[10px] omnis-mono tone-verified font-bold">
                     <span>STEP 0{t.step}</span>
                     <CheckCircle2 className="w-3.5 h-3.5" />
@@ -292,45 +298,28 @@ ${report.sources
 
           {/* Executive Summary & Key Findings */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-8 omnis-card p-6 space-y-5">
-              <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[var(--border-subtle)]">
+            <div className="lg:col-span-8 omnis-card p-6 sm:p-7 space-y-6">
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-[var(--border-subtle)]">
                 <div>
                   <span className="text-[10.5px] font-bold uppercase tracking-widest tone-blue omnis-mono">
                     {report.mode.toUpperCase()} RESEARCH REPORT • {report.generatedAt.slice(0, 10)}
                   </span>
-                  <h2 className="omnis-display text-xl font-extrabold mt-0.5 text-[var(--text-primary)]">
+                  <h2 className="omnis-display-section text-xl sm:text-2xl font-extrabold mt-0.5 text-[var(--text-primary)]">
                     {report.query}
                   </h2>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5 no-print">
-                  <div
-                    role="group"
-                    aria-label="Reader typography toggle"
-                    className="inline-flex rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] p-0.5 text-[11px] font-semibold omnis-mono"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setTypographyStyle("editorial")}
-                      className={`px-2 py-1 rounded-md cursor-pointer transition-colors ${
-                        typographyStyle === "editorial"
-                          ? "bg-[var(--bg-graphite)] text-[var(--text-primary)] shadow-2xs"
-                          : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                      }`}
-                    >
-                      Serif
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTypographyStyle("sans")}
-                      className={`px-2 py-1 rounded-md cursor-pointer transition-colors ${
-                        typographyStyle === "sans"
-                          ? "bg-[var(--bg-graphite)] text-[var(--text-primary)] shadow-2xs"
-                          : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                      }`}
-                    >
-                      Sans
-                    </button>
-                  </div>
+                  <OmnisSegmentedControl
+                    groupId="research-reader-font"
+                    ariaLabel="Reader typography toggle"
+                    size="sm"
+                    value={typographyStyle}
+                    onChange={(val) => setTypographyStyle(val as "editorial" | "sans")}
+                    options={[
+                      { value: "editorial", label: "Serif" },
+                      { value: "sans", label: "Sans" },
+                    ]}
+                  />
                   <OmnisButton
                     variant="secondary"
                     size="sm"
@@ -359,8 +348,10 @@ ${report.sources
                   />
                 ) : (
                   <p
-                    className={`leading-relaxed text-[var(--text-secondary)] ${
-                      typographyStyle === "editorial" ? "text-[16.5px] leading-[1.68]" : "text-sm"
+                    className={`omnis-prose text-[var(--text-secondary)] ${
+                      typographyStyle === "editorial"
+                        ? "text-[16px] leading-[1.72]"
+                        : "text-[14px] leading-[1.75]"
                     }`}
                     style={
                       typographyStyle === "editorial"
@@ -373,76 +364,119 @@ ${report.sources
                 )}
               </div>
 
-              {/* Key Findings */}
-              <div className="space-y-2">
+              {/* Key Findings: Editorial Margin Ledger */}
+              <div className="space-y-2.5 pt-2 border-t border-[var(--border-subtle)]">
                 <div className="text-xs font-bold uppercase tracking-wider tone-verified omnis-mono">
                   Key Empirical Findings
                 </div>
-                <ul className="space-y-2 text-xs text-[var(--text-secondary)]">
-                  {report.keyFindings.map((kf) => (
-                    <li key={kf} className="omnis-surface-slate p-3 flex items-start gap-2.5">
-                      <CheckCircle2 className="w-4 h-4 tone-verified shrink-0 mt-0.5" />
-                      <span className="leading-relaxed">{kf}</span>
+                <ol className="divide-y divide-[var(--border-subtle)] border-y border-[var(--border-subtle)]">
+                  {report.keyFindings.map((kf, idx) => (
+                    <li
+                      key={kf}
+                      className="py-3 grid grid-cols-[2.25rem_1fr] gap-3 items-baseline text-[13.5px] leading-relaxed text-[var(--text-secondary)]"
+                    >
+                      <span className="omnis-mono omnis-tabular text-xs font-bold tone-cyan">
+                        {String(idx + 1).padStart(2, "0")}
+                      </span>
+                      <span className="omnis-prose text-[var(--text-primary)]">{kf}</span>
                     </li>
                   ))}
-                </ul>
+                </ol>
               </div>
 
               {/* Detailed Analysis */}
-              <div className="space-y-3">
+              <div className="space-y-5">
                 {report.detailedAnalysis.map((sec) => (
-                  <div key={sec.heading} className="space-y-1">
+                  <div key={sec.heading} className="space-y-1.5">
                     <h3 className="text-sm font-bold text-[var(--text-primary)]">{sec.heading}</h3>
-                    <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                      {sec.content}
-                    </p>
+                    <p className="omnis-prose text-[var(--text-secondary)]">{sec.content}</p>
                   </div>
                 ))}
               </div>
 
-              {/* Supporting & Contradictory Evidence */}
-              <div className="space-y-3 pt-2 border-t border-[var(--border-subtle)]">
+              {/* Supporting Evidence: Left-Rule Architectural Callouts & Interactive Hover Citation Popover */}
+              <div className="space-y-4 pt-3 border-t border-[var(--border-subtle)]">
                 <h3 className="text-sm font-bold text-[var(--text-primary)]">
                   Extracted Claims & Epistemic Verification Matrix
                 </h3>
-                <div className="space-y-2.5">
+                <div className="space-y-4">
                   {report.supportingEvidence.map((claim) => (
-                    <div key={claim.id} className="omnis-surface-slate p-3.5 space-y-2 text-xs">
+                    <div
+                      key={claim.id}
+                      className="border-l-2 border-[var(--accent-blue)] pl-4 py-1 space-y-1.5 text-xs"
+                    >
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="font-bold tone-blue">{claim.category}</span>
+                        <span className="font-bold tone-blue omnis-mono text-[11px]">
+                          {claim.category}
+                        </span>
                         <VerificationBadge status={claim.verificationStatus} />
                       </div>
-                      <p className="font-medium text-[var(--text-primary)] leading-relaxed">
+                      <p className="omnis-prose font-medium text-[var(--text-primary)]">
                         {claim.statement}
                       </p>
                       <div className="text-[11px] text-[var(--text-muted)] flex flex-wrap items-center gap-1.5">
                         <span>Methodology: {claim.methodologyNote} • Linked Sources:</span>
-                        {claim.sourceIds.map((sid) => (
-                          <button
-                            key={sid}
-                            type="button"
-                            onMouseEnter={() => setActiveSourceId(sid)}
-                            onClick={() => inspectCitation(sid)}
-                            className={`px-1.5 py-0.5 rounded text-[10px] omnis-mono font-semibold border transition-colors cursor-pointer ${
-                              activeSourceId === sid
-                                ? "badge-tone-blue border-[var(--accent-blue)]"
-                                : "bg-[var(--bg-graphite)] border-[var(--border-subtle)] text-[var(--text-primary)] hover:border-[var(--accent-blue)]"
-                            }`}
-                          >
-                            [{sid}]
-                          </button>
-                        ))}
+                        {claim.sourceIds.map((sid) => {
+                          const citKey = `${claim.id}-${sid}`;
+                          const matchedSource = report.sources.find((s) => s.id === sid);
+                          const isOpen = hoveredCitationKey === citKey;
+                          return (
+                            <span key={sid} className="relative inline-block">
+                              <button
+                                type="button"
+                                onMouseEnter={() => {
+                                  setActiveSourceId(sid);
+                                  setHoveredCitationKey(citKey);
+                                }}
+                                onMouseLeave={() => setHoveredCitationKey(null)}
+                                onFocus={() => {
+                                  setActiveSourceId(sid);
+                                  setHoveredCitationKey(citKey);
+                                }}
+                                onBlur={() => setHoveredCitationKey(null)}
+                                onClick={() => inspectCitation(sid)}
+                                className={`px-1.5 py-0.5 rounded text-[10px] omnis-mono font-semibold border transition-colors cursor-pointer ${
+                                  activeSourceId === sid
+                                    ? "badge-tone-blue border-[var(--accent-blue)]"
+                                    : "bg-[var(--bg-graphite)] border-[var(--border-subtle)] text-[var(--text-primary)] hover:border-[var(--accent-blue)]"
+                                }`}
+                              >
+                                [{sid}]
+                              </button>
+                              {isOpen && matchedSource ? (
+                                <div
+                                  role="tooltip"
+                                  className="absolute bottom-full left-0 mb-2 w-72 sm:w-80 p-3 rounded-xl omnis-hud-pill z-30 text-left space-y-1 pointer-events-none"
+                                >
+                                  <div className="flex items-center justify-between text-[10px] omnis-mono tone-cyan font-bold">
+                                    <span>{matchedSource.sourceType}</span>
+                                    <span>{matchedSource.publishedDate}</span>
+                                  </div>
+                                  <div className="font-bold text-xs text-[var(--text-primary)] line-clamp-2">
+                                    {matchedSource.title}
+                                  </div>
+                                  <div className="text-[10.5px] text-[var(--text-muted)]">
+                                    {matchedSource.publisher}
+                                  </div>
+                                  <p className="text-[11px] text-[var(--text-secondary)] italic line-clamp-3">
+                                    “{matchedSource.excerpt}”
+                                  </p>
+                                </div>
+                              ) : null}
+                            </span>
+                          );
+                        })}
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Contradictory Evidence */}
+              {/* Contradictory Evidence: Amber Border Callout */}
               {report.contradictoryEvidence.map((ce) => (
                 <div
                   key={ce.pointOfContention}
-                  className="omnis-surface-slate p-4 space-y-2 border-[var(--status-warning)] text-xs"
+                  className="border-l-2 border-[var(--accent-amber)] pl-4 py-1.5 space-y-2.5 text-xs"
                 >
                   <div className="font-bold tone-warning flex items-center gap-1.5">
                     <AlertTriangle className="w-4 h-4 shrink-0" />
@@ -450,21 +484,25 @@ ${report.sources
                       Contradictory Evidence & Methodological Disagreement: {ce.pointOfContention}
                     </span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                    <div className="p-3 rounded-xl bg-[var(--bg-graphite)] border border-[var(--border-subtle)]">
-                      <div className="font-semibold tone-cyan">Perspective A:</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 border border-[var(--border-subtle)] rounded-xl overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-[var(--border-subtle)]">
+                    <div className="p-3 bg-[var(--bg-obsidian)]/40">
+                      <div className="font-semibold tone-cyan text-[11px] omnis-mono">
+                        Perspective A
+                      </div>
                       <p className="text-[var(--text-secondary)] mt-1 leading-relaxed">
                         {ce.perspectiveA}
                       </p>
                     </div>
-                    <div className="p-3 rounded-xl bg-[var(--bg-graphite)] border border-[var(--border-subtle)]">
-                      <div className="font-semibold tone-violet">Perspective B:</div>
+                    <div className="p-3 bg-[var(--bg-obsidian)]/40">
+                      <div className="font-semibold tone-violet text-[11px] omnis-mono">
+                        Perspective B
+                      </div>
                       <p className="text-[var(--text-secondary)] mt-1 leading-relaxed">
                         {ce.perspectiveB}
                       </p>
                     </div>
                   </div>
-                  <div className="text-[11px] text-[var(--text-secondary)] pt-1 leading-relaxed">
+                  <div className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
                     <strong className="text-[var(--text-primary)]">Epistemic Resolution:</strong>{" "}
                     {ce.epistemicResolution}
                   </div>
@@ -479,33 +517,62 @@ ${report.sources
                 <h3 className="text-sm font-bold text-[var(--text-primary)]">
                   Relevant Statistics & Visualisation
                 </h3>
-                <div className="space-y-2">
-                  {report.relevantStatistics.map((stat) => (
-                    <div
-                      key={stat.metric}
-                      className="omnis-surface-slate p-3 flex items-center justify-between gap-2 text-xs"
-                    >
-                      <div className="min-w-0">
-                        <div className="font-semibold text-[var(--text-primary)] break-words">
-                          {stat.metric}
+                <div className="divide-y divide-[var(--border-subtle)] border-y border-[var(--border-subtle)]">
+                  {report.relevantStatistics.map((stat) => {
+                    const citKey = `stat-${stat.metric}-${stat.sourceId}`;
+                    const matchedSource = report.sources.find((s) => s.id === stat.sourceId);
+                    const isOpen = hoveredCitationKey === citKey;
+                    return (
+                      <div
+                        key={stat.metric}
+                        className="py-2.5 flex items-center justify-between gap-2 text-xs"
+                      >
+                        <div className="min-w-0">
+                          <div className="font-semibold text-[var(--text-primary)] break-words">
+                            {stat.metric}
+                          </div>
+                          <div className="text-[10px] text-[var(--text-muted)] flex flex-wrap items-center gap-1">
+                            <span>{stat.period} •</span>
+                            <span className="relative inline-block">
+                              <button
+                                type="button"
+                                onMouseEnter={() => {
+                                  setActiveSourceId(stat.sourceId);
+                                  setHoveredCitationKey(citKey);
+                                }}
+                                onMouseLeave={() => setHoveredCitationKey(null)}
+                                onFocus={() => {
+                                  setActiveSourceId(stat.sourceId);
+                                  setHoveredCitationKey(citKey);
+                                }}
+                                onBlur={() => setHoveredCitationKey(null)}
+                                onClick={() => inspectCitation(stat.sourceId)}
+                                className="tone-blue hover:underline omnis-mono cursor-pointer"
+                              >
+                                Ref: [{stat.sourceId}]
+                              </button>
+                              {isOpen && matchedSource ? (
+                                <div
+                                  role="tooltip"
+                                  className="absolute bottom-full left-0 mb-2 w-64 p-3 rounded-xl omnis-hud-pill z-30 text-left space-y-1 pointer-events-none"
+                                >
+                                  <div className="font-bold text-[11px] text-[var(--text-primary)] line-clamp-2">
+                                    {matchedSource.title}
+                                  </div>
+                                  <div className="text-[10px] text-[var(--text-muted)]">
+                                    {matchedSource.publisher} ({matchedSource.publishedDate})
+                                  </div>
+                                </div>
+                              ) : null}
+                            </span>
+                          </div>
                         </div>
-                        <div className="text-[10px] text-[var(--text-muted)] flex flex-wrap items-center gap-1">
-                          <span>{stat.period} •</span>
-                          <button
-                            type="button"
-                            onMouseEnter={() => setActiveSourceId(stat.sourceId)}
-                            onClick={() => inspectCitation(stat.sourceId)}
-                            className="tone-blue hover:underline omnis-mono cursor-pointer"
-                          >
-                            Ref: [{stat.sourceId}]
-                          </button>
+                        <div className="text-base font-bold omnis-mono omnis-tabular tone-blue shrink-0">
+                          {stat.value}
                         </div>
                       </div>
-                      <div className="text-base font-bold omnis-mono tone-blue shrink-0">
-                        {stat.value}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Theme-Adaptive Dual-Series Comparison Bar Chart */}

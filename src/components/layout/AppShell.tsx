@@ -87,6 +87,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   } = useOmnisStore();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [paletteQuery, setPaletteQuery] = useState("");
   const [paletteActiveIdx, setPaletteActiveIdx] = useState(0);
   const [assistantInput, setAssistantInput] = useState("");
@@ -141,19 +142,35 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     document.documentElement.setAttribute("data-motion-paused", String(motionPaused));
   }, [motionPaused]);
 
-  // Keyboard shortcuts: Cmd+K for Universal Search Palette, Cmd+J for Universal AI Assistant
+  // Keyboard shortcuts: Cmd+K Search Palette, Cmd+J Assistant, ? Cheatsheet, Esc Close
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
+        setShortcutsOpen(false);
         setCommandPaletteOpen(!commandPaletteOpen);
       } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "j") {
         e.preventDefault();
+        setShortcutsOpen(false);
         setAssistantOpen(!assistantOpen);
+      } else if (
+        e.key === "?" &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        !(
+          e.target instanceof HTMLElement &&
+          (e.target.matches("input, textarea, select") || e.target.isContentEditable)
+        )
+      ) {
+        e.preventDefault();
+        setCommandPaletteOpen(false);
+        setShortcutsOpen((prev) => !prev);
       } else if (e.key === "Escape") {
         setCommandPaletteOpen(false);
         setAssistantOpen(false);
         setMobileMenuOpen(false);
+        setShortcutsOpen(false);
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -302,8 +319,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }));
 
     const q = paletteQuery.trim().toLowerCase();
+    if (!q) {
+      return [
+        {
+          id: "act-ctx-research",
+          label: `Deep Research: ${activeContextTopic}`,
+          subtitle: `Context (${activeContextLabel}) • Launch /research`,
+          category: "Action" as const,
+          run: () => {
+            setCommandPaletteOpen(false);
+            router.push(`/research?q=${encodeURIComponent(activeContextTopic)}`);
+          },
+        },
+        ...navActions.slice(0, 4),
+        ...quickActions.slice(0, 3),
+        ...countryActions.slice(0, 2),
+      ];
+    }
     const combined = [...countryActions, ...navActions, ...quickActions];
-    if (!q) return [];
     return combined
       .filter(
         (act) =>
@@ -314,7 +347,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         const bStarts = b.label.toLowerCase().startsWith(q) ? 0 : 1;
         return aStarts - bStarts;
       });
-  }, [paletteQuery, theme, motionPaused, toggleTheme, toggleMotionPaused, setCommandPaletteOpen, setAssistantOpen, router]);
+  }, [
+    paletteQuery,
+    theme,
+    motionPaused,
+    activeContextLabel,
+    activeContextTopic,
+    toggleTheme,
+    toggleMotionPaused,
+    setCommandPaletteOpen,
+    setAssistantOpen,
+    router,
+  ]);
 
   useEffect(() => {
     setPaletteActiveIdx(0);
@@ -602,7 +646,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.18 }}
-                  className="fixed inset-0 bg-black/55 backdrop-blur-xs"
+                  className="fixed inset-0 omnis-modal-scrim backdrop-blur-md"
                   onClick={() => setMobileMenuOpen(false)}
                 />
                 <motion.div
@@ -703,7 +747,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.16 }}
-                  className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+                  className="fixed inset-0 omnis-modal-scrim backdrop-blur-md"
                   onClick={() => setCommandPaletteOpen(false)}
                 />
                 <motion.div
@@ -720,7 +764,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     onSubmit={(e) => {
                       e.preventDefault();
                       const selectedAction = commandActions[paletteActiveIdx];
-                      if (paletteQuery.trim() && selectedAction) {
+                      if (selectedAction) {
                         selectedAction.run();
                         return;
                       }
@@ -875,7 +919,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.16 }}
                   onClick={() => setAssistantOpen(false)}
-                  className="fixed inset-0 top-14 z-40 bg-black/35 backdrop-blur-[1px]"
+                  className="fixed inset-0 top-14 z-40 omnis-modal-scrim backdrop-blur-md"
                 />
                 <motion.div
                   initial={{ x: "100%" }}
@@ -995,6 +1039,95 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </form>
               </motion.div>
               </>
+            )}
+          </AnimatePresence>
+
+          {/* Keyboard Shortcuts Cheatsheet Modal (?) */}
+          <AnimatePresence>
+            {shortcutsOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.16 }}
+                  className="fixed inset-0 omnis-modal-scrim backdrop-blur-md"
+                  onClick={() => setShortcutsOpen(false)}
+                />
+                <motion.div
+                  initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                  transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Keyboard Shortcuts Cheatsheet"
+                  className="relative z-10 w-full max-w-lg omnis-card overflow-hidden"
+                >
+                  <div className="px-4 py-3.5 border-b border-[var(--border-subtle)] bg-[var(--bg-slate)] flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Terminal className="w-4 h-4 tone-blue" />
+                      <span className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--text-primary)] omnis-mono">
+                        OMNIS Keyboard Shortcuts
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShortcutsOpen(false)}
+                      aria-label="Close Keyboard Shortcuts"
+                      className="min-h-[36px] min-w-[36px] sm:min-h-0 sm:min-w-0 p-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="divide-y divide-[var(--border-subtle)] text-xs">
+                    {[
+                      {
+                        keys: "⌘K / Ctrl+K",
+                        title: "Universal Command Palette",
+                        desc: "Jump directly to nations, modules, theme toggle, or natural search.",
+                      },
+                      {
+                        keys: "⌘J / Ctrl+J",
+                        title: "Contextual AI Assistant",
+                        desc: "Open or close the grounded evidence synthesis drawer.",
+                      },
+                      {
+                        keys: "↑ / ↓ + ↵",
+                        title: "Keyboard Palette Launch",
+                        desc: "Cycle curated or filtered palette targets and execute with Enter.",
+                      },
+                      {
+                        keys: "?",
+                        title: "Keyboard Shortcuts Cheatsheet",
+                        desc: "Toggle this shortcuts overlay from any non-input surface.",
+                      },
+                      {
+                        keys: "Esc",
+                        title: "Dismiss Active Overlay",
+                        desc: "Close open drawers, command palette, or mobile navigation.",
+                      },
+                    ].map((row) => (
+                      <div
+                        key={row.keys}
+                        className="px-4 py-3 flex items-center justify-between gap-4"
+                      >
+                        <div className="min-w-0">
+                          <div className="font-semibold text-[var(--text-primary)]">
+                            {row.title}
+                          </div>
+                          <div className="text-[11px] text-[var(--text-muted)]">
+                            {row.desc}
+                          </div>
+                        </div>
+                        <kbd className="shrink-0 px-2 py-1 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[11px] font-semibold text-[var(--text-primary)] omnis-mono">
+                          {row.keys}
+                        </kbd>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              </div>
             )}
           </AnimatePresence>
         </div>

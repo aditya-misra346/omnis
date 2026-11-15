@@ -3,8 +3,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { COUNTRIES_DATA } from "@/lib/data/global-intelligence";
 import { buildSovereignComparisonMatrix } from "@/lib/research/compare";
-import { buildInfiniteKnowledgeGraph } from "@/lib/graph/engine";
-import { executeWhatIfSimulation } from "@/lib/simulations/engine";
+import { buildInfiniteKnowledgeGraph, findShortestCausalPath } from "@/lib/graph/engine";
+import { executeWhatIfSimulation, parseSimulationQueryPrompt } from "@/lib/simulations/engine";
+import { mapYearToTimelinePercent, findNearestEventByPercent } from "@/lib/timeline/scale";
 import {
   clearLiveCountryCacheForTests,
   fetchLiveCountryIntelligence,
@@ -433,5 +434,82 @@ describe("OMNIS Elevation & Credibility Regression Suite", () => {
     expect(
       report.relevantStatistics.some((s) => s.metric.toLowerCase().includes("quantum"))
     ).toBe(true);
+  });
+
+  it("traces BFS shortest causal paths across knowledge graphs and handles disconnected nodes", () => {
+    const semiGraph = buildInfiniteKnowledgeGraph({ topic: "Semiconductors", maxNodes: 16 });
+    expect(semiGraph.edges.length).toBeGreaterThan(2);
+    const firstEdge = semiGraph.edges[0];
+    const direct = findShortestCausalPath(semiGraph.edges, firstEdge.source, firstEdge.target);
+    expect(direct.reachable).toBe(true);
+    expect(direct.hops).toBe(1);
+    expect(direct.nodeIds).toEqual([firstEdge.source, firstEdge.target]);
+    expect(direct.edgeIds).toEqual([firstEdge.id]);
+
+    const selfPath = findShortestCausalPath(semiGraph.edges, firstEdge.source, firstEdge.source);
+    expect(selfPath).toEqual({
+      reachable: true,
+      nodeIds: [firstEdge.source],
+      edgeIds: [],
+      hops: 0,
+    });
+
+    const disconnected = findShortestCausalPath(
+      semiGraph.edges,
+      firstEdge.source,
+      "nonexistent-disconnected-node"
+    );
+    expect(disconnected).toEqual({
+      reachable: false,
+      nodeIds: [],
+      edgeIds: [],
+      hops: 0,
+    });
+  });
+
+  it("anchors What-If simulations to sovereign country baselines and parses natural-language prompts", () => {
+    const indEnergy = executeWhatIfSimulation({
+      category: "energy",
+      horizonYears: 15,
+      seed: 42,
+      countryIso3: "IND",
+    });
+    const braEnergy = executeWhatIfSimulation({
+      category: "energy",
+      horizonYears: 15,
+      seed: 42,
+      countryIso3: "BRA",
+    });
+    expect(indEnergy.summaryMetrics.baselineTerminal).not.toBe(
+      braEnergy.summaryMetrics.baselineTerminal
+    );
+    expect(indEnergy.initialAssumptions.some((a) => a.includes("India"))).toBe(true);
+    expect(braEnergy.initialAssumptions.some((a) => a.includes("Brazil"))).toBe(true);
+
+    const parsed = parseSimulationQueryPrompt(
+      "Model India oil shock +35% and 75 bps interest rate tightening"
+    );
+    expect(parsed.category).toBe("economics");
+    expect(parsed.countryIso3).toBe("IND");
+    expect(parsed.overrides.oilPriceShockPct).toBe(35);
+    expect(parsed.overrides.interestRateDeltaBps).toBe(75);
+  });
+
+  it("maps 5,000-year historical coordinates piecewise monotonically and finds nearest events", () => {
+    expect(mapYearToTimelinePercent(-3000)).toBeCloseTo(0, 5);
+    expect(mapYearToTimelinePercent(500)).toBeCloseTo(22, 5);
+    expect(mapYearToTimelinePercent(1800)).toBeCloseTo(45, 5);
+    expect(mapYearToTimelinePercent(2026)).toBeCloseTo(100, 5);
+    expect(mapYearToTimelinePercent(1950)).toBeGreaterThan(mapYearToTimelinePercent(1200));
+
+    const sampleEvents = [
+      { id: "indus", yearNumeric: -2500 },
+      { id: "printing", yearNumeric: 1440 },
+      { id: "transformer", yearNumeric: 2017 },
+    ];
+    expect(findNearestEventByPercent(sampleEvents, 2)?.id).toBe("indus");
+    expect(findNearestEventByPercent(sampleEvents, 38)?.id).toBe("printing");
+    expect(findNearestEventByPercent(sampleEvents, 98)?.id).toBe("transformer");
+    expect(findNearestEventByPercent([], 50)).toBeNull();
   });
 });

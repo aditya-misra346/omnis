@@ -11,15 +11,24 @@ import {
   AlertCircle,
   TrendingUp,
   BarChart3,
+  Globe2,
 } from "lucide-react";
+import { COUNTRIES_DATA } from "@/lib/data/global-intelligence";
 import {
   executeWhatIfSimulation,
+  parseSimulationQueryPrompt,
   SIMULATION_SCENARIOS,
 } from "@/lib/simulations/engine";
 import { ProvenancePanel } from "@/components/ui/ProvenancePanel";
 import { MonteCarloFanChart, TornadoSensitivityChart } from "@/components/charts/OmnisCharts";
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
-import { OmnisButton, OmnisModuleHeader, OmnisStatTile } from "@/components/ui/OmnisPrimitives";
+import {
+  OmnisButton,
+  OmnisModuleHeader,
+  OmnisSegmentedControl,
+  OmnisStatTile,
+} from "@/components/ui/OmnisPrimitives";
+import { OmnisSelect } from "@/components/ui/OmnisSelect";
 import { OmnisParameterSlider } from "@/components/ui/OmnisParameterSlider";
 import { OmnisMathBlock } from "@/components/ui/OmnisMathBlock";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
@@ -35,16 +44,31 @@ const CATEGORIES: { id: SimulationCategory; label: string }[] = [
 
 function SimulationsContent() {
   const searchParams = useSearchParams();
-  const initialCat = (searchParams.get("category") as SimulationCategory) || "economics";
+  const promptQuery = searchParams.get("q") || "";
+  const parsedPrompt = useMemo(
+    () => parseSimulationQueryPrompt(promptQuery),
+    [promptQuery]
+  );
+
+  const initialCat =
+    (searchParams.get("category") as SimulationCategory) ||
+    parsedPrompt.category ||
+    "economics";
   const paramOilShock = searchParams.get("oilShock");
-  const paramCountry = searchParams.get("country");
+  const paramCountry =
+    searchParams.get("country")?.toUpperCase() || parsedPrompt.countryIso3 || null;
   const parsedOilShock =
     paramOilShock !== null && Number.isFinite(Number(paramOilShock))
-      ? Math.max(-30, Math.min(80, Number(paramOilShock)))
-      : null;
+      ? Math.max(-40, Math.min(100, Number(paramOilShock)))
+      : typeof parsedPrompt.overrides.oilPriceShockPct === "number"
+        ? parsedPrompt.overrides.oilPriceShockPct
+        : null;
 
   const [category, setCategory] = useState<SimulationCategory>(
     CATEGORIES.some((c) => c.id === initialCat) ? initialCat : "economics"
+  );
+  const [countryBaselineIso3, setCountryBaselineIso3] = useState<string>(
+    paramCountry && COUNTRIES_DATA[paramCountry] ? paramCountry : "GLOBAL"
   );
   const [horizonYears, setHorizonYears] = useState(15);
   const [seed, setSeed] = useState(42);
@@ -52,12 +76,13 @@ function SimulationsContent() {
   const [savedNotice, setSavedNotice] = useState(false);
 
   const { addWorkspaceItem, setActiveContext } = useOmnisStore();
+  const countriesList = useMemo(() => Object.values(COUNTRIES_DATA), []);
 
   const activeSpec =
     SIMULATION_SCENARIOS.find((s) => s.category === category) ??
     SIMULATION_SCENARIOS[0];
 
-  // Reset overrides when category changes, honouring URL sandbox oilShock preset
+  // Reset overrides when category changes, honouring URL sandbox oilShock / prompt presets
   useEffect(() => {
     const defaults: Record<string, number> = {};
     for (const p of activeSpec.parameters) {
@@ -66,12 +91,18 @@ function SimulationsContent() {
     if (activeSpec.category === "economics" && parsedOilShock !== null) {
       defaults.oilPriceShockPct = parsedOilShock;
     }
+    for (const [k, v] of Object.entries(parsedPrompt.overrides)) {
+      if (k in defaults) defaults[k] = v;
+    }
     setOverrides(defaults);
-  }, [activeSpec, parsedOilShock]);
+  }, [activeSpec, parsedOilShock, parsedPrompt.overrides]);
 
   useEffect(() => {
-    setActiveContext("What-If Simulation Engine", activeSpec.title);
-  }, [activeSpec.title, setActiveContext]);
+    setActiveContext(
+      "What-If Simulation Engine",
+      `${activeSpec.title} (${countryBaselineIso3})`
+    );
+  }, [activeSpec.title, countryBaselineIso3, setActiveContext]);
 
   const simulationOutput = useMemo(
     () =>
@@ -80,9 +111,15 @@ function SimulationsContent() {
         category,
         horizonYears,
         seed,
+        countryIso3: countryBaselineIso3,
         overrides,
       }),
-    [activeSpec.id, category, horizonYears, seed, overrides]
+    [activeSpec.id, category, horizonYears, seed, countryBaselineIso3, overrides]
+  );
+
+  const maxElasticity = useMemo(
+    () => Math.max(0.01, ...simulationOutput.sensitivity.map((s) => s.elasticityScore)),
+    [simulationOutput.sensitivity]
   );
 
   const handleReset = () => {
@@ -159,44 +196,39 @@ function SimulationsContent() {
           </>
         }
         secondaryControls={
-          <div className="flex flex-wrap gap-2 pt-1">
-            {CATEGORIES.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => setCategory(c.id)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                  category === c.id
-                    ? "bg-[var(--accent-blue-solid)] text-white shadow-sm"
-                    : "bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]"
-                }`}
-              >
-                {c.label}
-              </button>
-            ))}
+          <div className="pt-1 overflow-x-auto max-w-full">
+            <OmnisSegmentedControl
+              groupId="simulation-category-tabs"
+              ariaLabel="Simulation Scientific Domain"
+              size="sm"
+              value={category}
+              onChange={(val) => setCategory(val as SimulationCategory)}
+              options={CATEGORIES.map((c) => ({
+                value: c.id,
+                label: c.label,
+              }))}
+            />
           </div>
         }
       >
-        {(parsedOilShock !== null || paramCountry) && category === "economics" ? (
+        {(parsedOilShock !== null || paramCountry || promptQuery) ? (
           <div className="px-3 py-2 rounded-xl badge-tone-blue text-xs flex flex-wrap items-center justify-between gap-2">
             <span>
-              Initialized from Sandbox Preset
-              {paramCountry ? (
+              Anchored Baseline:{" "}
+              <strong className="omnis-mono">
+                {countryBaselineIso3 === "GLOBAL" ? "Global Aggregate" : countryBaselineIso3}
+              </strong>
+              {parsedOilShock !== null && category === "economics" ? (
                 <>
                   {" "}
-                  for <strong className="omnis-mono">{paramCountry}</strong>
-                </>
-              ) : null}
-              {parsedOilShock !== null ? (
-                <>
-                  {" "}
-                  • Oil Price Impulse:{" "}
+                  • Oil Impulse:{" "}
                   <strong className="omnis-mono omnis-tabular">
                     {parsedOilShock >= 0 ? "+" : ""}
                     {parsedOilShock}%
                   </strong>
                 </>
               ) : null}
+              {promptQuery ? <> • Prompt: &ldquo;{promptQuery}&rdquo;</> : null}
             </span>
             <button
               type="button"
@@ -215,7 +247,7 @@ function SimulationsContent() {
         <div className="lg:col-span-4 omnis-card p-5 space-y-5">
           <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
             <h2 className="text-sm font-bold text-[var(--text-primary)]">
-              Scenario Variables & Assumptions
+              Scenario Variables &amp; Baseline
             </h2>
             <button
               type="button"
@@ -225,6 +257,27 @@ function SimulationsContent() {
               <RotateCcw className="w-3.5 h-3.5" />
               Reset Baseline
             </button>
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="text-[10.5px] font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
+              Country Baseline Calibration
+            </div>
+            <OmnisSelect
+              value={countryBaselineIso3}
+              onChange={setCountryBaselineIso3}
+              ariaLabel="Country Baseline Calibration"
+              leadingIcon={<Globe2 className="w-3.5 h-3.5 tone-blue" />}
+              size="md"
+              options={[
+                { value: "GLOBAL", label: "🌍 Global Aggregate (IMF/UN Weighted)", hint: "Baseline" },
+                ...countriesList.map((c) => ({
+                  value: c.iso3,
+                  label: `${c.flagEmoji} ${c.name} (${c.iso3})`,
+                  hint: `+${c.gdpGrowthPct}% GDP • ${c.energyProfile.renewableSharePct}% Clean`,
+                })),
+              ]}
+            />
           </div>
 
           <div className="space-y-3">
@@ -334,6 +387,64 @@ function SimulationsContent() {
               trajectory={simulationOutput.trajectory}
               units={simulationOutput.units}
             />
+
+            {/* Interactive Parameter Elasticity Strip */}
+            <div className="pt-3 border-t border-[var(--border-subtle)] space-y-2.5">
+              <div className="flex items-center justify-between text-[11px] omnis-mono">
+                <span className="font-bold uppercase tracking-wider tone-cyan">
+                  Parameter Sensitivity / Elasticity Strip
+                </span>
+                <span className="text-[var(--text-muted)]">
+                  Ranked by terminal variance across bounds
+                </span>
+              </div>
+              <div className="space-y-2">
+                {simulationOutput.sensitivity.map((item) => {
+                  const pctWidth = Math.max(8, (item.elasticityScore / maxElasticity) * 100);
+                  const specParam = activeSpec.parameters.find((p) => p.key === item.parameterKey);
+                  return (
+                    <div key={item.parameterKey} className="space-y-1 text-xs">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-medium text-[var(--text-primary)] truncate">
+                          {item.label}
+                        </span>
+                        <div className="flex items-center gap-2 omnis-mono omnis-tabular text-[10.5px]">
+                          <span className="text-[var(--text-muted)]">
+                            Low {item.lowOutcomeDelta >= 0 ? "+" : ""}
+                            {item.lowOutcomeDelta} / High {item.highOutcomeDelta >= 0 ? "+" : ""}
+                            {item.highOutcomeDelta}
+                          </span>
+                          {specParam ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setOverrides((prev) => ({
+                                  ...prev,
+                                  [specParam.key]: specParam.max,
+                                }))
+                              }
+                              className="px-1.5 py-0.5 rounded border border-[var(--border-subtle)] bg-[var(--bg-slate)] hover:border-[var(--accent-blue)] text-[10px] tone-blue cursor-pointer"
+                            >
+                              Stress Max
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div className="h-1.5 w-full rounded-full bg-[var(--bg-slate)] overflow-hidden">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${pctWidth.toFixed(1)}%`,
+                            background:
+                              "linear-gradient(90deg, var(--accent-blue-solid), var(--accent-cyan))",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
 
             <p className="text-xs text-[var(--text-secondary)] leading-relaxed bg-[var(--bg-slate)] p-3.5 rounded-xl border border-[var(--border-subtle)]">
               <strong className="text-[var(--text-primary)]">Analytical Interpretation:</strong>{" "}

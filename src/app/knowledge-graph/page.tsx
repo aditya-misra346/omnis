@@ -12,13 +12,25 @@ import {
   FileSearch,
   ExternalLink,
   Filter,
+  GitBranch,
+  ChevronUp,
+  X,
 } from "lucide-react";
-import { buildInfiniteKnowledgeGraph } from "@/lib/graph/engine";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  buildInfiniteKnowledgeGraph,
+  findShortestCausalPath,
+} from "@/lib/graph/engine";
 import { fetchOpenAlexSources, fetchWikimediaSummary } from "@/lib/providers/live-data";
 import { KnowledgeGraphCanvas } from "@/components/graph/KnowledgeGraphCanvas";
 import { ProvenancePanel, VerificationBadge } from "@/components/ui/ProvenancePanel";
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
-import { OmnisButton, OmnisModuleHeader } from "@/components/ui/OmnisPrimitives";
+import {
+  OmnisButton,
+  OmnisModuleHeader,
+  OmnisSegmentedControl,
+  OmnisSkeleton,
+} from "@/components/ui/OmnisPrimitives";
 import { OmnisSelect } from "@/components/ui/OmnisSelect";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 import type {
@@ -77,11 +89,17 @@ function KnowledgeGraphContent() {
     extract: string;
     url: string;
   } | null>(null);
+  const [liveFetchState, setLiveFetchState] = useState<
+    "loading" | "verified" | "offline-fallback"
+  >("loading");
+  const [pathTargetId, setPathTargetId] = useState<string>("");
+  const [mobileInspectorOpen, setMobileInspectorOpen] = useState(false);
 
   const { addWorkspaceItem, setActiveContext } = useOmnisStore();
 
   useEffect(() => {
     let cancelled = false;
+    setLiveFetchState("loading");
     setLiveWorks([]);
     setWikiSummary(null);
     Promise.all([
@@ -92,8 +110,13 @@ function KnowledgeGraphContent() {
         if (cancelled) return;
         setLiveWorks(works);
         setWikiSummary(wiki);
+        setLiveFetchState(
+          works.length > 0 || Boolean(wiki) ? "verified" : "offline-fallback"
+        );
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!cancelled) setLiveFetchState("offline-fallback");
+      });
     return () => {
       cancelled = true;
     };
@@ -130,6 +153,23 @@ function KnowledgeGraphContent() {
 
   const connectedEdges = graphData.edges.filter(
     (e) => e.source === selectedNode?.id || e.target === selectedNode?.id
+  );
+
+  const causalPath = useMemo(() => {
+    if (!pathTargetId || !selectedNode || pathTargetId === selectedNode.id) {
+      return null;
+    }
+    return findShortestCausalPath(graphData.edges, selectedNode.id, pathTargetId);
+  }, [graphData.edges, selectedNode, pathTargetId]);
+
+  const highlightedPathNodeIds = useMemo(
+    () => (causalPath?.reachable ? new Set(causalPath.nodeIds) : undefined),
+    [causalPath]
+  );
+
+  const highlightedPathEdgeIds = useMemo(
+    () => (causalPath?.reachable ? new Set(causalPath.edgeIds) : undefined),
+    [causalPath]
   );
 
   const handleGenerateTopic = (e: React.FormEvent) => {
@@ -232,22 +272,19 @@ function KnowledgeGraphContent() {
 
         {/* Layout Modes & Relationship Filters */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-xs">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[var(--text-muted)] font-semibold mr-1">Viewing Mode:</span>
-            {LAYOUT_MODES.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => setLayoutMode(m.id)}
-                className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
-                  layoutMode === m.id
-                    ? "bg-[var(--accent-blue-solid)] text-white shadow-xs"
-                    : "bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                }`}
-              >
-                {m.label}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center gap-2 overflow-x-auto max-w-full">
+            <span className="text-[var(--text-muted)] font-semibold shrink-0">Viewing Mode:</span>
+            <OmnisSegmentedControl
+              groupId="kg-layout-mode"
+              ariaLabel="Knowledge Graph Layout Engine"
+              size="sm"
+              value={layoutMode}
+              onChange={(val) => setLayoutMode(val as GraphLayoutMode)}
+              options={LAYOUT_MODES.map((m) => ({
+                value: m.id,
+                label: m.label,
+              }))}
+            />
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -267,32 +304,64 @@ function KnowledgeGraphContent() {
               value={nodeSearch}
               onChange={(e) => setNodeSearch(e.target.value)}
               placeholder="Filter nodes..."
-              className="px-2.5 py-1 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] w-36 focus:outline-none focus:border-[var(--accent-blue)]"
+              className="px-2.5 py-1.5 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] w-36 focus:outline-none focus:border-[var(--accent-blue)]"
             />
           </div>
         </div>
       </OmnisModuleHeader>
 
+      {/* Live Epistemic Ingestion Status Banner */}
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+        {liveFetchState === "loading" ? (
+          <div className="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-graphite)]">
+            <OmnisSkeleton className="h-3.5 w-36 rounded-md" />
+            <span className="text-[var(--text-muted)] omnis-mono text-[11px]">
+              Hydrating OpenAlex Scholarly Works &amp; Wikimedia entities for &ldquo;{activeTopic}&rdquo;…
+            </span>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold omnis-mono ${
+                liveFetchState === "verified" ? "badge-tone-verified" : "badge-tone-warning"
+              }`}
+            >
+              {liveFetchState === "verified"
+                ? `Live OpenAlex + Ontology Verified (${liveWorks.length} works ingested)`
+                : "Curated Offline Ontology Active"}
+            </span>
+          </div>
+        )}
+      </div>
+
       {/* Main Graph Viewport + Interactive Node Inspector Panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pb-16 lg:pb-0">
         <div className="lg:col-span-8">
           <KnowledgeGraphCanvas
             nodes={graphData.nodes}
             edges={graphData.edges}
             layoutMode={layoutMode}
             selectedNodeId={selectedNodeId}
-            onSelectNode={setSelectedNodeId}
+            onSelectNode={(id) => {
+              setSelectedNodeId(id);
+              if (pathTargetId === id) setPathTargetId("");
+            }}
             onExpandNode={(id) => {
               setMaxNodes((n) => Math.min(60, n + 4));
               setExpandTargetId(id);
             }}
             relationshipFilter={relFilter}
             searchFilter={nodeSearch}
+            highlightedPathNodeIds={highlightedPathNodeIds}
+            highlightedPathEdgeIds={highlightedPathEdgeIds}
           />
         </div>
 
-        {/* Node Intelligence Inspector Panel */}
-        <div className="lg:col-span-4 omnis-card p-5 space-y-4 flex flex-col justify-between">
+        {/* Desktop Node Intelligence Inspector Panel */}
+        <div
+          id="inspector-panel"
+          className="lg:col-span-4 omnis-card p-5 space-y-4 flex flex-col justify-between"
+        >
           {selectedNode ? (
             <div className="space-y-4">
               <div className="space-y-2 pb-3 border-b border-[var(--border-subtle)]">
@@ -308,12 +377,69 @@ function KnowledgeGraphContent() {
                 </p>
               </div>
 
+              {/* Shortest-Path Causal Tracer (BFS) */}
+              <div className="space-y-2 p-3 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)]">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10.5px] font-bold uppercase tracking-wider tone-cyan omnis-mono inline-flex items-center gap-1.5">
+                    <GitBranch className="w-3.5 h-3.5" />
+                    <span>Trace Causal Path</span>
+                  </span>
+                  {causalPath?.reachable ? (
+                    <span className="text-[10px] font-bold omnis-mono omnis-tabular px-1.5 py-0.5 rounded badge-tone-cyan">
+                      {causalPath.hops} {causalPath.hops === 1 ? "hop" : "hops"}
+                    </span>
+                  ) : null}
+                </div>
+                <OmnisSelect
+                  value={pathTargetId}
+                  onChange={setPathTargetId}
+                  ariaLabel="Trace Causal Path Target Node"
+                  options={[
+                    { value: "", label: "Select target concept to trace path…" },
+                    ...graphData.nodes
+                      .filter((n) => n.id !== selectedNode.id)
+                      .map((n) => ({
+                        value: n.id,
+                        label: n.label,
+                        hint: n.category,
+                      })),
+                  ]}
+                />
+                {causalPath ? (
+                  causalPath.reachable ? (
+                    <div className="flex flex-wrap items-center gap-1 pt-1 text-[10.5px] omnis-mono">
+                      {causalPath.nodeIds.map((nid, idx) => {
+                        const node = graphData.nodes.find((x) => x.id === nid);
+                        return (
+                          <React.Fragment key={nid}>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedNodeId(nid)}
+                              className="px-1.5 py-0.5 rounded bg-[var(--bg-graphite)] border border-[var(--accent-cyan)]/40 text-[var(--text-primary)] hover:border-[var(--accent-cyan)] cursor-pointer text-left truncate max-w-[140px]"
+                            >
+                              {node?.label ?? nid}
+                            </button>
+                            {idx < causalPath.nodeIds.length - 1 ? (
+                              <span className="tone-cyan">→</span>
+                            ) : null}
+                          </React.Fragment>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-[11px] text-[var(--text-muted)] omnis-mono">
+                      No undirected causal chain connects these concepts under current nodes.
+                    </div>
+                  )
+                ) : null}
+              </div>
+
               {/* Connected Semantic Relationships */}
               <div className="space-y-2">
                 <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
                   Semantic Relationships ({connectedEdges.length})
                 </div>
-                <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                <div className="divide-y divide-[var(--border-subtle)] max-h-52 overflow-y-auto pr-1 border-y border-[var(--border-subtle)]">
                   {connectedEdges.map((edge) => {
                     const otherId =
                       edge.source === selectedNode.id ? edge.target : edge.source;
@@ -322,7 +448,7 @@ function KnowledgeGraphContent() {
                       <div
                         key={edge.id}
                         onClick={() => setSelectedNodeId(otherId)}
-                        className="omnis-surface-slate p-2.5 text-xs space-y-1 cursor-pointer hover:border-[var(--border-strong)]"
+                        className="py-2.5 px-1 text-xs space-y-1 cursor-pointer hover:bg-[var(--bg-slate)]/60 transition-colors"
                       >
                         <div className="flex items-center justify-between gap-2">
                           <span className="omnis-mono text-[10px] px-1.5 py-0.5 rounded-md badge-tone-blue font-semibold">
@@ -353,23 +479,25 @@ function KnowledgeGraphContent() {
                 <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
                   Supporting Citations
                 </div>
-                {selectedNode.sources.map((s) => (
-                  <a
-                    key={s.title}
-                    href={s.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block omnis-surface-slate p-2.5 text-xs hover:border-[var(--border-strong)]"
-                  >
-                    <div className="font-semibold tone-blue flex items-center justify-between gap-2">
-                      <span className="truncate">{s.title}</span>
-                      <ExternalLink className="w-3 h-3 shrink-0" />
-                    </div>
-                    <div className="text-[10px] text-[var(--text-muted)] mt-0.5">
-                      {s.publisher} • {s.year}
-                    </div>
-                  </a>
-                ))}
+                <div className="divide-y divide-[var(--border-subtle)] border-t border-[var(--border-subtle)]">
+                  {selectedNode.sources.map((s) => (
+                    <a
+                      key={s.title}
+                      href={s.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block py-2 text-xs hover:bg-[var(--bg-slate)]/50 transition-colors"
+                    >
+                      <div className="font-semibold tone-blue flex items-center justify-between gap-2">
+                        <span className="truncate">{s.title}</span>
+                        <ExternalLink className="w-3 h-3 shrink-0" />
+                      </div>
+                      <div className="text-[10px] text-[var(--text-muted)] mt-0.5">
+                        {s.publisher} • {s.year}
+                      </div>
+                    </a>
+                  ))}
+                </div>
               </div>
             </div>
           ) : null}
@@ -402,6 +530,142 @@ function KnowledgeGraphContent() {
           </div>
         </div>
       </div>
+
+      {/* Mobile Bottom Inspector Pill (< 1024px) */}
+      {selectedNode ? (
+        <div className="lg:hidden fixed bottom-3 left-3 right-3 z-40">
+          <button
+            type="button"
+            onClick={() => setMobileInspectorOpen(true)}
+            className="w-full omnis-hud-pill rounded-2xl px-4 py-3 flex items-center justify-between gap-3 text-left text-xs cursor-pointer"
+          >
+            <div className="min-w-0">
+              <div className="text-[10px] omnis-mono uppercase tracking-wider tone-blue font-bold">
+                Selected Concept
+              </div>
+              <div className="font-bold text-[var(--text-primary)] truncate">
+                {selectedNode.label}
+              </div>
+            </div>
+            <span className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--accent-blue-solid)] text-white font-semibold">
+              <span>Open Inspector</span>
+              <ChevronUp className="w-3.5 h-3.5" />
+            </span>
+          </button>
+        </div>
+      ) : null}
+
+      {/* Mobile Inspector Slide-Up Sheet */}
+      <AnimatePresence>
+        {mobileInspectorOpen && selectedNode ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="lg:hidden fixed inset-0 z-50 omnis-modal-scrim backdrop-blur-sm flex items-end"
+            onClick={() => setMobileInspectorOpen(false)}
+          >
+            <motion.div
+              initial={{ y: 40, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 40, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 380, damping: 34 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-h-[75vh] overflow-y-auto rounded-t-2xl bg-[var(--bg-graphite)] border-t border-[var(--border-strong)] p-5 space-y-4"
+            >
+              <div className="flex items-center justify-between gap-2 pb-2 border-b border-[var(--border-subtle)]">
+                <div>
+                  <div className="text-[10px] omnis-mono uppercase tone-blue font-bold">
+                    {selectedNode.category}
+                  </div>
+                  <div className="font-bold text-base text-[var(--text-primary)]">
+                    {selectedNode.label}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Close Node Inspector"
+                  onClick={() => setMobileInspectorOpen(false)}
+                  className="p-2 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                {selectedNode.summary}
+              </p>
+              <div className="space-y-1.5">
+                <div className="text-[10.5px] font-bold uppercase tracking-wider tone-cyan omnis-mono">
+                  Trace Causal Path {causalPath?.reachable ? `(${causalPath.hops} hops)` : ""}
+                </div>
+                <OmnisSelect
+                  value={pathTargetId}
+                  onChange={setPathTargetId}
+                  ariaLabel="Mobile Trace Causal Path Target"
+                  options={[
+                    { value: "", label: "Select target concept…" },
+                    ...graphData.nodes
+                      .filter((n) => n.id !== selectedNode.id)
+                      .map((n) => ({ value: n.id, label: n.label, hint: n.category })),
+                  ]}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <div className="text-[10.5px] font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
+                  Edges ({connectedEdges.length})
+                </div>
+                <div className="divide-y divide-[var(--border-subtle)]">
+                  {connectedEdges.map((edge) => {
+                    const otherId = edge.source === selectedNode.id ? edge.target : edge.source;
+                    const otherNode = graphData.nodes.find((n) => n.id === otherId);
+                    return (
+                      <button
+                        key={edge.id}
+                        type="button"
+                        onClick={() => setSelectedNodeId(otherId)}
+                        className="w-full text-left py-2 text-xs space-y-0.5 cursor-pointer"
+                      >
+                        <div className="font-semibold text-[var(--text-primary)]">
+                          <span className="omnis-mono tone-blue mr-1.5">[{edge.relationshipType}]</span>
+                          → {otherNode?.label ?? otherId}
+                        </div>
+                        <div className="text-[11px] text-[var(--text-secondary)]">{edge.evidence}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <OmnisButton
+                  onClick={() => {
+                    setMaxNodes((n) => Math.min(60, n + 4));
+                    setExpandTargetId(selectedNode.id);
+                    setMobileInspectorOpen(false);
+                  }}
+                  className="flex-1"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  <span>Expand (+4)</span>
+                </OmnisButton>
+                <OmnisButton
+                  variant="secondary"
+                  onClick={() =>
+                    router.push(
+                      `/research?q=${encodeURIComponent(
+                        `Deep analysis of ${selectedNode.label}`
+                      )}`
+                    )
+                  }
+                  className="flex-1"
+                >
+                  <FileSearch className="w-3.5 h-3.5 tone-blue" />
+                  <span>Research</span>
+                </OmnisButton>
+              </div>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       <ProvenancePanel provenance={graphData.provenance} compact />
     </div>

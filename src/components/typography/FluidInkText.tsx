@@ -43,6 +43,7 @@ export function FluidInkText({
   const metricsCacheRef = useRef<CachedGlyphMetric[]>([]);
   const measureCtxRef = useRef<CanvasRenderingContext2D | null>(null);
   const fallbackTransformsRef = useRef<GlyphSpringTransform[]>(DEFAULT_TRANSFORMS);
+  const lastTouchRef = useRef<{ x: number; y: number } | null>(null);
   const onGlyphElementsReadyRef = useRef(onGlyphElementsReady);
   onGlyphElementsReadyRef.current = onGlyphElementsReady;
 
@@ -186,12 +187,38 @@ export function FluidInkText({
     return offsets;
   }, [words]);
 
+  const handleTouchPulse = useCallback(
+    (e: React.TouchEvent<HTMLSpanElement>, isStart: boolean) => {
+      if (motionPaused) return;
+      const touch = e.touches[0];
+      const wrapper = wrapperRef.current;
+      if (!touch || !wrapper) return;
+      const rect = wrapper.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+
+      const u = (touch.clientX - rect.left) / rect.width;
+      const v = 1.0 - (touch.clientY - rect.top) / rect.height;
+      const prev = lastTouchRef.current;
+      const dx = !isStart && prev ? Math.max(-18, Math.min(18, touch.clientX - prev.x)) * 0.16 : 0.45;
+      const dy = !isStart && prev ? Math.max(-18, Math.min(18, -(touch.clientY - prev.y))) * 0.16 : 0.35;
+      lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
+
+      getSharedFluidInkEngine().pulseTouchWave(u, v, dx, dy);
+    },
+    [motionPaused]
+  );
+
   return (
     <span
       ref={wrapperRef}
       data-ink="fluid"
       data-ink-ready={inkReady && !motionPaused ? "true" : "false"}
       aria-label={ariaLabel ?? text}
+      onTouchStart={(e) => handleTouchPulse(e, true)}
+      onTouchMove={(e) => handleTouchPulse(e, false)}
+      onTouchEnd={() => {
+        lastTouchRef.current = null;
+      }}
       className={`relative inline-block pr-[0.08em] ${
         editorial ? "omnis-editorial text-[1.09em] leading-[1.02]" : ""
       } ${className}`}
