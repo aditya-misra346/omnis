@@ -18,7 +18,7 @@ export async function GET(request: Request) {
       id: s.id,
       title: s.title,
       category: s.category,
-      horizonYears: s.horizonYears,
+      defaultHorizonYears: s.defaultHorizonYears,
     })),
     activeSimulation: result,
   });
