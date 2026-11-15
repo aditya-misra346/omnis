@@ -94,11 +94,26 @@ export async function probeUpstreamProviders(options?: {
         });
         clearTimeout(timer);
         const latencyMs = Math.max(1, Date.now() - started);
-        const status: UpstreamProviderStatus = res.ok
+        let status: UpstreamProviderStatus = res.ok
           ? "operational"
           : res.status >= 400
             ? "degraded"
             : "unreachable";
+
+        // Detect deprecated/error JSON envelopes even when a gateway redirects to HTTP 200 JSON
+        if (res.ok) {
+          try {
+            const payload = (await res.json()) as {
+              success?: boolean;
+              errors?: unknown[];
+            } | null;
+            if (payload && payload.success === false && Array.isArray(payload.errors)) {
+              status = "degraded";
+            }
+          } catch {
+            // Non-JSON or streamed 200 payload remains operational
+          }
+        }
         return {
           id: provider.id,
           name: provider.name,

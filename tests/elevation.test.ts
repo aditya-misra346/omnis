@@ -291,6 +291,73 @@ describe("OMNIS Elevation & Credibility Regression Suite", () => {
     expect(rc?.httpStatus).toBeNull();
     expect(openAlex?.status).toBe("operational");
     expect(report.status).toBe("degraded");
+
+    const deprecatedFetch = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).includes("restcountries")) {
+        return new Response(
+          JSON.stringify({ success: false, errors: [{ message: "API deprecated" }] }),
+          { status: 200 }
+        );
+      }
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+    const depReport = await probeUpstreamProviders({
+      fetchFn: deprecatedFetch as unknown as typeof fetch,
+      timeoutMs: 500,
+      bypassCache: true,
+    });
+    expect(depReport.providers.find((p) => p.id === "rest-countries")?.status).toBe("degraded");
+  });
+
+  it("hydrates ISO3 capital, flag emoji, and population from World Bank v2 when REST Countries is unavailable", async () => {
+    const wbOnlyFetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("restcountries")) {
+        return new Response(JSON.stringify({ success: false, errors: [{ message: "Deprecated" }] }), {
+          status: 200,
+        });
+      }
+      if (url.includes("/v2/country/CAN?format=json")) {
+        return new Response(
+          JSON.stringify([
+            { page: 1 },
+            [
+              {
+                id: "CAN",
+                iso2Code: "CA",
+                name: "Canada",
+                capitalCity: "Ottawa",
+                region: { value: "North America" },
+                incomeLevel: { value: "High income" },
+                latitude: "45.4215",
+                longitude: "-75.6919",
+              },
+            ],
+          ]),
+          { status: 200 }
+        );
+      }
+      if (url.includes("SP.POP.TOTL")) {
+        return new Response(JSON.stringify([{ page: 1 }, [{ date: "2024", value: 41_288_599 }]]), {
+          status: 200,
+        });
+      }
+      if (url.includes("NY.GDP.MKTP.CD")) {
+        return new Response(
+          JSON.stringify([{ page: 1 }, [{ country: { value: "Canada" }, date: "2024", value: 2_240_000_000_000 }]]),
+          { status: 200 }
+        );
+      }
+      return new Response(JSON.stringify([{ page: 1 }, []]), { status: 200 });
+    });
+
+    const can = await fetchLiveCountryIntelligence("CAN", wbOnlyFetch as unknown as typeof fetch);
+    expect(can?.name).toBe("Canada");
+    expect(can?.flagEmoji).toBe("🇨🇦");
+    expect(can?.capital).toBe("Ottawa");
+    expect(can?.region).toBe("North America");
+    expect(can?.population).toBe(41_288_599);
+    expect(can?.gdpUsdBn).toBe(2240);
   });
 
   it("renders OmnisModuleHeader, distinct epistemic VerificationBadge tones, and KaTeX SSR math cleanly", () => {

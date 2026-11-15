@@ -156,14 +156,37 @@ export async function fetchLiveCountryIntelligence(
     return baseProfile;
   }
 
+function iso2ToFlagEmoji(iso2: string): string {
+  const clean = iso2.trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(clean)) return "🌐";
+  return String.fromCodePoint(...clean.split("").map((c) => 127397 + c.charCodeAt(0)));
+}
+
+interface WorldBankCountryMetaRecord {
+  id?: string;
+  iso2Code?: string;
+  name?: string;
+  capitalCity?: string;
+  region?: { id?: string; value?: string };
+  incomeLevel?: { id?: string; value?: string };
+  latitude?: string;
+  longitude?: string;
+}
+
   // Dynamically hydrate unknown valid sovereign ISO3 codes via REST Countries + World Bank
-  const [rcRaw, wbGdp, wbGrowth, wbRenew] = await Promise.all([
+  const [rcRaw, wbMetaRaw, wbGdp, wbPop, wbGrowth, wbRenew] = await Promise.all([
     fetchJsonWithTimeout<RestCountriesAlphaRecord[] | RestCountriesAlphaRecord>(
       fetchFn,
       `https://restcountries.com/v3.1/alpha/${encodeURIComponent(iso3)}`,
-      2800
+      2200
+    ),
+    fetchJsonWithTimeout<unknown[]>(
+      fetchFn,
+      `https://api.worldbank.org/v2/country/${encodeURIComponent(iso3)}?format=json`,
+      2600
     ),
     fetchWorldBankIndicatorSeries(fetchFn, iso3, "NY.GDP.MKTP.CD", 10),
+    fetchWorldBankIndicatorSeries(fetchFn, iso3, "SP.POP.TOTL", 10),
     fetchWorldBankIndicatorSeries(fetchFn, iso3, "NY.GDP.MKTP.KD.ZG", 10),
     fetchWorldBankIndicatorSeries(fetchFn, iso3, "EG.ELC.RNEW.ZS", 10),
   ]);
@@ -172,22 +195,34 @@ export async function fetchLiveCountryIntelligence(
   const validRc =
     rcRecord && rcRecord.cca3 && rcRecord.cca3.toUpperCase() === iso3 ? rcRecord : null;
 
+  const wbMetaList =
+    Array.isArray(wbMetaRaw) && Array.isArray(wbMetaRaw[1])
+      ? (wbMetaRaw[1] as WorldBankCountryMetaRecord[])
+      : [];
+  const wbMeta = wbMetaList.find((m) => m.id?.toUpperCase() === iso3) ?? null;
+
   const wbHasAnyData =
-    wbGdp.byYear.size > 0 || wbGrowth.byYear.size > 0 || wbRenew.byYear.size > 0;
+    wbMeta !== null ||
+    wbGdp.byYear.size > 0 ||
+    wbPop.byYear.size > 0 ||
+    wbGrowth.byYear.size > 0 ||
+    wbRenew.byYear.size > 0;
 
   if (!validRc && !wbHasAnyData) {
     return null;
   }
 
   const name = sanitizeExternalSnippet(
-    validRc?.name?.common || wbGdp.countryName || wbGrowth.countryName || iso3
+    validRc?.name?.common || wbMeta?.name || wbGdp.countryName || wbGrowth.countryName || iso3
   );
-  const officialName = sanitizeExternalSnippet(validRc?.name?.official || name);
-  const iso2 = (validRc?.cca2 || iso3.slice(0, 2)).toUpperCase();
+  const officialName = sanitizeExternalSnippet(validRc?.name?.official || wbMeta?.name || name);
+  const iso2 = (validRc?.cca2 || wbMeta?.iso2Code || iso3.slice(0, 2)).toUpperCase();
   const population =
     typeof validRc?.population === "number" && Number.isFinite(validRc.population)
       ? validRc.population
-      : 0;
+      : wbPop.latestValue !== null
+        ? Math.round(wbPop.latestValue)
+        : 0;
   const areaSqKm =
     typeof validRc?.area === "number" && Number.isFinite(validRc.area) ? validRc.area : 0;
   const populationDensityPerSqKm =
@@ -210,9 +245,10 @@ export async function fetchLiveCountryIntelligence(
 
   const historicalSeries = allYears.map((year) => {
     const rawGdp = wbGdp.byYear.get(year);
+    const yearPop = wbPop.byYear.get(year) ?? population;
     const yearGdpBn = rawGdp !== undefined ? Number((rawGdp / 1e9).toFixed(1)) : 0;
     const yearPerCapita =
-      rawGdp !== undefined && population > 0 ? Math.round(rawGdp / population) : 0;
+      rawGdp !== undefined && yearPop > 0 ? Math.round(rawGdp / yearPop) : 0;
     return {
       year,
       gdpUsdBn: yearGdpBn,
@@ -241,17 +277,32 @@ export async function fetchLiveCountryIntelligence(
     wbHasAnyData ? "World Bank Open Data API v2" : null,
   ].filter(Boolean);
 
+  const parsedLat = Number(wbMeta?.latitude);
+  const parsedLng = Number(wbMeta?.longitude);
+
   const hydrated: CountryIntelligenceProfile = {
     iso3,
     iso2,
     name,
     officialName,
-    flagEmoji: validRc?.flag || "🌐",
-    capital: validRc?.capital?.[0] ? sanitizeExternalSnippet(validRc.capital[0]) : "Unavailable",
-    region: validRc?.region ? sanitizeExternalSnippet(validRc.region) : "Global",
-    subregion: validRc?.subregion ? sanitizeExternalSnippet(validRc.subregion) : "Live Hydrated Profile",
-    lat: validRc?.latlng?.[0] ?? 0,
-    lng: validRc?.latlng?.[1] ?? 0,
+    flagEmoji: validRc?.flag || iso2ToFlagEmoji(iso2),
+    capital: validRc?.capital?.[0]
+      ? sanitizeExternalSnippet(validRc.capital[0])
+      : wbMeta?.capitalCity
+        ? sanitizeExternalSnippet(wbMeta.capitalCity)
+        : "Unavailable",
+    region: validRc?.region
+      ? sanitizeExternalSnippet(validRc.region)
+      : wbMeta?.region?.value
+        ? sanitizeExternalSnippet(wbMeta.region.value)
+        : "Global",
+    subregion: validRc?.subregion
+      ? sanitizeExternalSnippet(validRc.subregion)
+      : wbMeta?.incomeLevel?.value
+        ? sanitizeExternalSnippet(wbMeta.incomeLevel.value)
+        : "Live Hydrated Profile",
+    lat: validRc?.latlng?.[0] ?? (Number.isFinite(parsedLat) ? parsedLat : 0),
+    lng: validRc?.latlng?.[1] ?? (Number.isFinite(parsedLng) ? parsedLng : 0),
     population,
     populationDensityPerSqKm,
     medianAgeYears: 0,
