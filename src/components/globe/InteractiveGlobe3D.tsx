@@ -1306,11 +1306,11 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
 
       {hoveredCountry ? (
         <div
-          className="pointer-events-none absolute z-20 max-w-[216px] omnis-hud-pill px-2.5 py-1.5 rounded-lg text-xs"
+          className="pointer-events-none absolute z-20 max-w-[236px] omnis-hud-pill px-3 py-2 rounded-lg text-[13px]"
           style={{ left: tooltipLeft, top: tooltipTop }}
         >
           <div className="font-bold text-[var(--text-primary)] truncate">{hoveredCountry.name}</div>
-          <div className="text-[10px] tone-blue omnis-mono omnis-tabular truncate">
+          <div className="text-[11.5px] tone-blue omnis-mono omnis-tabular truncate">
             {hoveredCountry.metric}
           </div>
         </div>
@@ -1318,25 +1318,25 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
 
       {/* Top HUD Bar */}
       <div className="absolute top-2.5 sm:top-3.5 inset-x-2.5 sm:inset-x-3.5 flex items-start justify-between gap-2 pointer-events-none">
-        <div className="min-w-0 max-w-[168px] sm:max-w-[260px] omnis-hud-pill px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-xl space-y-1">
-          <div className="flex items-center gap-1.5 text-[10px] sm:text-[10.5px] font-bold uppercase tracking-wider tone-blue omnis-mono truncate">
-            <Layers className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+        <div className="min-w-0 max-w-[186px] sm:max-w-[280px] omnis-hud-pill px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl space-y-1">
+          <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold uppercase tracking-wider tone-blue omnis-mono truncate">
+            <Layers className="w-3.5 h-3.5 shrink-0" />
             <span className="truncate">Layer: {activeLayer}</span>
           </div>
           {selectedCountry && activeLayerMeta ? (
-            <div className="text-xs space-y-0.5 min-w-0">
+            <div className="text-[13px] space-y-0.5 min-w-0">
               <div className="font-bold text-[var(--text-primary)] flex items-center gap-1 truncate">
                 <span className="shrink-0">{selectedCountry.flagEmoji}</span>
                 <span className="truncate">{selectedCountry.name}</span>
-                <span className="text-[10px] omnis-mono text-[var(--text-muted)] shrink-0">
+                <span className="text-[11px] omnis-mono text-[var(--text-muted)] shrink-0">
                   ({selectedCountry.iso3})
                 </span>
               </div>
-              <div className="text-[10.5px] sm:text-[11px] text-[var(--text-secondary)] omnis-mono omnis-tabular truncate">
+              <div className="text-[11.5px] sm:text-xs text-[var(--text-secondary)] omnis-mono omnis-tabular truncate">
                 {activeLayerMeta.value}
               </div>
               {!compact ? (
-                <div className="hidden sm:flex text-[10px] text-[var(--text-muted)] items-center gap-1 truncate omnis-tabular">
+                <div className="hidden sm:flex text-xs text-[var(--text-muted)] items-center gap-1 truncate omnis-tabular">
                   <MapPin className="w-3 h-3 shrink-0" />
                   <span className="truncate">
                     {selectedCountry.capital} • Pop {(selectedCountry.population / 1e6).toFixed(0)}M
@@ -1347,7 +1347,7 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
           ) : null}
         </div>
 
-        <div className="pointer-events-auto shrink-0 flex flex-wrap justify-end items-center gap-0.5 sm:gap-1 omnis-hud-pill p-1 sm:p-1.5 rounded-xl text-xs max-w-[58%] sm:max-w-none">
+        <div className="pointer-events-auto shrink-0 flex flex-wrap justify-end items-center gap-0.5 sm:gap-1 omnis-hud-pill p-1 sm:p-1.5 rounded-xl text-[13px] max-w-[58%] sm:max-w-none">
           <button
             type="button"
             onClick={() => setAutoRotate((prev) => !prev)}
@@ -1391,7 +1391,7 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
               className="min-h-[38px] sm:min-h-[30px] inline-flex items-center gap-1 px-1 rounded-md hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
             >
               <Sun className="w-3.5 h-3.5 tone-warning shrink-0" />
-              <span className="text-[10.5px] omnis-mono omnis-tabular font-semibold whitespace-nowrap">
+              <span className="text-xs omnis-mono omnis-tabular font-semibold whitespace-nowrap">
                 {(() => {
                   const totalMins = Math.round((((dayLightAngle % 360) + 360) % 360) * 4) % 1440;
                   const hh = String(Math.floor(totalMins / 60)).padStart(2, "0");
@@ -1469,7 +1469,7 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
                 key={c.iso3}
                 type="button"
                 onClick={() => onSelectCountry(c.iso3)}
-                className={`shrink-0 px-2.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-2 border cursor-pointer ${
+                className={`shrink-0 px-3 py-1.5 rounded-lg text-[13px] transition-all flex items-center gap-2 border cursor-pointer ${
                   active
                     ? "bg-[var(--accent-blue-solid)] text-white border-white/20 shadow-sm"
                     : "bg-[var(--bg-slate)] text-[var(--text-secondary)] border-transparent hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]"
@@ -1477,7 +1477,7 @@ totalEmissiveRadiance *= omnisNightMask * uCityLightsEnabled;`
               >
                 <span>{c.flagEmoji}</span>
                 <span className="font-semibold">{c.name}</span>
-                <span className="text-[10px] opacity-85 omnis-mono omnis-tabular hidden md:inline">
+                <span className="text-[11.5px] opacity-85 omnis-mono omnis-tabular hidden md:inline">
                   {layerInfo.value.split("•")[0].trim()}
                 </span>
               </button>

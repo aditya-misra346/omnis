@@ -163,7 +163,7 @@ export default function WorkspacePage() {
         }
       >
         {/* Folder & Type Filters */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-xs">
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-[13px]">
           <OmnisSegmentedControl
             value={selectedFolder}
             onChange={setSelectedFolder}
@@ -194,13 +194,13 @@ export default function WorkspacePage() {
             />
 
             <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)]">
-              <Search className="w-3.5 h-3.5 tone-blue" />
+              <Search className="w-4 h-4 tone-blue shrink-0" />
               <input
                 type="text"
                 value={filterText}
                 onChange={(e) => setFilterText(e.target.value)}
                 placeholder="Search workspace..."
-                className="bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none w-36"
+                className="bg-transparent text-base sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none w-40"
               />
             </div>
           </div>
@@ -211,7 +211,7 @@ export default function WorkspacePage() {
         {/* Saved Items Grid */}
         <div className="lg:col-span-8 space-y-3">
           {filteredItems.length === 0 ? (
-            <div className="omnis-card p-8 text-center text-sm text-[var(--text-secondary)]">
+            <div className="omnis-card p-8 text-center text-sm sm:text-[15px] text-[var(--text-secondary)]">
               No saved items match your current filter. Explore any module and click Save to populate
               your workspace.
             </div>
@@ -222,7 +222,7 @@ export default function WorkspacePage() {
                 className="omnis-card p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-[var(--border-strong)] transition-all"
               >
                 <div className="space-y-1.5 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 text-[10px] omnis-mono">
+                  <div className="flex flex-wrap items-center gap-2 text-[11.5px] omnis-mono">
                     <span className="px-2 py-0.5 rounded-md badge-tone-blue uppercase font-bold">
                       {item.type}
                     </span>
@@ -231,13 +231,13 @@ export default function WorkspacePage() {
                     </span>
                     <span className="text-[var(--text-muted)]">{item.createdAt.slice(0, 10)}</span>
                   </div>
-                  <h3 className="text-base font-bold text-[var(--text-primary)]">{item.title}</h3>
-                  <p className="text-xs text-[var(--text-secondary)]">{item.subtitle}</p>
+                  <h3 className="text-base sm:text-[17px] font-bold text-[var(--text-primary)]">{item.title}</h3>
+                  <p className="text-[13.5px] sm:text-sm text-[var(--text-secondary)] leading-relaxed">{item.subtitle}</p>
                   <div className="flex flex-wrap gap-1.5 pt-1">
                     {item.tags.map((tag) => (
                       <span
                         key={tag}
-                        className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-muted)]"
+                        className="text-xs px-2.5 py-0.5 rounded-full bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-muted)]"
                       >
                         #{tag}
                       </span>
@@ -248,10 +248,10 @@ export default function WorkspacePage() {
                 <div className="flex sm:flex-col items-center sm:items-end gap-2 shrink-0">
                   <Link
                     href={item.href}
-                    className="px-3 py-1.5 rounded-lg badge-tone-blue hover:brightness-105 text-xs font-semibold inline-flex items-center gap-1 transition-all"
+                    className="px-3 py-1.5 rounded-lg badge-tone-blue hover:brightness-105 text-[13px] font-semibold inline-flex items-center gap-1.5 transition-all"
                   >
                     <span>Open</span>
-                    <ExternalLink className="w-3 h-3" />
+                    <ExternalLink className="w-3.5 h-3.5" />
                   </Link>
                   <button
                     type="button"
@@ -270,8 +270,8 @@ export default function WorkspacePage() {
 
         {/* Right Sidebar: Add Research Note & Manage Collections */}
         <div className="lg:col-span-4 space-y-6">
-          <form onSubmit={handleCreateNote} className="omnis-card p-5 space-y-3 text-xs">
-            <h2 className="text-sm font-bold flex items-center gap-2 text-[var(--text-primary)]">
+          <form onSubmit={handleCreateNote} className="omnis-card p-5 space-y-3 text-[13.5px]">
+            <h2 className="text-[15px] sm:text-base font-bold flex items-center gap-2 text-[var(--text-primary)]">
               <FileText className="w-4 h-4 tone-blue" />
               Create Research Note or Bookmark
             </h2>
@@ -281,14 +281,14 @@ export default function WorkspacePage() {
               value={noteTitle}
               onChange={(e) => setNoteTitle(e.target.value)}
               placeholder="Note title or hypothesis..."
-              className="w-full px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-blue)]"
+              className="w-full px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-base sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-blue)]"
             />
             <textarea
               rows={3}
               value={noteBody}
               onChange={(e) => setNoteBody(e.target.value)}
               placeholder="Observations, citations, or follow-up questions..."
-              className="w-full px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-blue)]"
+              className="w-full px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-base sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-blue)]"
             />
             <OmnisSelect
               value={noteFolder}
@@ -307,8 +307,8 @@ export default function WorkspacePage() {
             </OmnisButton>
           </form>
 
-          <div className="omnis-card p-5 space-y-3 text-xs">
-            <h2 className="text-sm font-bold flex items-center gap-2 text-[var(--text-primary)]">
+          <div className="omnis-card p-5 space-y-3 text-[13.5px]">
+            <h2 className="text-[15px] sm:text-base font-bold flex items-center gap-2 text-[var(--text-primary)]">
               <FolderPlus className="w-4 h-4 tone-violet" />
               Create Collection Folder
             </h2>
@@ -318,7 +318,7 @@ export default function WorkspacePage() {
                 value={newFolderName}
                 onChange={(e) => setNewFolderName(e.target.value)}
                 placeholder="New folder name..."
-                className="flex-1 px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-blue)]"
+                className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-base sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-blue)]"
               />
               <OmnisButton
                 type="button"
@@ -334,7 +334,7 @@ export default function WorkspacePage() {
               <button
                 type="button"
                 onClick={clearWorkspace}
-                className="tone-danger hover:underline font-semibold cursor-pointer"
+                className="text-[13px] tone-danger hover:underline font-semibold cursor-pointer"
               >
                 Clear All Saved Workspace Items
               </button>

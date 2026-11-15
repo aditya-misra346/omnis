@@ -158,12 +158,12 @@ export function IntelligenceSpecimenTicker() {
 
   return (
     <div className="bg-[var(--bg-obsidian)] px-4 sm:px-6 py-5 border-y border-[var(--border-subtle)] space-y-4 overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-        <span className="inline-flex items-center gap-2 font-bold uppercase tracking-widest tone-blue omnis-mono text-[11px]">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-[13px]">
+        <span className="inline-flex items-center gap-2 font-bold uppercase tracking-widest tone-blue omnis-mono text-xs">
           <Radio className="w-3.5 h-3.5" />
           Live Intelligence Specimen Matrix
         </span>
-        <span className="text-[11px] text-[var(--text-muted)] omnis-mono">
+        <span className="text-xs text-[var(--text-muted)] omnis-mono">
           Hover or focus any capability node to inspect provenance & launch
         </span>
       </div>
@@ -174,7 +174,7 @@ export function IntelligenceSpecimenTicker() {
             key={row.rowLabel}
             className="omnis-ticker-row relative flex items-center gap-3 overflow-hidden py-1 border-b border-[var(--border-subtle)]/70 last:border-b-0"
           >
-            <div className="shrink-0 w-36 sm:w-44 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono z-10 bg-[var(--bg-obsidian)] pr-2">
+            <div className="shrink-0 w-40 sm:w-48 text-[11.5px] sm:text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono z-10 bg-[var(--bg-obsidian)] pr-2">
               {row.rowLabel}
             </div>
 
@@ -206,8 +206,8 @@ export function IntelligenceSpecimenTicker() {
                               onFocus={() => setActiveItem(item)}
                               className={`px-3 py-1 rounded-full text-sm transition-all whitespace-nowrap border focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-blue)] ${
                                 isEditorial
-                                  ? "omnis-editorial text-[16.5px] leading-none"
-                                  : "font-display font-semibold text-xs sm:text-[13px]"
+                                  ? "omnis-editorial text-[18px] leading-none"
+                                  : "font-display font-semibold text-[13px] sm:text-sm"
                               } ${
                                 isActive
                                   ? "is-active text-[var(--text-primary)]"
@@ -227,7 +227,7 @@ export function IntelligenceSpecimenTicker() {
                             </Link>
                             <span
                               aria-hidden="true"
-                              className="mx-1.5 text-[11px] omnis-mono text-[var(--text-muted)] select-none"
+                              className="mx-1.5 text-xs omnis-mono text-[var(--text-muted)] select-none"
                             >
                               *
                             </span>
@@ -244,7 +244,7 @@ export function IntelligenceSpecimenTicker() {
       </div>
 
       {/* Live Contextual Provenance Bar */}
-      <div className="rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] px-3.5 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+      <div className="rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] px-3.5 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[13px] sm:text-sm">
         <div className="min-w-0 text-[var(--text-secondary)] leading-relaxed">
           <strong className="text-[var(--text-primary)] font-semibold">
             {activeItem.label}:
@@ -253,7 +253,7 @@ export function IntelligenceSpecimenTicker() {
         </div>
         <Link
           href={activeItem.href}
-          className="shrink-0 inline-flex items-center gap-1 font-semibold tone-blue hover:underline omnis-mono text-[11px]"
+          className="shrink-0 inline-flex items-center gap-1 font-semibold tone-blue hover:underline omnis-mono text-xs"
         >
           <span>{activeItem.moduleLabel}</span>
           <ArrowUpRight className="w-3.5 h-3.5" />

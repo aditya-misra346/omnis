@@ -394,7 +394,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
 
               {isLandingPage && (
-                <nav className="hidden xl:flex items-center gap-0.5 ml-2 pl-3 border-l border-[var(--border-subtle)] text-xs font-medium shrink-0">
+                <nav className="hidden xl:flex items-center gap-0.5 ml-2 pl-3 border-l border-[var(--border-subtle)] text-sm font-medium shrink-0">
                   {[
                     { label: "Command", href: "/command" },
                     { label: "3D Atlas", href: "/atlas" },
@@ -420,7 +420,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 onClick={() => setCommandPaletteOpen(true)}
-                className="w-full min-w-0 flex items-center justify-between gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-xs text-[var(--text-secondary)] transition-all shadow-2xs"
+                className="w-full min-w-0 flex items-center justify-between gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[13px] text-[var(--text-secondary)] transition-all shadow-2xs"
               >
                 <span className="flex items-center gap-2 min-w-0 flex-1">
                   <Search className="w-3.5 h-3.5 tone-blue shrink-0" />
@@ -429,7 +429,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     Search nations, graphs, simulations...
                   </span>
                 </span>
-                <kbd className="hidden sm:inline-block shrink-0 px-1.5 py-0.5 text-[10px] rounded-md bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-muted)] omnis-mono">
+                <kbd className="hidden sm:inline-block shrink-0 px-1.5 py-0.5 text-[11px] rounded-md bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-muted)] omnis-mono">
                   ⌘K
                 </kbd>
               </button>
@@ -440,7 +440,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Link
                 href="/settings"
                 title={`Provider Telemetry: ${providerTelemetry.operationalCount}/${providerTelemetry.totalCount} operational`}
-                className={`hidden 2xl:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${
+                className={`hidden 2xl:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
                   providerTelemetry.status === "operational"
                     ? "badge-tone-verified"
                     : providerTelemetry.status === "checking"
@@ -468,11 +468,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 type="button"
                 onClick={() => setAssistantOpen(!assistantOpen)}
                 aria-label="Toggle OMNIS AI Assistant"
-                className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-2 sm:py-1.5 rounded-lg badge-tone-blue hover:brightness-105 text-xs font-semibold transition-all cursor-pointer shrink-0"
+                className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-2 sm:py-1.5 rounded-lg badge-tone-blue hover:brightness-105 text-[13px] font-semibold transition-all cursor-pointer shrink-0"
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">AI Assistant</span>
-                <kbd className="hidden lg:inline text-[10px] opacity-80 omnis-mono">⌘J</kbd>
+                <kbd className="hidden lg:inline text-[11px] opacity-80 omnis-mono">⌘J</kbd>
               </button>
 
               <button
@@ -485,7 +485,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     ? "Resume kinetic typography & ambient motion"
                     : "Pause kinetic typography & ambient motion"
                 }
-                className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-xs font-medium transition-all cursor-pointer shrink-0 ${
+                className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-[13px] font-medium transition-all cursor-pointer shrink-0 ${
                   motionPaused
                     ? "badge-tone-warning"
                     : "border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]"
@@ -510,7 +510,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Link
                 href="/settings"
                 title={user?.verified ? `${user.displayName} (${user.role})` : "Local Browser Workspace"}
-                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:border-[var(--border-strong)] text-xs font-medium text-[var(--text-primary)] transition-colors shrink-0"
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:border-[var(--border-strong)] text-[13px] font-medium text-[var(--text-primary)] transition-colors shrink-0"
               >
                 <ShieldCheck
                   className={`w-3.5 h-3.5 shrink-0 ${
@@ -541,7 +541,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <div className="p-3 space-y-1">
                   <div className="flex items-center justify-between px-2 py-1.5 mb-2">
                     {!sidebarCollapsed && (
-                      <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--text-muted)] omnis-mono">
+                      <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--text-muted)] omnis-mono">
                         Navigation Matrix
                       </span>
                     )}
@@ -571,7 +571,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       <React.Fragment key={item.href}>
                         {showDivider && (
                           <div className="pt-2.5 pb-1 px-2">
-                            <div className="border-t border-[var(--border-subtle)] pt-2 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)] omnis-mono">
+                            <div className="border-t border-[var(--border-subtle)] pt-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)] omnis-mono">
                               {item.group === "modules" ? "Intelligence Modules" : "Workspace & Governance"}
                             </div>
                           </div>
@@ -579,7 +579,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         <Link
                           href={item.href}
                           title={item.label}
-                          className={`group relative flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium transition-all ${
+                          className={`group relative flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-xl text-[13px] sm:text-sm font-medium transition-all ${
                             active
                               ? "bg-[var(--accent-blue-solid)] text-white shadow-sm"
                               : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-slate)]"
@@ -591,7 +591,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           </span>
                           {!sidebarCollapsed && item.badge && (
                             <span
-                              className={`text-[10px] px-1.5 py-0.5 rounded-md omnis-mono ${
+                              className={`text-[11px] px-1.5 py-0.5 rounded-md omnis-mono ${
                                 active
                                   ? "bg-white/20 text-white"
                                   : "bg-[var(--bg-slate)] text-[var(--text-muted)] border border-[var(--border-subtle)]"
@@ -607,13 +607,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </div>
 
                 {!sidebarCollapsed && (
-                  <div className="p-3.5 m-3 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[11px] space-y-2">
+                  <div className="p-3.5 m-3 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-xs space-y-2">
                     <div className="flex items-center justify-between text-[var(--text-primary)] font-semibold">
                       <span className="flex items-center gap-1.5">
                         <Terminal className="w-3.5 h-3.5 tone-blue" />
                         Epistemic Mode
                       </span>
-                      <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold badge-tone-verified omnis-mono">
+                      <span className="px-1.5 py-0.5 rounded text-[11px] font-bold badge-tone-verified omnis-mono">
                         STRICT
                       </span>
                     </div>
@@ -678,7 +678,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             key={item.href}
                             href={item.href}
                             onClick={() => setMobileMenuOpen(false)}
-                            className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                            className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-[15px] font-medium transition-colors ${
                               active
                                 ? "bg-[var(--accent-blue-solid)] text-white shadow-sm"
                                 : "text-[var(--text-secondary)] hover:bg-[var(--bg-slate)] hover:text-[var(--text-primary)]"
@@ -690,7 +690,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             </span>
                             {item.badge && (
                               <span
-                                className={`text-[10px] px-1.5 py-0.5 rounded omnis-mono ${
+                                className={`text-xs px-1.5 py-0.5 rounded omnis-mono ${
                                   active
                                     ? "bg-white/20 text-white"
                                     : "bg-[var(--bg-slate)] text-[var(--text-muted)]"
@@ -705,7 +705,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t border-[var(--border-subtle)] text-xs space-y-2.5">
+                  <div className="pt-4 border-t border-[var(--border-subtle)] text-[13px] space-y-2.5">
                     <button
                       type="button"
                       onClick={toggleMotionPaused}
@@ -721,7 +721,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         )}
                         <span>{motionPaused ? "Resume motion" : "Pause motion"}</span>
                       </span>
-                      <span className="omnis-mono text-[10px] text-[var(--text-muted)]">
+                      <span className="omnis-mono text-xs text-[var(--text-muted)]">
                         {motionPaused ? "OFF" : "ON"}
                       </span>
                     </button>
@@ -791,12 +791,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         }
                       }}
                       placeholder="Jump to module, run action (theme/motion), or search..."
-                      className="w-full bg-transparent text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
+                      className="w-full bg-transparent text-base sm:text-[15px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
                     />
                     <button
                       type="button"
                       onClick={() => setCommandPaletteOpen(false)}
-                      className="px-2 py-1 text-[11px] font-medium rounded-md border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)] omnis-mono"
+                      className="px-2 py-1 text-xs font-medium rounded-md border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)] omnis-mono"
                     >
                       ESC
                     </button>
@@ -804,7 +804,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
                   {commandActions.length > 0 ? (
                     <div className="px-3 py-2.5 border-b border-[var(--border-subtle)] bg-[var(--bg-graphite)] space-y-1">
-                      <div className="px-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-muted)] omnis-mono">
+                      <div className="px-1 text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-muted)] omnis-mono">
                         Direct Module & Action Matches (↵ to launch)
                       </div>
                       {commandActions.slice(0, 6).map((act, idx) => (
@@ -813,7 +813,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           type="button"
                           onMouseEnter={() => setPaletteActiveIdx(idx)}
                           onClick={act.run}
-                          className={`w-full px-3 py-2 rounded-lg text-left text-xs flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                          className={`w-full px-3 py-2 rounded-lg text-left text-[13px] sm:text-sm flex items-center justify-between gap-2 transition-colors cursor-pointer ${
                             idx === paletteActiveIdx
                               ? "bg-[var(--badge-blue-bg)] border border-[var(--badge-blue-border)] text-[var(--text-primary)]"
                               : "hover:bg-[var(--bg-slate)] text-[var(--text-secondary)] border border-transparent"
@@ -823,11 +823,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             <div className="font-semibold text-[var(--text-primary)] truncate">
                               {act.label}
                             </div>
-                            <div className="text-[10.5px] text-[var(--text-muted)] truncate omnis-mono">
+                            <div className="text-xs text-[var(--text-muted)] truncate omnis-mono">
                               {act.subtitle}
                             </div>
                           </div>
-                          <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-muted)] omnis-mono shrink-0">
+                          <span className="text-[11px] uppercase px-1.5 py-0.5 rounded bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-muted)] omnis-mono shrink-0">
                             {act.category}
                           </span>
                         </button>
@@ -836,7 +836,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   ) : null}
 
                   {liveIntent && (
-                    <div className="px-4 py-2.5 bg-[var(--bg-slate)] border-b border-[var(--border-subtle)] flex items-center justify-between text-xs">
+                    <div className="px-4 py-2.5 bg-[var(--bg-slate)] border-b border-[var(--border-subtle)] flex items-center justify-between text-[13px]">
                       <div className="flex items-center gap-2">
                         <Sparkles className="w-3.5 h-3.5 tone-blue" />
                         <span className="text-[var(--text-secondary)]">
@@ -861,7 +861,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
                   <div className="p-4 space-y-4 max-h-[65vh] overflow-y-auto">
                     <div>
-                      <div className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-[var(--text-muted)] mb-2 omnis-mono">
+                      <div className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-muted)] mb-2 omnis-mono">
                         Natural Language Intelligence Queries
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
@@ -870,7 +870,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             key={q}
                             type="button"
                             onClick={() => handleUniversalSearchSubmit(q)}
-                            className="text-left px-3 py-2 rounded-xl bg-[var(--bg-slate)] hover:border-[var(--border-strong)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all flex items-center justify-between gap-2"
+                            className="text-left px-3 py-2 rounded-xl bg-[var(--bg-slate)] hover:border-[var(--border-strong)] border border-[var(--border-subtle)] text-[13px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all flex items-center justify-between gap-2"
                           >
                             <span className="truncate">{q}</span>
                             <ArrowUpRight className="w-3.5 h-3.5 shrink-0 tone-blue" />
@@ -880,7 +880,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     </div>
 
                     <div>
-                      <div className="text-[10.5px] font-bold uppercase tracking-[0.16em] text-[var(--text-muted)] mb-2 omnis-mono">
+                      <div className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-muted)] mb-2 omnis-mono">
                         Direct Module Launchers
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -894,7 +894,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                                 setCommandPaletteOpen(false);
                                 router.push(item.href);
                               }}
-                              className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-slate)] hover:border-[var(--border-strong)] border border-[var(--border-subtle)] text-xs font-medium text-[var(--text-primary)] transition-colors"
+                              className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-slate)] hover:border-[var(--border-strong)] border border-[var(--border-subtle)] text-[13px] font-medium text-[var(--text-primary)] transition-colors"
                             >
                               <Icon className="w-4 h-4 tone-blue shrink-0" />
                               <span className="truncate">{item.label}</span>
@@ -936,10 +936,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       <Sparkles className="w-3.5 h-3.5" />
                     </div>
                     <div>
-                      <div className="text-xs font-bold tracking-wide text-[var(--text-primary)]">
+                      <div className="text-sm font-bold tracking-wide text-[var(--text-primary)]">
                         OMNIS Universal AI Assistant
                       </div>
-                      <div className="text-[10px] text-[var(--text-secondary)] truncate max-w-[215px]">
+                      <div className="text-xs text-[var(--text-secondary)] truncate max-w-[230px]">
                         Context: {activeContextLabel} ({activeContextTopic})
                       </div>
                     </div>
@@ -948,7 +948,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <button
                       type="button"
                       onClick={clearAssistantMessages}
-                      className="text-[10px] px-2 py-1 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-graphite)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium"
+                      className="text-xs px-2 py-1 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-graphite)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium"
                     >
                       Reset
                     </button>
@@ -963,7 +963,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   </div>
                 </div>
 
-                <div className="flex-1 p-3.5 overflow-y-auto space-y-3 text-xs bg-[var(--bg-obsidian)]/40">
+                <div className="flex-1 p-3.5 overflow-y-auto space-y-3 text-[13px] sm:text-sm bg-[var(--bg-obsidian)]/40">
                   {assistantMessages.map((m) => (
                     <div
                       key={m.id}
@@ -976,7 +976,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       <div className="whitespace-pre-line leading-relaxed">{m.content}</div>
                       {m.citations && m.citations.length > 0 && (
                         <div className="mt-2 pt-2 border-t border-[var(--border-subtle)] space-y-1">
-                          <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
+                          <div className="text-[11.5px] font-semibold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
                             Verified Sources
                           </div>
                           {m.citations.map((c) => (
@@ -985,7 +985,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                               href={c.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="block text-[11px] tone-blue hover:underline truncate font-medium"
+                              className="block text-xs sm:text-[13px] tone-blue hover:underline truncate font-medium"
                             >
                               • {c.label}
                             </a>
@@ -1001,7 +1001,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                               onClick={() => {
                                 router.push(act.href);
                               }}
-                              className="px-2 py-1 rounded-md badge-tone-blue hover:brightness-105 text-[11px] font-semibold"
+                              className="px-2 py-1 rounded-md badge-tone-blue hover:brightness-105 text-xs font-semibold"
                             >
                               {act.label} →
                             </button>
@@ -1026,7 +1026,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     value={assistantInput}
                     onChange={(e) => setAssistantInput(e.target.value)}
                     placeholder={`Ask about ${activeContextTopic}...`}
-                    className="flex-1 px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-blue)]"
+                    className="flex-1 px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-base sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-blue)]"
                   />
                   <button
                     type="submit"
@@ -1067,7 +1067,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <div className="px-4 py-3.5 border-b border-[var(--border-subtle)] bg-[var(--bg-slate)] flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Terminal className="w-4 h-4 tone-blue" />
-                      <span className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--text-primary)] omnis-mono">
+                      <span className="text-[13px] font-bold uppercase tracking-[0.14em] text-[var(--text-primary)] omnis-mono">
                         OMNIS Keyboard Shortcuts
                       </span>
                     </div>
@@ -1080,7 +1080,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       <X className="w-4 h-4" />
                     </button>
                   </div>
-                  <div className="divide-y divide-[var(--border-subtle)] text-xs">
+                  <div className="divide-y divide-[var(--border-subtle)] text-sm">
                     {[
                       {
                         keys: "⌘K / Ctrl+K",
@@ -1116,11 +1116,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           <div className="font-semibold text-[var(--text-primary)]">
                             {row.title}
                           </div>
-                          <div className="text-[11px] text-[var(--text-muted)]">
+                          <div className="text-[13px] text-[var(--text-muted)]">
                             {row.desc}
                           </div>
                         </div>
-                        <kbd className="shrink-0 px-2 py-1 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[11px] font-semibold text-[var(--text-primary)] omnis-mono">
+                        <kbd className="shrink-0 px-2 py-1 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-xs font-semibold text-[var(--text-primary)] omnis-mono">
                           {row.keys}
                         </kbd>
                       </div>

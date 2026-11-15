@@ -58,7 +58,7 @@ export function HistoricalTrajectoryChart({
 
   if (series.length === 0) {
     return (
-      <div className="rounded-xl bg-[var(--bg-graphite)] border border-[var(--border-subtle)] p-6 text-center text-xs text-[var(--text-secondary)]">
+      <div className="rounded-xl bg-[var(--bg-graphite)] border border-[var(--border-subtle)] p-6 text-center text-sm text-[var(--text-secondary)]">
         Historical multi-year time-series records were not returned for {country.name} ({country.iso3}).
       </div>
     );
@@ -154,9 +154,9 @@ export function HistoricalTrajectoryChart({
           }))}
         />
 
-        <div className="flex flex-wrap items-center gap-3 text-xs omnis-mono">
+        <div className="flex flex-wrap items-center gap-3 text-[13px] omnis-mono">
           {compareCountry && comparePoints.length > 0 && (
-            <div className="inline-flex items-center gap-2 px-2 py-0.5 rounded-md bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[10.5px]">
+            <div className="inline-flex items-center gap-2 px-2 py-0.5 rounded-md bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-xs">
               <span className="inline-flex items-center gap-1 text-[var(--text-primary)] font-semibold">
                 <span className="w-2.5 h-0.5 inline-block" style={{ backgroundColor: meta.colorVar }} />
                 {country.iso3}
@@ -212,9 +212,9 @@ export function HistoricalTrajectoryChart({
                 />
                 <text
                   x={padL - 8}
-                  y={y + 3.5}
+                  y={y + 4}
                   textAnchor="end"
-                  fontSize="10"
+                  fontSize="11.5"
                   fill="var(--chart-axis)"
                   className="omnis-mono"
                 >
@@ -243,7 +243,7 @@ export function HistoricalTrajectoryChart({
                 x={m.x}
                 y={padT - 7}
                 textAnchor="middle"
-                fontSize="8.5"
+                fontSize="10.5"
                 fill="var(--status-warning)"
                 className="omnis-mono"
               >
@@ -314,9 +314,9 @@ export function HistoricalTrajectoryChart({
                 />
                 <text
                   x={p.x}
-                  y={h - 10}
+                  y={h - 9}
                   textAnchor="middle"
-                  fontSize="10"
+                  fontSize="11.5"
                   fill="var(--chart-axis)"
                   className="omnis-mono"
                 >
@@ -353,11 +353,11 @@ export function MonteCarloFanChart({
   const [showUncertainty, setShowUncertainty] = useState(true);
 
   const w = 740;
-  const h = 320;
-  const padL = 56;
-  const padR = 24;
-  const padT = 26;
-  const padB = 36;
+  const h = 324;
+  const padL = 60;
+  const padR = 28;
+  const padT = 30;
+  const padB = 38;
 
   const { minVal, maxVal } = useMemo(() => {
     const vals = trajectory.flatMap((p) => [p.baseline, p.modifiedP10, p.modifiedP90]);
@@ -403,12 +403,12 @@ export function MonteCarloFanChart({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-[13px]">
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => setShowBaseline((s) => !s)}
-            className={`px-2.5 py-1 rounded-md border text-[11px] font-medium inline-flex items-center gap-1.5 cursor-pointer ${
+            className={`px-2.5 py-1 rounded-md border text-xs font-medium inline-flex items-center gap-1.5 cursor-pointer ${
               showBaseline
                 ? "bg-[var(--bg-slate)] border-[var(--border-strong)] text-[var(--text-primary)]"
                 : "border-[var(--border-subtle)] text-[var(--text-muted)] opacity-60"
@@ -420,7 +420,7 @@ export function MonteCarloFanChart({
           <button
             type="button"
             onClick={() => setShowUncertainty((s) => !s)}
-            className={`px-2.5 py-1 rounded-md border text-[11px] font-medium inline-flex items-center gap-1.5 cursor-pointer ${
+            className={`px-2.5 py-1 rounded-md border text-xs font-medium inline-flex items-center gap-1.5 cursor-pointer ${
               showUncertainty
                 ? "bg-[var(--bg-slate)] border-[var(--border-strong)] text-[var(--text-primary)]"
                 : "border-[var(--border-subtle)] text-[var(--text-muted)] opacity-60"
@@ -432,7 +432,7 @@ export function MonteCarloFanChart({
         </div>
 
         {hovered && (
-          <div className="px-3 py-1 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] omnis-mono text-[11px] flex flex-wrap items-center gap-3">
+          <div className="px-3 py-1 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] omnis-mono text-xs flex flex-wrap items-center gap-3">
             <span className="font-bold text-[var(--text-primary)]">{hovered.year}</span>
             <span className="tone-blue font-semibold">
               P50: {hovered.modifiedP50} {units.split(" ")[0]}
@@ -471,7 +471,7 @@ export function MonteCarloFanChart({
                   x={padL - 8}
                   y={y + 4}
                   textAnchor="end"
-                  fontSize="10"
+                  fontSize="11.5"
                   fill="var(--chart-axis)"
                   className="omnis-mono"
                 >
@@ -493,7 +493,7 @@ export function MonteCarloFanChart({
           <text
             x={toX(boundaryIdx) + 6}
             y={padT + 12}
-            fontSize="9.5"
+            fontSize="11"
             fill="var(--status-warning)"
             className="omnis-mono"
           >
@@ -561,9 +561,9 @@ export function MonteCarloFanChart({
               {(i % 3 === 0 || i === trajectory.length - 1) && (
                 <text
                   x={toX(i)}
-                  y={h - 10}
+                  y={h - 9}
                   textAnchor="middle"
-                  fontSize="10"
+                  fontSize="11.5"
                   fill="var(--chart-axis)"
                   className="omnis-mono"
                 >
@@ -608,10 +608,10 @@ export function TornadoSensitivityChart({
         const leftWidth = Math.min(48, (Math.abs(negDelta) / maxAbs) * 48);
         const rightWidth = Math.min(48, (Math.abs(posDelta) / maxAbs) * 48);
         return (
-          <div key={item.parameterKey} className="space-y-1.5 text-xs">
+          <div key={item.parameterKey} className="space-y-1.5 text-[13px] sm:text-sm">
             <div className="flex items-center justify-between gap-2">
               <span className="font-semibold text-[var(--text-primary)]">{item.label}</span>
-              <span className="omnis-mono omnis-tabular text-[11px] text-[var(--text-muted)] shrink-0">
+              <span className="omnis-mono omnis-tabular text-xs sm:text-[13px] text-[var(--text-muted)] shrink-0">
                 min {fmtSigned(item.lowOutcomeDelta)} / max {fmtSigned(item.highOutcomeDelta)}
               </span>
             </div>
@@ -729,8 +729,8 @@ export function ComparisonRadarChart({
     },
   ];
 
-  const cx = 185;
-  const cy = 154;
+  const cx = 210;
+  const cy = 165;
   const zeroRingRadius = 18;
   const radius = 104;
 
@@ -761,7 +761,7 @@ export function ComparisonRadarChart({
 
   return (
     <div className="space-y-3">
-      <svg viewBox="0 0 370 310" className="w-full h-64 mx-auto">
+      <svg viewBox="0 0 420 330" className="w-full h-64 mx-auto">
         {/* Explicit 0% inner reference ring */}
         <circle
           cx={cx}
@@ -775,7 +775,7 @@ export function ComparisonRadarChart({
         <text
           x={cx + 3}
           y={cy - zeroRingRadius + 9}
-          fontSize="7.5"
+          fontSize="9.5"
           fill="var(--text-muted)"
           className="omnis-mono"
         >
@@ -795,8 +795,8 @@ export function ComparisonRadarChart({
               />
               <text
                 x={cx + 4}
-                y={cy - r + 8}
-                fontSize="7"
+                y={cy - r + 9}
+                fontSize="9"
                 fill="var(--text-muted)"
                 className="omnis-mono"
               >
@@ -809,8 +809,8 @@ export function ComparisonRadarChart({
           const angle = (Math.PI * 2 * i) / radarAxes.length - Math.PI / 2;
           const x2 = cx + radius * Math.cos(angle);
           const y2 = cy + radius * Math.sin(angle);
-          const lx = cx + (radius + 36) * Math.cos(angle);
-          const ly = cy + (radius + 20) * Math.sin(angle);
+          const lx = cx + (radius + 44) * Math.cos(angle);
+          const ly = cy + (radius + 24) * Math.sin(angle);
           return (
             <g
               key={axis.label}
@@ -824,7 +824,7 @@ export function ComparisonRadarChart({
                 x={lx}
                 y={ly}
                 textAnchor="middle"
-                fontSize="9.5"
+                fontSize="11.5"
                 fontWeight={hoveredAxis === i ? "700" : "500"}
                 fill={hoveredAxis === i ? "var(--text-primary)" : "var(--chart-axis)"}
                 className="omnis-mono"
@@ -833,9 +833,9 @@ export function ComparisonRadarChart({
               </text>
               <text
                 x={lx}
-                y={ly + 10}
+                y={ly + 12}
                 textAnchor="middle"
-                fontSize="7.5"
+                fontSize="9.5"
                 fill="var(--text-muted)"
                 className="omnis-mono"
               >
@@ -876,13 +876,13 @@ export function ComparisonRadarChart({
       </svg>
 
       {contractionNotes.length > 0 ? (
-        <div className="px-2.5 py-1.5 rounded-md badge-tone-warning text-[10.5px] omnis-mono text-center">
+        <div className="px-2.5 py-1.5 rounded-md badge-tone-warning text-xs omnis-mono text-center">
           Severe contraction clamped to domain min (-2%): {contractionNotes.join(" • ")}
         </div>
       ) : null}
 
       {activeAxis ? (
-        <div className="omnis-surface-slate px-3 py-2 text-[11px] flex flex-wrap items-center justify-between gap-2 omnis-mono">
+        <div className="omnis-surface-slate px-3 py-2 text-[13px] flex flex-wrap items-center justify-between gap-2 omnis-mono">
           <span className="font-bold text-[var(--text-primary)]">{activeAxis.label}</span>
           <span className="tone-blue font-semibold">
             {leftCountry.iso3}: {activeAxis.rawL}
@@ -890,12 +890,12 @@ export function ComparisonRadarChart({
           <span className="tone-violet font-semibold">
             {rightCountry.iso3}: {activeAxis.rawR}
           </span>
-          <span className="px-1.5 py-0.5 rounded badge-tone-blue text-[10px] font-bold">
+          <span className="px-1.5 py-0.5 rounded badge-tone-blue text-xs font-bold">
             Δ {activeAxis.deltaLabel}
           </span>
         </div>
       ) : (
-        <div className="flex flex-wrap items-center justify-center gap-4 text-xs">
+        <div className="flex flex-wrap items-center justify-center gap-4 text-[13px]">
           <span className="inline-flex items-center gap-1.5 font-semibold tone-blue">
             <span className="w-3 h-3 rounded-xs bg-[var(--chart-blue)]" />
             {leftCountry.name} ({leftCountry.iso3})
@@ -904,7 +904,7 @@ export function ComparisonRadarChart({
             <span className="w-3 h-3 rounded-xs bg-[var(--chart-violet)]" />
             {rightCountry.name} ({rightCountry.iso3})
           </span>
-          <span className="text-[10.5px] text-[var(--text-muted)] omnis-mono">
+          <span className="text-xs text-[var(--text-muted)] omnis-mono">
             Hover or tap any axis for vertex delta
           </span>
         </div>

@@ -473,7 +473,7 @@ export function KnowledgeGraphCanvas({
       } omnis-card overflow-hidden flex flex-col`}
     >
       {/* Top Control Toolbar */}
-      <div className="px-4 py-2.5 border-b border-[var(--border-subtle)] bg-[var(--bg-slate)] flex flex-wrap items-center justify-between gap-2 text-xs">
+      <div className="px-4 py-2.5 border-b border-[var(--border-subtle)] bg-[var(--bg-slate)] flex flex-wrap items-center justify-between gap-2 text-[13px]">
         <div className="flex items-center gap-3">
           <span className="font-semibold text-[var(--text-primary)]">
             Layout: <span className="uppercase tone-blue omnis-mono">{layoutMode}</span>
@@ -656,7 +656,7 @@ export function KnowledgeGraphCanvas({
                 (1 - tP) * (1 - tP) * src.y + 2 * (1 - tP) * tP * cy + tP * tP * tgt.y;
 
               const formattedRel = edge.relationshipType.replace(/_/g, " ");
-              const pillWidth = Math.max(60, formattedRel.length * 6.2 + 16);
+              const pillWidth = Math.max(72, formattedRel.length * 7.6 + 20);
               const edgeOpacity = isPathEdge
                 ? 1
                 : isRelated
@@ -712,16 +712,16 @@ export function KnowledgeGraphCanvas({
                     <g>
                       <rect
                         x={mx - pillWidth / 2}
-                        y={my - 9}
+                        y={my - 11}
                         width={pillWidth}
-                        height={18}
-                        rx={5}
+                        height={22}
+                        rx={6}
                         fill="var(--bg-graphite)"
                         stroke={isPathEdge ? "var(--accent-cyan)" : "var(--border-subtle)"}
                       />
                       <text
                         x={mx}
-                        y={my + 2.5}
+                        y={my + 3.5}
                         textAnchor="middle"
                         fill={
                           isPathEdge
@@ -730,7 +730,7 @@ export function KnowledgeGraphCanvas({
                               ? "var(--accent-violet)"
                               : "var(--accent-blue)"
                         }
-                        fontSize="8.5"
+                        fontSize="11"
                         fontWeight="600"
                         className="omnis-mono"
                       >
@@ -918,15 +918,15 @@ export function KnowledgeGraphCanvas({
                   {(() => {
                     const displayLabel =
                       node.label.length > 38 ? `${node.label.slice(0, 36)}…` : node.label;
-                    const pillW = Math.min(256, Math.max(76, displayLabel.length * 6.3 + 16));
+                    const pillW = Math.min(296, Math.max(88, displayLabel.length * 7.5 + 22));
                     return (
                       <>
                         <rect
                           x={-pillW / 2}
                           y={radius + 5}
                           width={pillW}
-                          height={17}
-                          rx={5}
+                          height={21}
+                          rx={6}
                           fill="var(--bg-graphite)"
                           fillOpacity={0.92}
                           stroke={
@@ -939,10 +939,10 @@ export function KnowledgeGraphCanvas({
                           strokeWidth={isSelected || isPathNode ? 1.2 : 0.7}
                         />
                         <text
-                          y={radius + 16.5}
+                          y={radius + 19}
                           textAnchor="middle"
                           fill="var(--text-primary)"
-                          fontSize="10.5"
+                          fontSize="12.5"
                           fontWeight={isSelected || idx === 0 || isPathNode ? "700" : "600"}
                         >
                           {displayLabel}
@@ -957,7 +957,7 @@ export function KnowledgeGraphCanvas({
         </svg>
 
         {/* Bottom Legend & Expansion Bar */}
-        <div className="absolute bottom-3 left-3 right-3 flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-xl omnis-hud-pill text-[11px]">
+        <div className="absolute bottom-3 left-3 right-3 flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-xl omnis-hud-pill text-xs sm:text-[13px]">
           <div className="flex flex-wrap items-center gap-3 text-[var(--text-secondary)]">
             <span className="inline-flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-[var(--chart-blue)]" />
@@ -967,7 +967,7 @@ export function KnowledgeGraphCanvas({
               <span className="w-2.5 h-2.5 rounded-full border-2 border-dashed border-[var(--chart-violet)]" />
               AI Hypothesis
             </span>
-            <span className="hidden md:inline text-[var(--text-muted)] omnis-mono text-[10px]">
+            <span className="hidden md:inline text-[var(--text-muted)] omnis-mono text-xs">
               Hex=Tech/Energy • Diamond=Geo • Square=Econ • Circle=Core
             </span>
           </div>

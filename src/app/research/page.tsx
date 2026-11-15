@@ -242,7 +242,7 @@ ${report.sources
               value={queryInput}
               onChange={(e) => setQueryInput(e.target.value)}
               placeholder="Ask any complex research question..."
-              className="w-full bg-transparent text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
+              className="w-full bg-transparent text-base sm:text-[15px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
             />
           </div>
           <OmnisButton type="submit" disabled={loading}>
@@ -252,7 +252,7 @@ ${report.sources
       </OmnisModuleHeader>
 
       {errorMsg && (
-        <div className="omnis-card p-4 border-[var(--status-danger)] text-xs tone-danger flex items-center gap-2 font-medium">
+        <div className="omnis-card p-4 border-[var(--status-danger)] text-sm tone-danger flex items-center gap-2 font-medium">
           <AlertTriangle className="w-4 h-4 shrink-0" />
           <span>{errorMsg}</span>
         </div>
@@ -274,7 +274,7 @@ ${report.sources
         <div className="space-y-6">
           {/* Multi-Step Orchestration Trace (Architectural Hairline Grid) */}
           <div className="omnis-card p-5 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-[13px]">
               <span className="font-bold uppercase tracking-wider tone-blue omnis-mono">
                 Multi-Step Research Orchestration Trace
               </span>
@@ -284,13 +284,13 @@ ${report.sources
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 border border-[var(--border-subtle)] rounded-xl overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-[var(--border-subtle)] bg-[var(--bg-obsidian)]/30">
               {report.decomposedTasks.map((t) => (
-                <div key={t.step} className="p-3.5 text-xs space-y-1.5">
-                  <div className="flex items-center justify-between text-[10px] omnis-mono tone-verified font-bold">
+                <div key={t.step} className="p-3.5 text-[13px] space-y-1.5">
+                  <div className="flex items-center justify-between text-[11.5px] omnis-mono tone-verified font-bold">
                     <span>STEP 0{t.step}</span>
                     <CheckCircle2 className="w-3.5 h-3.5" />
                   </div>
                   <div className="font-semibold text-[var(--text-primary)]">{t.task}</div>
-                  <div className="text-[10px] text-[var(--text-muted)]">{t.sourceCategory}</div>
+                  <div className="text-xs text-[var(--text-muted)]">{t.sourceCategory}</div>
                 </div>
               ))}
             </div>
@@ -301,10 +301,10 @@ ${report.sources
             <div className="lg:col-span-8 omnis-card p-6 sm:p-7 space-y-6">
               <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-[var(--border-subtle)]">
                 <div>
-                  <span className="text-[10.5px] font-bold uppercase tracking-widest tone-blue omnis-mono">
+                  <span className="text-xs font-bold uppercase tracking-widest tone-blue omnis-mono">
                     {report.mode.toUpperCase()} RESEARCH REPORT • {report.generatedAt.slice(0, 10)}
                   </span>
-                  <h2 className="omnis-display-section text-xl sm:text-2xl font-extrabold mt-0.5 text-[var(--text-primary)]">
+                  <h2 className="omnis-display-section font-extrabold mt-0.5 text-[var(--text-primary)]">
                     {report.query}
                   </h2>
                 </div>
@@ -336,7 +336,7 @@ ${report.sources
               </div>
 
               <div className="space-y-2">
-                <div className="text-xs font-bold uppercase tracking-wider tone-blue omnis-mono">
+                <div className="text-[13px] font-bold uppercase tracking-wider tone-blue omnis-mono">
                   Executive Summary
                 </div>
                 {editingSummary ? (
@@ -344,14 +344,14 @@ ${report.sources
                     value={customSummary}
                     onChange={(e) => setCustomSummary(e.target.value)}
                     rows={4}
-                    className="w-full p-3 rounded-xl bg-[var(--bg-slate)] border border-[var(--accent-blue)] text-xs leading-relaxed text-[var(--text-primary)] focus:outline-none"
+                    className="w-full p-3 rounded-xl bg-[var(--bg-slate)] border border-[var(--accent-blue)] text-base sm:text-[15px] leading-relaxed text-[var(--text-primary)] focus:outline-none"
                   />
                 ) : (
                   <p
                     className={`omnis-prose text-[var(--text-secondary)] ${
                       typographyStyle === "editorial"
-                        ? "text-[16px] leading-[1.72]"
-                        : "text-[14px] leading-[1.75]"
+                        ? "text-[17px] sm:text-[18px] leading-[1.72]"
+                        : "text-[15.5px] sm:text-base leading-[1.72]"
                     }`}
                     style={
                       typographyStyle === "editorial"
@@ -366,16 +366,16 @@ ${report.sources
 
               {/* Key Findings: Editorial Margin Ledger */}
               <div className="space-y-2.5 pt-2 border-t border-[var(--border-subtle)]">
-                <div className="text-xs font-bold uppercase tracking-wider tone-verified omnis-mono">
+                <div className="text-[13px] font-bold uppercase tracking-wider tone-verified omnis-mono">
                   Key Empirical Findings
                 </div>
                 <ol className="divide-y divide-[var(--border-subtle)] border-y border-[var(--border-subtle)]">
                   {report.keyFindings.map((kf, idx) => (
                     <li
                       key={kf}
-                      className="py-3 grid grid-cols-[2.25rem_1fr] gap-3 items-baseline text-[13.5px] leading-relaxed text-[var(--text-secondary)]"
+                      className="py-3 grid grid-cols-[2.5rem_1fr] gap-3 items-baseline text-[15px] sm:text-base leading-relaxed text-[var(--text-secondary)]"
                     >
-                      <span className="omnis-mono omnis-tabular text-xs font-bold tone-cyan">
+                      <span className="omnis-mono omnis-tabular text-[13px] font-bold tone-cyan">
                         {String(idx + 1).padStart(2, "0")}
                       </span>
                       <span className="omnis-prose text-[var(--text-primary)]">{kf}</span>
@@ -388,7 +388,7 @@ ${report.sources
               <div className="space-y-5">
                 {report.detailedAnalysis.map((sec) => (
                   <div key={sec.heading} className="space-y-1.5">
-                    <h3 className="text-sm font-bold text-[var(--text-primary)]">{sec.heading}</h3>
+                    <h3 className="text-base sm:text-[17px] font-bold text-[var(--text-primary)]">{sec.heading}</h3>
                     <p className="omnis-prose text-[var(--text-secondary)]">{sec.content}</p>
                   </div>
                 ))}
@@ -396,17 +396,17 @@ ${report.sources
 
               {/* Supporting Evidence: Left-Rule Architectural Callouts & Interactive Hover Citation Popover */}
               <div className="space-y-4 pt-3 border-t border-[var(--border-subtle)]">
-                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                <h3 className="text-base sm:text-[17px] font-bold text-[var(--text-primary)]">
                   Extracted Claims & Epistemic Verification Matrix
                 </h3>
                 <div className="space-y-4">
                   {report.supportingEvidence.map((claim) => (
                     <div
                       key={claim.id}
-                      className="border-l-2 border-[var(--accent-blue)] pl-4 py-1 space-y-1.5 text-xs"
+                      className="border-l-2 border-[var(--accent-blue)] pl-4 py-1 space-y-1.5 text-[13.5px]"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="font-bold tone-blue omnis-mono text-[11px]">
+                        <span className="font-bold tone-blue omnis-mono text-xs">
                           {claim.category}
                         </span>
                         <VerificationBadge status={claim.verificationStatus} />
@@ -414,7 +414,7 @@ ${report.sources
                       <p className="omnis-prose font-medium text-[var(--text-primary)]">
                         {claim.statement}
                       </p>
-                      <div className="text-[11px] text-[var(--text-muted)] flex flex-wrap items-center gap-1.5">
+                      <div className="text-[13px] text-[var(--text-muted)] flex flex-wrap items-center gap-1.5">
                         <span>Methodology: {claim.methodologyNote} • Linked Sources:</span>
                         {claim.sourceIds.map((sid) => {
                           const citKey = `${claim.id}-${sid}`;
@@ -435,7 +435,7 @@ ${report.sources
                                 }}
                                 onBlur={() => setHoveredCitationKey(null)}
                                 onClick={() => inspectCitation(sid)}
-                                className={`px-1.5 py-0.5 rounded text-[10px] omnis-mono font-semibold border transition-colors cursor-pointer ${
+                                className={`px-2 py-0.5 rounded text-xs omnis-mono font-semibold border transition-colors cursor-pointer ${
                                   activeSourceId === sid
                                     ? "badge-tone-blue border-[var(--accent-blue)]"
                                     : "bg-[var(--bg-graphite)] border-[var(--border-subtle)] text-[var(--text-primary)] hover:border-[var(--accent-blue)]"
@@ -448,17 +448,17 @@ ${report.sources
                                   role="tooltip"
                                   className="absolute bottom-full left-0 mb-2 w-72 sm:w-80 p-3 rounded-xl omnis-hud-pill z-30 text-left space-y-1 pointer-events-none"
                                 >
-                                  <div className="flex items-center justify-between text-[10px] omnis-mono tone-cyan font-bold">
+                                  <div className="flex items-center justify-between text-[11px] omnis-mono tone-cyan font-bold">
                                     <span>{matchedSource.sourceType}</span>
                                     <span>{matchedSource.publishedDate}</span>
                                   </div>
-                                  <div className="font-bold text-xs text-[var(--text-primary)] line-clamp-2">
+                                  <div className="font-bold text-[13px] text-[var(--text-primary)] line-clamp-2">
                                     {matchedSource.title}
                                   </div>
-                                  <div className="text-[10.5px] text-[var(--text-muted)]">
+                                  <div className="text-xs text-[var(--text-muted)]">
                                     {matchedSource.publisher}
                                   </div>
-                                  <p className="text-[11px] text-[var(--text-secondary)] italic line-clamp-3">
+                                  <p className="text-[13px] text-[var(--text-secondary)] italic line-clamp-3">
                                     “{matchedSource.excerpt}”
                                   </p>
                                 </div>
@@ -476,7 +476,7 @@ ${report.sources
               {report.contradictoryEvidence.map((ce) => (
                 <div
                   key={ce.pointOfContention}
-                  className="border-l-2 border-[var(--accent-amber)] pl-4 py-1.5 space-y-2.5 text-xs"
+                  className="border-l-2 border-[var(--accent-amber)] pl-4 py-1.5 space-y-2.5 text-[13.5px] sm:text-sm"
                 >
                   <div className="font-bold tone-warning flex items-center gap-1.5">
                     <AlertTriangle className="w-4 h-4 shrink-0" />
@@ -486,7 +486,7 @@ ${report.sources
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 border border-[var(--border-subtle)] rounded-xl overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-[var(--border-subtle)]">
                     <div className="p-3 bg-[var(--bg-obsidian)]/40">
-                      <div className="font-semibold tone-cyan text-[11px] omnis-mono">
+                      <div className="font-semibold tone-cyan text-xs omnis-mono">
                         Perspective A
                       </div>
                       <p className="text-[var(--text-secondary)] mt-1 leading-relaxed">
@@ -494,7 +494,7 @@ ${report.sources
                       </p>
                     </div>
                     <div className="p-3 bg-[var(--bg-obsidian)]/40">
-                      <div className="font-semibold tone-violet text-[11px] omnis-mono">
+                      <div className="font-semibold tone-violet text-xs omnis-mono">
                         Perspective B
                       </div>
                       <p className="text-[var(--text-secondary)] mt-1 leading-relaxed">
@@ -502,7 +502,7 @@ ${report.sources
                       </p>
                     </div>
                   </div>
-                  <div className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+                  <div className="text-[13.5px] text-[var(--text-secondary)] leading-relaxed">
                     <strong className="text-[var(--text-primary)]">Epistemic Resolution:</strong>{" "}
                     {ce.epistemicResolution}
                   </div>
@@ -514,7 +514,7 @@ ${report.sources
             <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-20 lg:self-start">
               {/* Relevant Statistics & Comparative Bar Visualisation */}
               <div className="omnis-card p-5 space-y-3">
-                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                <h3 className="text-base font-bold text-[var(--text-primary)]">
                   Relevant Statistics & Visualisation
                 </h3>
                 <div className="divide-y divide-[var(--border-subtle)] border-y border-[var(--border-subtle)]">
@@ -525,13 +525,13 @@ ${report.sources
                     return (
                       <div
                         key={stat.metric}
-                        className="py-2.5 flex items-center justify-between gap-2 text-xs"
+                        className="py-2.5 flex items-center justify-between gap-2 text-[13.5px]"
                       >
                         <div className="min-w-0">
                           <div className="font-semibold text-[var(--text-primary)] break-words">
                             {stat.metric}
                           </div>
-                          <div className="text-[10px] text-[var(--text-muted)] flex flex-wrap items-center gap-1">
+                          <div className="text-xs text-[var(--text-muted)] flex flex-wrap items-center gap-1">
                             <span>{stat.period} •</span>
                             <span className="relative inline-block">
                               <button
@@ -556,10 +556,10 @@ ${report.sources
                                   role="tooltip"
                                   className="absolute bottom-full left-0 mb-2 w-64 p-3 rounded-xl omnis-hud-pill z-30 text-left space-y-1 pointer-events-none"
                                 >
-                                  <div className="font-bold text-[11px] text-[var(--text-primary)] line-clamp-2">
+                                  <div className="font-bold text-xs text-[var(--text-primary)] line-clamp-2">
                                     {matchedSource.title}
                                   </div>
-                                  <div className="text-[10px] text-[var(--text-muted)]">
+                                  <div className="text-[11.5px] text-[var(--text-muted)]">
                                     {matchedSource.publisher} ({matchedSource.publishedDate})
                                   </div>
                                 </div>
@@ -567,7 +567,7 @@ ${report.sources
                             </span>
                           </div>
                         </div>
-                        <div className="text-base font-bold omnis-mono omnis-tabular tone-blue shrink-0">
+                        <div className="text-[17px] font-bold omnis-mono omnis-tabular tone-blue shrink-0">
                           {stat.value}
                         </div>
                       </div>
@@ -577,10 +577,10 @@ ${report.sources
 
                 {/* Theme-Adaptive Dual-Series Comparison Bar Chart */}
                 <div className="pt-3 border-t border-[var(--border-subtle)] space-y-2.5">
-                  <div className="flex items-center justify-between text-xs font-semibold text-[var(--text-primary)]">
+                  <div className="flex items-center justify-between text-[13px] sm:text-sm font-semibold text-[var(--text-primary)]">
                     <span>{report.visualisationSeries.title}</span>
                   </div>
-                  <div className="flex items-center gap-3 text-[10px] omnis-mono text-[var(--text-muted)]">
+                  <div className="flex items-center gap-3 text-xs omnis-mono text-[var(--text-muted)]">
                     <span className="inline-flex items-center gap-1">
                       <span
                         className="w-2.5 h-2 rounded-xs inline-block"
@@ -598,7 +598,7 @@ ${report.sources
                   </div>
                   <div className="space-y-2.5">
                     {report.visualisationSeries.data.length === 0 ? (
-                      <div className="p-3 rounded-lg bg-[var(--bg-slate)] border border-dashed border-[var(--border-subtle)] text-[11px] text-[var(--text-secondary)]">
+                      <div className="p-3 rounded-lg bg-[var(--bg-slate)] border border-dashed border-[var(--border-subtle)] text-[13px] text-[var(--text-secondary)]">
                         {report.visualisationSeries.source}. Consult the Source Credibility Registry
                         below for live primary records.
                       </div>
@@ -616,7 +616,7 @@ ${report.sources
                             )
                           : 0;
                         return (
-                          <div key={d.label} className="space-y-1 text-[11px] omnis-mono omnis-tabular">
+                          <div key={d.label} className="space-y-1 text-[13px] omnis-mono omnis-tabular">
                             <div className="flex justify-between text-[var(--text-secondary)]">
                               <span className="font-semibold text-[var(--text-primary)]">{d.label}</span>
                               <span>
@@ -654,14 +654,14 @@ ${report.sources
               {/* Source Credibility Registry */}
               <div className="omnis-card p-5 space-y-3">
                 <div className="flex items-center justify-between gap-2">
-                  <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                  <h3 className="text-base font-bold text-[var(--text-primary)]">
                     Transparent Source Credibility Registry ({report.sources.length})
                   </h3>
                   {activeSourceId && (
                     <button
                       type="button"
                       onClick={() => setActiveSourceId(null)}
-                      className="text-[10px] omnis-mono tone-blue hover:underline cursor-pointer"
+                      className="text-xs omnis-mono tone-blue hover:underline cursor-pointer"
                     >
                       Clear highlight
                     </button>
@@ -676,17 +676,17 @@ ${report.sources
                         ref={(el) => {
                           sourceRefs.current[src.id] = el;
                         }}
-                        className={`p-3 space-y-1.5 text-xs rounded-xl border transition-all ${
+                        className={`p-3 space-y-1.5 text-[13.5px] rounded-xl border transition-all ${
                           isFocused
                             ? "bg-[var(--badge-blue-bg)] border-[var(--accent-blue)] ring-1 ring-[var(--accent-blue)]"
                             : "omnis-surface-slate border-[var(--border-subtle)]"
                         }`}
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-md badge-tone-verified font-semibold">
+                          <span className="text-[11.5px] px-1.5 py-0.5 rounded-md badge-tone-verified font-semibold">
                             {src.sourceType}
                           </span>
-                          <span className="text-[10px] omnis-mono text-[var(--text-muted)]">
+                          <span className="text-[11.5px] omnis-mono text-[var(--text-muted)]">
                             [{src.id}] • {src.publishedDate}
                           </span>
                         </div>
@@ -699,11 +699,11 @@ ${report.sources
                           <span className="line-clamp-2">{src.title}</span>
                           <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                         </a>
-                        <div className="text-[11px] text-[var(--text-muted)]">
+                        <div className="text-xs sm:text-[13px] text-[var(--text-muted)]">
                           Publisher: <strong className="text-[var(--text-primary)]">{src.publisher}</strong>{" "}
                           • Authors: {src.authors.join(", ")}
                         </div>
-                        <p className="text-[11px] text-[var(--text-secondary)] italic">
+                        <p className="text-xs sm:text-[13px] text-[var(--text-secondary)] italic">
                           “{src.excerpt}”
                         </p>
                       </div>
@@ -714,7 +714,7 @@ ${report.sources
 
               {/* Bridge to Knowledge Graph & Timeline */}
               <div className="omnis-card p-5 space-y-2.5 no-print">
-                <div className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
+                <div className="text-[13px] font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
                   Continue Investigation Across Modules
                 </div>
                 <OmnisButton

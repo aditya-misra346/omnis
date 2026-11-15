@@ -197,7 +197,7 @@ export function ScrollFocusNarrative({ text, className = "" }: ScrollFocusNarrat
 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
-      <p className="text-sm sm:text-[15.5px] leading-[1.72] text-[var(--text-secondary)]">
+      <p className="text-base sm:text-[17.5px] leading-[1.72] text-[var(--text-secondary)]">
         {segments.map((seg, idx) => {
           const tokenStart = (idx / totalCount) * 0.75;
           const tokenSpan = 0.25;
@@ -261,11 +261,11 @@ export function ScrollFocusNarrative({ text, className = "" }: ScrollFocusNarrat
                       role="tooltip"
                       className="hidden sm:block absolute left-1/2 -translate-x-1/2 bottom-full mb-2.5 z-40 w-72 omnis-card p-3 shadow-xl pointer-events-none text-left"
                     >
-                      <span className="flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-wider tone-blue omnis-mono">
+                      <span className="flex items-center justify-between gap-2 text-xs font-bold uppercase tracking-wider tone-blue omnis-mono">
                         <span>{term.moduleName}</span>
-                        <ArrowUpRight className="w-3 h-3 shrink-0" />
+                        <ArrowUpRight className="w-3.5 h-3.5 shrink-0" />
                       </span>
-                      <span className="block mt-1 text-xs leading-relaxed text-[var(--text-secondary)] font-normal not-italic">
+                      <span className="block mt-1 text-[13px] leading-relaxed text-[var(--text-secondary)] font-normal not-italic">
                         {term.summary}
                       </span>
                     </span>

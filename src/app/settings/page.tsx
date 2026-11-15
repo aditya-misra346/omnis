@@ -78,7 +78,7 @@ export default function SettingsPage() {
       />
 
       {statusMessage && (
-        <div className="omnis-card p-4 border-[var(--status-verified)] text-xs tone-verified flex items-center gap-2 font-semibold">
+        <div className="omnis-card p-4 border-[var(--status-verified)] text-[13.5px] sm:text-sm tone-verified flex items-center gap-2 font-semibold">
           <CheckCircle2 className="w-4 h-4 shrink-0" />
           <span>{statusMessage}</span>
         </div>
@@ -87,8 +87,8 @@ export default function SettingsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Theme Calibration */}
         <div className="omnis-card p-6 space-y-4">
-          <h2 className="text-base font-bold text-[var(--text-primary)]">Visual Theme Calibration</h2>
-          <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+          <h2 className="text-base sm:text-lg font-bold text-[var(--text-primary)]">Visual Theme Calibration</h2>
+          <p className="text-[13.5px] sm:text-sm text-[var(--text-secondary)] leading-relaxed">
             Switch between OMNIS Obsidian Dark (#05070C) and Archival Pearl Light (#FAF8F5) themes.
             Both palettes are engineered for WCAG 2.2 AA contrast across charts, 3D overlays, and
             typography.
@@ -103,11 +103,11 @@ export default function SettingsPage() {
                   : "bg-[var(--bg-slate)] border-[var(--border-subtle)] hover:border-[var(--border-strong)]"
               }`}
             >
-              <div className="flex items-center gap-2 text-xs font-bold text-[var(--text-primary)]">
-                <Moon className="w-4 h-4 tone-blue" />
+              <div className="flex items-center gap-2 text-[13.5px] sm:text-sm font-bold text-[var(--text-primary)]">
+                <Moon className="w-4 h-4 tone-blue shrink-0" />
                 <span>Obsidian Dark (#05070C)</span>
               </div>
-              <div className="text-[11px] text-[var(--text-muted)]">
+              <div className="text-xs text-[var(--text-muted)]">
                 Deep obsidian (#05070C) & precision cobalt blue
               </div>
             </button>
@@ -121,18 +121,18 @@ export default function SettingsPage() {
                   : "bg-[var(--bg-slate)] border-[var(--border-subtle)] hover:border-[var(--border-strong)]"
               }`}
             >
-              <div className="flex items-center gap-2 text-xs font-bold text-[var(--text-primary)]">
-                <Sun className="w-4 h-4 tone-warning" />
+              <div className="flex items-center gap-2 text-[13.5px] sm:text-sm font-bold text-[var(--text-primary)]">
+                <Sun className="w-4 h-4 tone-warning shrink-0" />
                 <span>Archival Pearl Light (#FAF8F5)</span>
               </div>
-              <div className="text-[11px] text-[var(--text-muted)]">
+              <div className="text-xs text-[var(--text-muted)]">
                 High-contrast daylight archival surfaces (#FAF8F5)
               </div>
             </button>
           </div>
 
           <div className="pt-3 border-t border-[var(--border-subtle)] space-y-2">
-            <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-[var(--text-muted)]">
+            <div className="text-[11.5px] font-mono uppercase tracking-[0.14em] text-[var(--text-muted)]">
               Live Design Token Swatch Chips ({theme.toUpperCase()})
             </div>
             <div className="flex flex-wrap gap-2">
@@ -145,7 +145,7 @@ export default function SettingsPage() {
               ].map((swatch) => (
                 <div
                   key={swatch.token}
-                  className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[10px] font-mono text-[var(--text-secondary)]"
+                  className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[11.5px] font-mono text-[var(--text-secondary)]"
                 >
                   <span
                     aria-hidden="true"
@@ -162,17 +162,17 @@ export default function SettingsPage() {
 
         {/* Authentication & Session Management */}
         <div className="omnis-card p-6 space-y-4">
-          <h2 className="text-base font-bold flex items-center gap-2 text-[var(--text-primary)]">
+          <h2 className="text-base sm:text-lg font-bold flex items-center gap-2 text-[var(--text-primary)]">
             <UserCheck className="w-4 h-4 tone-verified" />
             Researcher Authentication & Session
           </h2>
 
           {user && user.verified ? (
-            <div className="space-y-3 text-xs">
+            <div className="space-y-3 text-[13.5px]">
               <div className="omnis-surface-slate p-3.5 space-y-1">
-                <div className="font-bold text-sm text-[var(--text-primary)]">{user.displayName}</div>
+                <div className="font-bold text-base text-[var(--text-primary)]">{user.displayName}</div>
                 <div className="text-[var(--text-secondary)] omnis-mono">{user.email}</div>
-                <div className="text-[11px] tone-verified font-semibold pt-1">
+                <div className="text-xs tone-verified font-semibold pt-1">
                   ✓ Signed-In Session: {user.role} • Local Browser Workspace Active
                 </div>
               </div>
@@ -194,11 +194,11 @@ export default function SettingsPage() {
               </div>
             </div>
           ) : (
-            <div className="space-y-3 text-xs">
+            <div className="space-y-3 text-[13.5px]">
               {user && !user.verified && (
                 <div className="omnis-surface-slate p-3 space-y-1 border-dashed">
                   <div className="font-bold text-[var(--text-primary)]">{user.displayName}</div>
-                  <div className="text-[11px] text-[var(--text-secondary)]">
+                  <div className="text-xs text-[var(--text-secondary)]">
                     Role: {user.role} (Unverified guest workspace in `localStorage`)
                   </div>
                 </div>
@@ -210,7 +210,7 @@ export default function SettingsPage() {
                   value={nameInput}
                   onChange={(e) => setNameInput(e.target.value)}
                   placeholder="Display Name"
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]"
+                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-base sm:text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]"
                 />
                 <input
                   type="email"
@@ -218,7 +218,7 @@ export default function SettingsPage() {
                   value={emailInput}
                   onChange={(e) => setEmailInput(e.target.value)}
                   placeholder="Institutional Email"
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]"
+                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-base sm:text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]"
                 />
                 <div className="flex flex-wrap items-center gap-2">
                   <OmnisButton type="submit" className="flex-1">
@@ -247,7 +247,7 @@ export default function SettingsPage() {
       {/* Live External Data Provider Health Diagnostics */}
       <div className="omnis-card p-6 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-base font-bold flex items-center gap-2 text-[var(--text-primary)]">
+          <h2 className="text-base sm:text-lg font-bold flex items-center gap-2 text-[var(--text-primary)]">
             <Database className="w-4 h-4 tone-blue" />
             Centralised External Data Provider Telemetry
           </h2>
@@ -270,13 +270,13 @@ export default function SettingsPage() {
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[13.5px] sm:text-sm">
           {providers.map((p) => (
             <div key={p.id} className="omnis-surface-slate p-4 space-y-1.5">
               <div className="flex items-center justify-between gap-2">
                 <span className="font-bold text-[var(--text-primary)]">{p.name}</span>
                 <span
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-semibold omnis-mono uppercase ${getProviderToneClass(
+                  className={`px-2 py-0.5 rounded-full text-[11px] font-semibold omnis-mono uppercase ${getProviderToneClass(
                     p.status
                   )}`}
                 >
@@ -284,23 +284,23 @@ export default function SettingsPage() {
                   {typeof p.latencyMs === "number" ? ` • ${p.latencyMs}ms` : ""}
                 </span>
               </div>
-              <div className="text-[11px] text-[var(--text-muted)] omnis-mono truncate">
+              <div className="text-xs text-[var(--text-muted)] omnis-mono truncate">
                 {p.endpoint}
                 {typeof p.httpStatus === "number" ? ` (HTTP ${p.httpStatus})` : ""}
               </div>
-              <div className="text-[10.5px] text-[var(--text-secondary)]">License: {p.license}</div>
+              <div className="text-xs text-[var(--text-secondary)]">License: {p.license}</div>
             </div>
           ))}
         </div>
       </div>
 
       {/* Security & Privacy Policy Summary */}
-      <div className="omnis-card p-6 space-y-2 text-xs">
-        <div className="flex items-center gap-2 font-bold tone-verified uppercase tracking-wider omnis-mono">
+      <div className="omnis-card p-6 space-y-2.5 text-[13.5px] sm:text-sm">
+        <div className="flex items-center gap-2 text-xs font-bold tone-verified uppercase tracking-wider omnis-mono">
           <ShieldCheck className="w-4 h-4" />
           <span>Security, AI Guardrails & Privacy Disclosures</span>
         </div>
-        <p className="text-[var(--text-secondary)] leading-relaxed">
+        <p className="text-sm sm:text-[15px] text-[var(--text-secondary)] leading-relaxed">
           OMNIS enforces strict input sanitization, prompt-injection detection, untrusted external
           document quarantine, and user-level workspace isolation. Private research reports,
           knowledge graphs, and saved collections are never sold or shared with third parties.

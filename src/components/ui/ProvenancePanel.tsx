@@ -54,7 +54,7 @@ export function VerificationBadge({ status }: { status: VerificationStatus }) {
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-tight ${current.className}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold tracking-tight ${current.className}`}
     >
       {current.icon}
       <span>{current.label}</span>
@@ -72,14 +72,14 @@ export function ProvenancePanel({
   const [expanded, setExpanded] = useState(!compact);
 
   return (
-    <div className="omnis-surface-slate p-3.5 text-xs transition-all">
+    <div className="omnis-surface-slate p-3.5 text-[13px] sm:text-sm transition-all">
       <div className="flex flex-wrap items-center justify-between gap-2.5">
         <div className="flex flex-wrap items-center gap-2 min-w-0">
           <VerificationBadge status={provenance.verificationStatus} />
           <span className="font-medium text-[var(--text-primary)] truncate max-w-full">
             Source: {provenance.source}
           </span>
-          <span className="text-[var(--text-muted)] omnis-mono text-[11px]">
+          <span className="text-[var(--text-muted)] omnis-mono text-xs">
             • Updated {provenance.lastUpdated}
           </span>
         </div>
@@ -117,7 +117,7 @@ export function ProvenancePanel({
       {expanded && (
         <div className="mt-3 pt-3 border-t border-[var(--border-subtle)] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-[var(--text-secondary)]">
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+            <div className="text-[11.5px] sm:text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
               Publisher / Agency
             </div>
             <div className="font-medium text-[var(--text-primary)] mt-0.5 leading-snug">
@@ -125,7 +125,7 @@ export function ProvenancePanel({
             </div>
           </div>
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+            <div className="text-[11.5px] sm:text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
               Units & Coverage
             </div>
             <div className="font-medium text-[var(--text-primary)] mt-0.5 leading-snug">
@@ -133,7 +133,7 @@ export function ProvenancePanel({
             </div>
           </div>
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+            <div className="text-[11.5px] sm:text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
               Methodology
             </div>
             <div className="font-medium text-[var(--text-primary)] mt-0.5 leading-snug">
@@ -141,7 +141,7 @@ export function ProvenancePanel({
             </div>
           </div>
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+            <div className="text-[11.5px] sm:text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
               Data Integrity Status
             </div>
             <div className="font-semibold mt-0.5 omnis-mono">

@@ -34,7 +34,7 @@ export function OmnisMathBlock({
       className={`p-3.5 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] overflow-x-auto ${className}`}
     >
       <div className="flex items-center justify-between gap-2 mb-2">
-        <div className="text-[10px] omnis-mono uppercase tracking-wider text-[var(--text-muted)]">
+        <div className="text-xs omnis-mono uppercase tracking-wider text-[var(--text-muted)]">
           {label || "KaTeX Equation"}
         </div>
         <CopyTexButton latex={latex} />
@@ -45,7 +45,7 @@ export function OmnisMathBlock({
           dangerouslySetInnerHTML={{ __html: renderedHtml }}
         />
       ) : (
-        <code className="omnis-mono text-xs text-[var(--text-primary)]">{latex}</code>
+        <code className="omnis-mono text-sm text-[var(--text-primary)]">{latex}</code>
       )}
     </div>
   );
@@ -69,7 +69,7 @@ function CopyTexButton({ latex }: { latex: string }) {
       type="button"
       onClick={handleCopy}
       aria-label="Copy LaTeX expression"
-      className={`inline-flex items-center gap-1 px-2 py-0.5 min-h-[24px] rounded border text-[10px] omnis-mono font-medium transition-colors cursor-pointer shrink-0 ${
+      className={`inline-flex items-center gap-1 px-2.5 py-0.5 min-h-[26px] rounded border text-xs omnis-mono font-medium transition-colors cursor-pointer shrink-0 ${
         copied
           ? "badge-tone-verified"
           : "border-[var(--border-subtle)] bg-[var(--bg-graphite)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]"

@@ -115,7 +115,7 @@ export function OmnisSelect({
         : "border-[var(--border-subtle)] hover:border-[var(--border-strong)]";
 
   const sizeClass =
-    size === "md" ? "px-3 py-2 text-xs min-h-[36px]" : "px-2.5 py-1.5 text-xs min-h-[32px]";
+    size === "md" ? "px-3 py-2 text-sm min-h-[38px]" : "px-2.5 py-1.5 text-[13px] min-h-[34px]";
 
   const prefixToneClass =
     tone === "blue" ? "tone-blue" : tone === "violet" ? "tone-violet" : "text-[var(--text-muted)]";
@@ -170,7 +170,7 @@ export function OmnisSelect({
                 aria-selected={isSelected}
                 onMouseEnter={() => setActiveIndex(idx)}
                 onClick={() => handleSelect(opt.value)}
-                className={`w-full flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-md text-left text-xs transition-colors cursor-pointer ${
+                className={`w-full flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-md text-left text-sm transition-colors cursor-pointer ${
                   isSelected
                     ? "bg-[var(--badge-blue-bg)] text-[var(--text-primary)] font-semibold"
                     : isHighlighted
@@ -181,7 +181,7 @@ export function OmnisSelect({
                 <div className="min-w-0">
                   <div className="truncate">{opt.label}</div>
                   {opt.hint ? (
-                    <div className="text-[10px] text-[var(--text-muted)] truncate">{opt.hint}</div>
+                    <div className="text-xs text-[var(--text-muted)] truncate">{opt.hint}</div>
                   ) : null}
                 </div>
                 {isSelected ? <Check className="w-3.5 h-3.5 tone-blue shrink-0" /> : null}

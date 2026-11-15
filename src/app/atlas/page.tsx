@@ -140,7 +140,7 @@ function GlobalAtlasContent() {
               href={`/research?q=${encodeURIComponent(
                 `Explain ${country.name}'s economic and technological development`
               )}`}
-              className="omnis-magnetic-arrow px-3.5 py-2 rounded-lg bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-xs font-semibold text-[var(--text-primary)] inline-flex items-center gap-1.5 transition-colors"
+              className="omnis-magnetic-arrow px-3.5 py-2 rounded-lg bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[13px] font-semibold text-[var(--text-primary)] inline-flex items-center gap-1.5 transition-colors"
             >
               <FileSearch className="w-3.5 h-3.5 tone-blue" />
               <span>Deep Research</span>
@@ -148,7 +148,7 @@ function GlobalAtlasContent() {
             </Link>
             <Link
               href={`/knowledge-graph?topic=${encodeURIComponent(country.name)}`}
-              className="omnis-magnetic-arrow px-3.5 py-2 rounded-lg bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-xs font-semibold text-[var(--text-primary)] inline-flex items-center gap-1.5 transition-colors"
+              className="omnis-magnetic-arrow px-3.5 py-2 rounded-lg bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[13px] font-semibold text-[var(--text-primary)] inline-flex items-center gap-1.5 transition-colors"
             >
               <Network className="w-3.5 h-3.5 tone-violet" />
               <span>Knowledge Graph</span>
@@ -156,7 +156,7 @@ function GlobalAtlasContent() {
             </Link>
             <Link
               href={`/simulations?category=economics&country=${country.iso3}`}
-              className="omnis-magnetic-arrow px-3.5 py-2 rounded-lg bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-xs font-semibold text-[var(--text-primary)] inline-flex items-center gap-1.5 transition-colors"
+              className="omnis-magnetic-arrow px-3.5 py-2 rounded-lg bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[13px] font-semibold text-[var(--text-primary)] inline-flex items-center gap-1.5 transition-colors"
             >
               <TrendingUp className="w-3.5 h-3.5 tone-verified" />
               <span>Simulate Macro Shock</span>
@@ -197,13 +197,13 @@ function GlobalAtlasContent() {
       />
 
       {countryLookupStatus === "loading" && (
-        <div className="px-4 py-2.5 rounded-xl badge-tone-cyan text-xs omnis-mono">
+        <div className="px-4 py-2.5 rounded-xl badge-tone-cyan text-[13px] omnis-mono">
           Hydrating live REST Countries &amp; World Bank telemetry for {selectedIso3}…
         </div>
       )}
 
       {countryLookupStatus === "missing" && (
-        <div className="px-4 py-2.5 rounded-xl badge-tone-warning text-xs omnis-mono">
+        <div className="px-4 py-2.5 rounded-xl badge-tone-warning text-[13px] omnis-mono">
           No federated sovereign profile resolved for &ldquo;{selectedIso3}&rdquo; (HTTP 404). Showing curated {country.name} ({country.iso3}) reference dossier below.
         </div>
       )}
@@ -215,10 +215,10 @@ function GlobalAtlasContent() {
             <div className="flex items-center gap-3">
               <span className="text-3xl">{country.flagEmoji}</span>
               <div>
-                <h2 className="omnis-display-section text-2xl font-extrabold text-[var(--text-primary)]">
+                <h2 className="omnis-display-section font-extrabold text-[var(--text-primary)]">
                   {country.officialName} ({country.iso3})
                 </h2>
-                <p className="text-xs text-[var(--text-secondary)]">
+                <p className="text-sm text-[var(--text-secondary)]">
                   Capital: <strong className="text-[var(--text-primary)]">{country.capital}</strong> •
                   Region: {country.region} ({country.subregion}) • Currency: {country.currency} •{" "}
                   <span className="omnis-mono omnis-tabular text-[var(--text-muted)]">
@@ -231,7 +231,7 @@ function GlobalAtlasContent() {
           </div>
 
           {country.liveWorldBankOverride?.retrievedFromApi && (
-            <div className="px-3 py-1.5 rounded-lg badge-tone-verified text-xs font-semibold omnis-mono">
+            <div className="px-3 py-1.5 rounded-lg badge-tone-verified text-[13px] font-semibold omnis-mono">
               ✓ Live World Bank API v2 Synced (Latest Year: {country.liveWorldBankOverride.latestYear})
             </div>
           )}
@@ -244,11 +244,11 @@ function GlobalAtlasContent() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 border border-[var(--border-subtle)] rounded-2xl overflow-hidden bg-[var(--bg-obsidian)]/30">
           {/* 01 / MACROECONOMICS */}
           <div className="p-5 border-b border-[var(--border-subtle)] md:border-r space-y-3">
-            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider tone-blue omnis-mono">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider tone-blue omnis-mono">
               <TrendingUp className="w-3.5 h-3.5" />
               <span>01 / Macroeconomics</span>
             </div>
-            <div className="divide-y divide-[var(--border-subtle)] text-xs">
+            <div className="divide-y divide-[var(--border-subtle)] text-[13.5px] sm:text-sm">
               <div className="flex items-baseline justify-between py-1.5 gap-2">
                 <span className="text-[var(--text-muted)]">Nominal GDP</span>
                 <span className="font-bold omnis-mono omnis-tabular text-[var(--text-primary)]">
@@ -290,11 +290,11 @@ function GlobalAtlasContent() {
 
           {/* 02 / DEMOGRAPHICS */}
           <div className="p-5 border-b border-[var(--border-subtle)] lg:border-r space-y-3">
-            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider tone-violet omnis-mono">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider tone-violet omnis-mono">
               <Users className="w-3.5 h-3.5" />
               <span>02 / Demographics</span>
             </div>
-            <div className="divide-y divide-[var(--border-subtle)] text-xs">
+            <div className="divide-y divide-[var(--border-subtle)] text-[13.5px] sm:text-sm">
               <div className="flex items-baseline justify-between py-1.5 gap-2">
                 <span className="text-[var(--text-muted)]">Total Population</span>
                 <span className="font-bold omnis-mono omnis-tabular text-[var(--text-primary)]">
@@ -336,11 +336,11 @@ function GlobalAtlasContent() {
 
           {/* 03 / ENERGY & CLIMATE */}
           <div className="p-5 border-b border-[var(--border-subtle)] md:border-r lg:border-r-0 space-y-3">
-            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider tone-verified omnis-mono">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider tone-verified omnis-mono">
               <Zap className="w-3.5 h-3.5" />
               <span>03 / Energy & Climate</span>
             </div>
-            <div className="divide-y divide-[var(--border-subtle)] text-xs">
+            <div className="divide-y divide-[var(--border-subtle)] text-[13.5px] sm:text-sm">
               <div className="flex items-baseline justify-between py-1.5 gap-2">
                 <span className="text-[var(--text-muted)]">Electricity Gen</span>
                 <span className="font-bold omnis-mono omnis-tabular text-[var(--text-primary)]">
@@ -373,7 +373,7 @@ function GlobalAtlasContent() {
               </div>
             </div>
             <div className="space-y-1 pt-1">
-              <div className="flex justify-between text-[10px] omnis-mono omnis-tabular text-[var(--text-muted)]">
+              <div className="flex justify-between text-xs omnis-mono omnis-tabular text-[var(--text-muted)]">
                 <span>{country.energyProfile.renewableSharePct}% Clean</span>
                 <span>{country.energyProfile.nuclearSharePct}% Nuclear</span>
                 <span>{fossilShare.toFixed(0)}% Thermal</span>
@@ -396,8 +396,8 @@ function GlobalAtlasContent() {
           </div>
 
           {/* 04 / TECHNOLOGY */}
-          <div className="p-5 border-b lg:border-b-0 border-[var(--border-subtle)] lg:border-r space-y-3 text-xs">
-            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider tone-cyan omnis-mono">
+          <div className="p-5 border-b lg:border-b-0 border-[var(--border-subtle)] lg:border-r space-y-3 text-[13.5px] sm:text-sm">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider tone-cyan omnis-mono">
               <Cpu className="w-3.5 h-3.5" />
               <span>04 / Technology</span>
             </div>
@@ -421,33 +421,33 @@ function GlobalAtlasContent() {
                 </span>
               </div>
               <div className="py-1.5 space-y-0.5">
-                <div className="text-[10px] text-[var(--text-muted)]">Semiconductor Ecosystem</div>
+                <div className="text-xs text-[var(--text-muted)]">Semiconductor Ecosystem</div>
                 <div className="font-semibold text-[var(--text-primary)]">
                   {country.technologyProfile.semiconductorRole}
                 </div>
               </div>
             </div>
-            <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+            <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed">
               {country.technologyProfile.digitalInfrastructureSummary}
             </p>
           </div>
 
           {/* 05 / GOVERNANCE & GEOGRAPHY */}
-          <div className="p-5 border-b md:border-b-0 border-[var(--border-subtle)] md:border-r space-y-3 text-xs">
-            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider tone-warning omnis-mono">
+          <div className="p-5 border-b md:border-b-0 border-[var(--border-subtle)] md:border-r space-y-3 text-[13.5px] sm:text-sm">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider tone-warning omnis-mono">
               <Landmark className="w-3.5 h-3.5" />
               <span>05 / Governance & Geography</span>
             </div>
             <div className="divide-y divide-[var(--border-subtle)]">
               <div className="py-1.5 space-y-0.5">
-                <div className="text-[10px] text-[var(--text-muted)]">Constitutional System</div>
+                <div className="text-xs text-[var(--text-muted)]">Constitutional System</div>
                 <div className="font-semibold text-[var(--text-primary)]">
                   {country.governmentStructure}
                 </div>
               </div>
               <div className="py-1.5 space-y-0.5">
-                <div className="text-[10px] text-[var(--text-muted)]">Key Cities & Hydrography</div>
-                <div className="text-[11px] text-[var(--text-secondary)]">
+                <div className="text-xs text-[var(--text-muted)]">Key Cities & Hydrography</div>
+                <div className="text-[13px] text-[var(--text-secondary)]">
                   {country.geographyFeatures.majorCities.slice(0, 4).join(", ")} • Rivers:{" "}
                   {country.geographyFeatures.majorRivers.slice(0, 3).join(", ")}
                 </div>
@@ -457,7 +457,7 @@ function GlobalAtlasContent() {
               {country.majorIndustries.map((ind) => (
                 <span
                   key={ind}
-                  className="px-2 py-0.5 rounded-md bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[11px] text-[var(--text-primary)]"
+                  className="px-2 py-0.5 rounded-md bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-xs sm:text-[13px] text-[var(--text-primary)]"
                 >
                   {ind}
                 </span>
@@ -466,24 +466,24 @@ function GlobalAtlasContent() {
           </div>
 
           {/* 06 / INTERNATIONAL TRADE */}
-          <div className="p-5 space-y-3 text-xs">
-            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider tone-violet omnis-mono">
+          <div className="p-5 space-y-3 text-[13.5px] sm:text-sm">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider tone-violet omnis-mono">
               <Shield className="w-3.5 h-3.5" />
               <span>06 / Trade & Diplomacy</span>
             </div>
-            <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+            <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed">
               {country.internationalRelations.diplomaticContext}
             </p>
             <div className="divide-y divide-[var(--border-subtle)]">
               <div className="py-1.5 space-y-0.5">
-                <div className="text-[10px] text-[var(--text-muted)]">Top Trade Partners</div>
+                <div className="text-xs text-[var(--text-muted)]">Top Trade Partners</div>
                 <div className="font-semibold text-[var(--text-primary)]">
                   {country.internationalRelations.topTradePartners.join(", ")}
                 </div>
               </div>
               <div className="pt-1.5 space-y-0.5">
-                <div className="text-[10px] text-[var(--text-muted)]">Treaty Memberships</div>
-                <div className="omnis-mono text-[11px] text-[var(--text-primary)]">
+                <div className="text-xs text-[var(--text-muted)]">Treaty Memberships</div>
+                <div className="omnis-mono text-[13px] text-[var(--text-primary)]">
                   {country.internationalRelations.treatyMemberships.join(" • ")}
                 </div>
               </div>
@@ -495,10 +495,10 @@ function GlobalAtlasContent() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-6 border-t border-[var(--border-subtle)]">
           <div className="lg:col-span-6 space-y-4">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-bold text-[var(--text-primary)]">
+              <h3 className="text-base font-bold text-[var(--text-primary)]">
                 {country.name} vs {compareCountry.name} Historical Trajectory (1991–2026)
               </h3>
-              <span className="text-[11px] text-[var(--text-muted)] omnis-mono">
+              <span className="text-xs text-[var(--text-muted)] omnis-mono">
                 Dual-Country Interactive Overlay
               </span>
             </div>
@@ -507,7 +507,7 @@ function GlobalAtlasContent() {
 
           <div className="lg:col-span-6 space-y-4 lg:border-l lg:border-[var(--border-subtle)] lg:pl-8">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-sm font-bold flex items-center gap-2 text-[var(--text-primary)]">
+              <h3 className="text-base font-bold flex items-center gap-2 text-[var(--text-primary)]">
                 <ArrowLeftRight className="w-4 h-4 tone-blue" />
                 Compare {country.name} vs {compareCountry.name}
               </h3>
@@ -527,7 +527,7 @@ function GlobalAtlasContent() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-[13.5px] sm:text-sm">
                 <thead>
                   <tr className="border-b border-[var(--border-subtle)] text-[var(--text-muted)]">
                     <th className="py-2">Indicator</th>
@@ -580,7 +580,7 @@ function GlobalAtlasContent() {
 
             <Link
               href={`/intelligence?left=${country.iso3}&right=${compareCountry.iso3}`}
-              className="omnis-magnetic-arrow inline-flex items-center gap-1.5 text-xs font-semibold tone-blue hover:underline"
+              className="omnis-magnetic-arrow inline-flex items-center gap-1.5 text-[13.5px] font-semibold tone-blue hover:underline"
             >
               <span>Open Full Multi-Axis Radar & Historical Comparison Engine</span>
               <ArrowRight className="omnis-arrow-glyph w-3.5 h-3.5" />

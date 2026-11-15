@@ -57,7 +57,7 @@ export function OmnisParameterSlider({
     <div
       className={`p-3.5 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] space-y-2.5 ${className}`}
     >
-      <div className="flex items-start justify-between gap-2 text-xs">
+      <div className="flex items-start justify-between gap-2 text-[13px] sm:text-sm">
         <span className="font-semibold text-[var(--text-primary)] leading-snug">{label}</span>
         <div className="flex items-center gap-1 shrink-0">
           {onReset && isModifiedFromBaseline ? (
@@ -80,7 +80,7 @@ export function OmnisParameterSlider({
             <Minus className="w-3 h-3" />
           </button>
           <span
-            className={`px-2 py-0.5 rounded bg-[var(--bg-graphite)] border border-[var(--border-subtle)] font-bold omnis-mono omnis-tabular text-[11px] ${valueToneClass}`}
+            className={`px-2 py-0.5 rounded bg-[var(--bg-graphite)] border border-[var(--border-subtle)] font-bold omnis-mono omnis-tabular text-xs sm:text-[13px] ${valueToneClass}`}
           >
             {value}
             {unit ? ` ${unit}` : ""}
@@ -139,14 +139,14 @@ export function OmnisParameterSlider({
         />
       </div>
 
-      <div className="flex justify-between text-[10px] text-[var(--text-muted)] omnis-mono omnis-tabular">
+      <div className="flex justify-between text-xs text-[var(--text-muted)] omnis-mono omnis-tabular">
         <span>Min: {min}</span>
         {baselineValue !== undefined ? <span>Base: {baselineValue}</span> : null}
         <span>Max: {max}</span>
       </div>
 
       {description ? (
-        <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">{description}</p>
+        <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed">{description}</p>
       ) : null}
     </div>
   );

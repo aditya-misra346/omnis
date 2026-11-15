@@ -32,9 +32,9 @@ export function OmnisButton({
   };
 
   const sizeClasses = {
-    sm: "px-2.5 py-1.5 text-xs rounded-lg gap-1.5",
-    md: "px-3.5 py-2 text-xs rounded-lg gap-2",
-    lg: "px-5 py-2.5 text-sm rounded-xl gap-2",
+    sm: "px-3 py-1.5 text-[13px] rounded-lg gap-1.5",
+    md: "px-4 py-2 text-sm rounded-lg gap-2",
+    lg: "px-5.5 py-2.5 text-[15px] rounded-xl gap-2",
   };
 
   return (
@@ -72,16 +72,16 @@ export function OmnisModuleHeader({
   return (
     <section className="pb-4 sm:pb-5 border-b border-[var(--border-subtle)] space-y-3 sm:space-y-4 relative">
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3 sm:gap-4">
-        <div className="space-y-1 sm:space-y-1.5 min-w-0">
-          <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] tone-blue omnis-mono">
+        <div className="space-y-1.5 sm:space-y-2 min-w-0">
+          <div className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] tone-blue omnis-mono">
             {icon}
             <span>{moduleTag}</span>
           </div>
-          <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-[var(--text-primary)] leading-tight">
+          <h1 className="text-[clamp(1.625rem,2.6vw,2.4rem)] font-bold tracking-[-0.02em] text-[var(--text-primary)] leading-[1.16] text-balance">
             {title}
           </h1>
           {subtitle && (
-            <p className="text-xs sm:text-sm text-[var(--text-secondary)] max-w-3xl leading-relaxed line-clamp-2 sm:line-clamp-none">
+            <p className="text-[15px] sm:text-[17px] text-[var(--text-secondary)] max-w-3xl leading-[1.6] text-pretty line-clamp-3 sm:line-clamp-none">
               {subtitle}
             </p>
           )}
@@ -95,7 +95,7 @@ export function OmnisModuleHeader({
                 type="button"
                 onClick={() => setMobileExpanded((prev) => !prev)}
                 aria-expanded={mobileExpanded}
-                className="sm:hidden inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-xs font-semibold text-[var(--text-primary)] cursor-pointer"
+                className="sm:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[13px] font-semibold text-[var(--text-primary)] cursor-pointer"
               >
                 <span>{mobileFilterLabel}</span>
                 {mobileExpanded ? (
@@ -143,15 +143,15 @@ export function OmnisStatTile({
   }[tone];
 
   return (
-    <div className="omnis-surface-slate p-3.5 space-y-1 hover:border-[var(--border-strong)] min-w-0">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] leading-snug">
+    <div className="omnis-surface-slate p-4 space-y-1.5 hover:border-[var(--border-strong)] min-w-0">
+      <div className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)] leading-snug">
         {label}
       </div>
-      <div className={`text-lg sm:text-xl font-bold omnis-mono omnis-tabular leading-tight ${toneClass}`}>
+      <div className={`text-[21px] sm:text-[26px] font-bold omnis-mono omnis-tabular leading-tight ${toneClass}`}>
         {value}
       </div>
       {subValue && (
-        <div className="text-[11px] text-[var(--text-secondary)] omnis-mono omnis-tabular leading-snug break-words">
+        <div className="text-[13px] text-[var(--text-secondary)] omnis-mono omnis-tabular leading-snug break-words">
           {subValue}
         </div>
       )}
@@ -193,7 +193,7 @@ export function OmnisSegmentedControl<T extends string = string>({
   size?: "sm" | "md";
 }) {
   const { motionPaused } = useOmnisStore();
-  const padClass = size === "sm" ? "px-2.5 py-1 text-[11px]" : "px-3 py-1.5 text-xs";
+  const padClass = size === "sm" ? "px-3 py-1.5 text-[13px]" : "px-3.5 py-1.5 text-sm";
 
   return (
     <div
@@ -235,7 +235,7 @@ export function OmnisSegmentedControl<T extends string = string>({
               <span>{opt.label}</span>
               {opt.badge !== undefined && (
                 <span
-                  className={`text-[10px] omnis-mono px-1.5 py-0.2 rounded-full ${
+                  className={`text-xs omnis-mono px-1.5 py-0.5 rounded-full ${
                     active
                       ? "bg-white/20 text-white"
                       : "bg-[var(--bg-graphite)] text-[var(--text-muted)]"

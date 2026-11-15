@@ -267,7 +267,7 @@ export default function LandingPage() {
 
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center relative z-10">
           <div className="lg:col-span-6 space-y-5">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full badge-tone-blue text-[11px] font-semibold uppercase tracking-wider omnis-mono">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full badge-tone-blue text-xs font-semibold uppercase tracking-wider omnis-mono">
               <Sparkles className="w-3.5 h-3.5" />
               <span>OMNIS Global Intelligence Platform • v2.0</span>
             </div>
@@ -281,7 +281,7 @@ export default function LandingPage() {
                   { text: "Connect Everything.", editorial: true, fluidInk: true },
                 ]}
               />
-              <p className="text-base sm:text-[17px] text-[var(--text-secondary)] leading-relaxed max-w-xl">
+              <p className="text-[17px] sm:text-[19px] text-[var(--text-secondary)] leading-[1.6] max-w-xl">
                 OMNIS transforms static walls of text into interactive, source-traceable global
                 intelligence—unifying a 3D Natural Earth Atlas, Infinite Knowledge Graphs, Monte
                 Carlo Scenario Simulations, Deep Research, and a Digital Scientific Laboratory.
@@ -301,20 +301,20 @@ export default function LandingPage() {
                     value={heroQuery}
                     onChange={(e) => setHeroQuery(e.target.value)}
                     placeholder="Ask anything: e.g., 'Explain India's economic development since 1991'"
-                    className="w-full bg-transparent text-sm focus:outline-none text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                    className="w-full bg-transparent text-base sm:text-[15px] focus:outline-none text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
                   />
                 </div>
                 <button
                   type="submit"
-                  className="group px-5 py-2.5 rounded-xl bg-[var(--accent-blue-solid)] hover:brightness-110 text-white text-xs font-semibold tracking-wide transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                  className="group px-5 py-2.5 rounded-xl bg-[var(--accent-blue-solid)] hover:brightness-110 text-white text-sm font-semibold tracking-wide transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
                 >
                   <span>Investigate</span>
                   <ArrowRight className="w-3.5 h-3.5 omnis-magnetic-arrow" />
                 </button>
               </form>
 
-              <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-                <span className="text-[var(--text-muted)] omnis-mono uppercase tracking-wider text-[10px]">
+              <div className="flex flex-wrap items-center gap-1.5 text-[13px]">
+                <span className="text-[var(--text-muted)] omnis-mono uppercase tracking-wider text-xs">
                   Explore:
                 </span>
                 {[
@@ -335,7 +335,7 @@ export default function LandingPage() {
                   type="button"
                   onClick={() => setBuilderOpen((prev) => !prev)}
                   aria-expanded={builderOpen}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full badge-tone-blue text-[11px] font-semibold cursor-pointer hover:brightness-105 transition-all"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full badge-tone-blue text-xs sm:text-[13px] font-semibold cursor-pointer hover:brightness-105 transition-all"
                 >
                   <span>Structured Query Builder</span>
                   <ChevronDown
@@ -369,33 +369,33 @@ export default function LandingPage() {
             <div className="flex flex-wrap items-center gap-3 pt-1">
               <Link
                 href="/command"
-                className="group px-5 py-3 rounded-xl bg-[var(--accent-blue-solid)] hover:brightness-110 text-white text-xs sm:text-sm font-semibold inline-flex items-center gap-2 shadow-md transition-all"
+                className="group px-5 py-3 rounded-xl bg-[var(--accent-blue-solid)] hover:brightness-110 text-white text-sm sm:text-[15px] font-semibold inline-flex items-center gap-2 shadow-md transition-all"
               >
                 <span>Launch Intelligence Command Center</span>
                 <ArrowRight className="w-4 h-4 omnis-magnetic-arrow" />
               </Link>
               <Link
                 href="/atlas"
-                className="group px-5 py-3 rounded-xl bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-xs sm:text-sm font-semibold text-[var(--text-primary)] inline-flex items-center gap-2 transition-all"
+                className="group px-5 py-3 rounded-xl bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-sm sm:text-[15px] font-semibold text-[var(--text-primary)] inline-flex items-center gap-2 transition-all"
               >
                 <Globe2 className="w-4 h-4 tone-blue" />
                 <span>Explore 3D Global Atlas</span>
-                <span aria-hidden="true" data-diagonal="true" className="omnis-magnetic-arrow text-xs tone-blue">↗</span>
+                <span aria-hidden="true" data-diagonal="true" className="omnis-magnetic-arrow text-sm tone-blue">↗</span>
               </Link>
             </div>
 
             {/* Epistemic Provenance Strip */}
-            <div className="grid grid-cols-3 gap-4 pt-3 border-t border-[var(--border-subtle)] text-xs">
+            <div className="grid grid-cols-3 gap-4 pt-3 border-t border-[var(--border-subtle)] text-[13px]">
               <div>
-                <div className="font-bold text-base omnis-mono tone-blue">6 Modules</div>
+                <div className="font-bold text-[17px] sm:text-lg omnis-mono tone-blue">6 Modules</div>
                 <div className="text-[var(--text-secondary)]">Unified Intelligence Core</div>
               </div>
               <div>
-                <div className="font-bold text-base omnis-mono tone-verified">100% Cited</div>
+                <div className="font-bold text-[17px] sm:text-lg omnis-mono tone-verified">100% Cited</div>
                 <div className="text-[var(--text-secondary)]">World Bank, OpenAlex & UN</div>
               </div>
               <div>
-                <div className="font-bold text-base omnis-mono tone-violet">500-Path MC</div>
+                <div className="font-bold text-[17px] sm:text-lg omnis-mono tone-violet">500-Path MC</div>
                 <div className="text-[var(--text-secondary)]">Stochastic Scenario Engine</div>
               </div>
             </div>
@@ -403,7 +403,7 @@ export default function LandingPage() {
 
           {/* SECTION 2: LIVE 3D PLANETARY STAGE */}
           <div className="lg:col-span-6 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-[13px]">
               <span className="font-semibold uppercase tracking-wider text-[var(--text-secondary)] flex items-center gap-1.5 omnis-mono">
                 <Layers className="w-3.5 h-3.5 tone-blue" />
                 Live 3D Planetary Intelligence Preview
@@ -443,7 +443,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto space-y-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
             <div className="lg:col-span-4 lg:sticky lg:top-24 space-y-3">
-              <div className="text-xs font-bold uppercase tracking-widest tone-blue omnis-mono">
+              <div className="text-[13px] font-bold uppercase tracking-widest tone-blue omnis-mono">
                 01 / Architectural Vision
               </div>
               <ClipMaskHeading className="omnis-display-section font-bold text-[var(--text-primary)]">
@@ -468,16 +468,16 @@ export default function LandingPage() {
                         <div className="p-1.5 rounded-md badge-tone-blue">
                           <Icon className="w-4 h-4" />
                         </div>
-                        <span className="text-[10px] font-bold omnis-mono tone-blue">
+                        <span className="text-[11.5px] sm:text-xs font-bold omnis-mono tone-blue">
                           01.{idx + 1}
                         </span>
                       </div>
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
+                      <span className="text-[11.5px] sm:text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
                         {item.badge}
                       </span>
                     </div>
-                    <h3 className="font-bold text-sm text-[var(--text-primary)]">{item.title}</h3>
-                    <p className="text-xs text-[var(--text-secondary)] leading-relaxed">{item.desc}</p>
+                    <h3 className="font-bold text-base sm:text-[17px] text-[var(--text-primary)]">{item.title}</h3>
+                    <p className="text-[15px] sm:text-base text-[var(--text-secondary)] leading-[1.6]">{item.desc}</p>
                   </div>
                 );
               })}
@@ -493,7 +493,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto space-y-8">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             <div>
-              <div className="text-xs font-bold uppercase tracking-widest tone-blue omnis-mono">
+              <div className="text-[13px] font-bold uppercase tracking-widest tone-blue omnis-mono">
                 02 / Flagship Modules
               </div>
               <ClipMaskHeading className="omnis-display-section font-bold mt-1 text-[var(--text-primary)]">
@@ -505,7 +505,7 @@ export default function LandingPage() {
             </div>
             <Link
               href="/command"
-              className="group text-xs font-semibold tone-blue hover:underline inline-flex items-center gap-1"
+              className="group text-sm font-semibold tone-blue hover:underline inline-flex items-center gap-1"
             >
               Open Command Center <ArrowRight className="w-3.5 h-3.5 omnis-magnetic-arrow" />
             </Link>
@@ -525,22 +525,22 @@ export default function LandingPage() {
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className={`text-[11px] font-bold tracking-widest omnis-mono ${mod.accentText}`}>
+                      <span className={`text-xs font-bold tracking-widest omnis-mono ${mod.accentText}`}>
                         {mod.number}
                       </span>
                       <div className={`p-2 rounded-lg transition-transform group-hover:scale-105 ${mod.tone}`}>
                         <Icon className="w-4 h-4" />
                       </div>
                     </div>
-                    <h3 className="text-xl font-bold text-[var(--text-primary)] group-hover:text-[var(--accent-blue)] transition-colors">
+                    <h3 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] group-hover:text-[var(--accent-blue)] transition-colors">
                       {mod.title}
                     </h3>
-                    <p className="text-xs sm:text-[13px] text-[var(--text-secondary)] leading-relaxed">
+                    <p className="text-[15px] sm:text-base text-[var(--text-secondary)] leading-relaxed">
                       {mod.description}
                     </p>
                   </div>
 
-                  <div className="pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between gap-3 text-[11px] text-[var(--text-muted)] omnis-mono">
+                  <div className="pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between gap-3 text-[13px] text-[var(--text-muted)] omnis-mono">
                     <span>{mod.metrics}</span>
                     <ArrowRight className={`w-3.5 h-3.5 shrink-0 ${mod.accentText} group-hover:translate-x-1 transition-transform`} />
                   </div>
@@ -561,22 +561,22 @@ export default function LandingPage() {
                 >
                   <div className="space-y-2.5">
                     <div className="flex items-center justify-between">
-                      <span className={`text-[10.5px] font-bold tracking-widest omnis-mono ${mod.accentText}`}>
+                      <span className={`text-xs font-bold tracking-widest omnis-mono ${mod.accentText}`}>
                         {mod.number}
                       </span>
                       <div className={`p-1.5 rounded-md ${mod.tone}`}>
                         <Icon className="w-3.5 h-3.5" />
                       </div>
                     </div>
-                    <h3 className="text-base font-bold text-[var(--text-primary)] group-hover:text-[var(--accent-blue)] transition-colors">
+                    <h3 className="text-[17px] sm:text-lg font-bold text-[var(--text-primary)] group-hover:text-[var(--accent-blue)] transition-colors">
                       {mod.title}
                     </h3>
-                    <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                    <p className="text-[14.5px] sm:text-[15px] text-[var(--text-secondary)] leading-relaxed">
                       {mod.description}
                     </p>
                   </div>
 
-                  <div className="pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between gap-2 text-[10.5px] text-[var(--text-muted)] omnis-mono">
+                  <div className="pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between gap-2 text-xs text-[var(--text-muted)] omnis-mono">
                     <span>{mod.metrics}</span>
                     <ArrowRight className={`w-3.5 h-3.5 shrink-0 ${mod.accentText} group-hover:translate-x-0.5 transition-transform`} />
                   </div>
@@ -591,7 +591,7 @@ export default function LandingPage() {
       <section className="py-16 px-4 sm:px-8 border-b border-[var(--border-subtle)] bg-[var(--bg-graphite)]">
         <div className="max-w-7xl mx-auto space-y-10">
           <div className="space-y-2">
-            <div className="text-xs font-bold uppercase tracking-widest tone-blue omnis-mono">
+            <div className="text-[13px] font-bold uppercase tracking-widest tone-blue omnis-mono">
               03 / Live Interactive Demonstrations
             </div>
             <ClipMaskHeading className="omnis-display-section font-bold text-[var(--text-primary)]">
@@ -605,17 +605,17 @@ export default function LandingPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Country Intelligence Live Preview */}
-            <div className="lg:col-span-7 omnis-card p-6 space-y-5">
+            <div className="lg:col-span-7 min-w-0 omnis-card p-6 space-y-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <span className="text-[10.5px] uppercase tracking-widest tone-blue font-bold omnis-mono">
+                  <span className="text-xs uppercase tracking-widest tone-blue font-bold omnis-mono">
                     Interactive Country Intelligence Experience
                   </span>
                   <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                    <h3 className="text-xl font-bold text-[var(--text-primary)]">
+                    <h3 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)]">
                       {activeCountry.flagEmoji} {activeCountry.officialName} ({activeCountry.iso3})
                     </h3>
-                    <span className="px-2 py-0.5 rounded-md bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[10.5px] omnis-mono omnis-tabular text-[var(--text-muted)]">
+                    <span className="px-2 py-0.5 rounded-md bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-xs omnis-mono omnis-tabular text-[var(--text-muted)]">
                       {formattedCoords}
                     </span>
                   </div>
@@ -663,7 +663,7 @@ export default function LandingPage() {
                 />
               </div>
 
-              <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+              <p className="text-[15px] text-[var(--text-secondary)] leading-relaxed">
                 <strong className="text-[var(--text-primary)]">
                   Technology & Digital Infrastructure:
                 </strong>{" "}
@@ -675,7 +675,7 @@ export default function LandingPage() {
               <div className="flex flex-wrap gap-3 pt-1">
                 <Link
                   href={`/atlas?country=${activeCountry.iso3}`}
-                  className="group px-4 py-2 rounded-xl bg-[var(--accent-blue-solid)] hover:brightness-110 text-white text-xs font-semibold inline-flex items-center gap-1.5 shadow-sm transition-all"
+                  className="group px-4 py-2 rounded-xl bg-[var(--accent-blue-solid)] hover:brightness-110 text-white text-sm font-semibold inline-flex items-center gap-1.5 shadow-sm transition-all"
                 >
                   Open Full {activeCountry.name} Intelligence Dossier{" "}
                   <ArrowRight className="w-3.5 h-3.5 omnis-magnetic-arrow" />
@@ -684,7 +684,7 @@ export default function LandingPage() {
                   href={`/intelligence?left=${activeCountry.iso3}&right=${
                     activeCountry.iso3 === "IND" ? "CHN" : "IND"
                   }`}
-                  className="px-4 py-2 rounded-xl bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-xs font-semibold text-[var(--text-primary)] transition-all"
+                  className="px-4 py-2 rounded-xl bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-sm font-semibold text-[var(--text-primary)] transition-all"
                 >
                   Compare {activeCountry.name} vs {activeCountry.iso3 === "IND" ? "China" : "India"}
                 </Link>
@@ -692,17 +692,17 @@ export default function LandingPage() {
             </div>
 
             {/* Interactive What-If Simulation & Knowledge Graph Demo */}
-            <div className="lg:col-span-5 flex flex-col gap-6">
+            <div className="lg:col-span-5 min-w-0 flex flex-col gap-6">
               <div className="omnis-card p-6 space-y-4">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10.5px] uppercase tracking-widest tone-violet font-bold omnis-mono">
+                  <span className="text-xs uppercase tracking-widest tone-violet font-bold omnis-mono">
                     Interactive What-If Simulation Demo
                   </span>
-                  <span className="text-[11px] omnis-mono text-[var(--text-muted)] truncate">
+                  <span className="text-xs omnis-mono text-[var(--text-muted)] truncate">
                     {activeCountry.name} + Solow-Swan MDSE-v2.4
                   </span>
                 </div>
-                <h3 className="text-base font-bold text-[var(--text-primary)]">
+                <h3 className="text-[17px] sm:text-lg font-bold text-[var(--text-primary)]">
                   Crude Oil Price Shock Impact on 2040 {activeCountry.iso3} GDP Index
                 </h3>
 
@@ -727,15 +727,15 @@ export default function LandingPage() {
                       stroke="var(--chart-blue)"
                       strokeWidth="2.5"
                     />
-                    <text x="16" y="12" fill="var(--text-muted)" fontSize="9" className="omnis-mono">
+                    <text x="16" y="13" fill="var(--text-muted)" fontSize="11" className="omnis-mono">
                       2025 BASE (100)
                     </text>
                     <text
                       x={oilShockPreviewSvg.w - 16}
-                      y="12"
+                      y="13"
                       textAnchor="end"
                       fill="var(--chart-blue)"
-                      fontSize="9"
+                      fontSize="11"
                       fontWeight="700"
                       className="omnis-mono"
                     >
@@ -759,20 +759,20 @@ export default function LandingPage() {
                   />
                   <div className="grid grid-cols-3 gap-2 text-center">
                     <div className="omnis-surface-slate p-2.5">
-                      <div className="text-[10px] text-[var(--text-muted)]">Baseline 2040</div>
-                      <div className="text-sm font-bold omnis-mono omnis-tabular text-[var(--text-primary)]">
+                      <div className="text-xs text-[var(--text-muted)]">Baseline 2040</div>
+                      <div className="text-base font-bold omnis-mono omnis-tabular text-[var(--text-primary)]">
                         {oilShockPreviewSvg.endBaseline.toFixed(1)}
                       </div>
                     </div>
                     <div className="omnis-surface-slate p-2.5">
-                      <div className="text-[10px] text-[var(--text-muted)]">Modified P50</div>
-                      <div className="text-sm font-bold omnis-mono omnis-tabular tone-blue">
+                      <div className="text-xs text-[var(--text-muted)]">Modified P50</div>
+                      <div className="text-base font-bold omnis-mono omnis-tabular tone-blue">
                         {oilShockPreviewSvg.endShocked.toFixed(1)}
                       </div>
                     </div>
                     <div className="omnis-surface-slate p-2.5">
-                      <div className="text-[10px] text-[var(--text-muted)]">P10–P90 Band</div>
-                      <div className="text-sm font-bold omnis-mono omnis-tabular tone-violet">
+                      <div className="text-xs text-[var(--text-muted)]">P10–P90 Band</div>
+                      <div className="text-base font-bold omnis-mono omnis-tabular tone-violet">
                         ±{oilShockPreviewSvg.bandPct}%
                       </div>
                     </div>
@@ -780,7 +780,7 @@ export default function LandingPage() {
                 </div>
                 <Link
                   href={`/simulations?category=economics&oilShock=${simOilShock}&country=${activeCountry.iso3}`}
-                  className="omnis-magnetic-arrow text-xs font-semibold tone-blue hover:underline inline-flex items-center gap-1"
+                  className="omnis-magnetic-arrow text-[13px] font-semibold tone-blue hover:underline inline-flex items-center gap-1"
                 >
                   <span>Open Full 5-Domain Simulation Workspace</span>
                   <ArrowRight className="omnis-arrow-glyph w-3.5 h-3.5" />
@@ -790,14 +790,14 @@ export default function LandingPage() {
               {/* Card 3: Live 1-Hop Causal Graph & Claim Inspector */}
               <div className="omnis-card p-6 space-y-3.5">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10.5px] uppercase tracking-widest tone-verified font-bold omnis-mono">
+                  <span className="text-xs uppercase tracking-widest tone-verified font-bold omnis-mono">
                     Live 1-Hop Causal Graph & Claim Inspector
                   </span>
-                  <span className="text-[10px] omnis-mono px-1.5 py-0.5 rounded badge-tone-verified font-semibold">
+                  <span className="text-[11px] omnis-mono px-1.5 py-0.5 rounded badge-tone-verified font-semibold">
                     VERIFIED EVIDENCE
                   </span>
                 </div>
-                <h3 className="text-base font-bold text-[var(--text-primary)]">
+                <h3 className="text-[17px] sm:text-lg font-bold text-[var(--text-primary)]">
                   {activeCountry.name} Causal Shock & Clean Grid Pathways
                 </h3>
 
@@ -810,8 +810,9 @@ export default function LandingPage() {
                   const nodes = [
                     {
                       id: "core",
-                      x: 170,
-                      y: 52,
+                      x: 190,
+                      y: 54,
+                      rectW: 132,
                       short: `${activeCountry.iso3} GDP (+${activeCountry.gdpGrowthPct}%)`,
                       title: `${activeCountry.officialName} Real Output Core`,
                       claim: `Nominal GDP of $${activeCountry.gdpUsdBn.toLocaleString()}B anchored by ${
@@ -822,8 +823,9 @@ export default function LandingPage() {
                     },
                     {
                       id: "fossil",
-                      x: 56,
-                      y: 22,
+                      x: 66,
+                      y: 24,
+                      rectW: 114,
                       short: `Fossil (${fossilPct}%)`,
                       title: "Hydrocarbon Import & Baseload Exposure",
                       claim: `${fossilPct}% non-renewable electricity share creates direct current-account sensitivity to a ${
@@ -834,8 +836,9 @@ export default function LandingPage() {
                     },
                     {
                       id: "cpi",
-                      x: 284,
-                      y: 22,
+                      x: 314,
+                      y: 24,
+                      rectW: 114,
                       short: `CPI (${inflationImpulse >= 0 ? "+" : ""}${inflationImpulse}%)`,
                       title: "Pass-Through Inflationary Channel",
                       claim: `Simulated energy impulse shifts headline CPI expectations by ${
@@ -846,8 +849,9 @@ export default function LandingPage() {
                     },
                     {
                       id: "clean",
-                      x: 170,
-                      y: 96,
+                      x: 190,
+                      y: 102,
+                      rectW: 136,
                       short: `Clean Grid (${activeCountry.energyProfile.renewableSharePct}%)`,
                       title: "Renewable Decarbonisation Buffer",
                       claim: `${activeCountry.energyProfile.renewableSharePct}% renewable share dampens external fossil volatility while boosting long-run capital productivity.`,
@@ -859,10 +863,10 @@ export default function LandingPage() {
                   return (
                     <>
                       <div className="rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] p-2">
-                        <svg viewBox="0 0 340 118" className="w-full h-28" aria-label="Interactive 1-Hop Causal Graph">
-                          <line x1={56} y1={22} x2={170} y2={52} stroke="var(--chart-amber)" strokeWidth="1.6" strokeOpacity={0.75} />
-                          <line x1={170} y1={52} x2={284} y2={22} stroke="var(--chart-violet)" strokeWidth="1.6" strokeDasharray="3,2" />
-                          <line x1={170} y1={96} x2={170} y2={52} stroke="var(--chart-emerald)" strokeWidth="1.8" />
+                        <svg viewBox="0 0 380 124" className="w-full h-28" aria-label="Interactive 1-Hop Causal Graph">
+                          <line x1={66} y1={24} x2={190} y2={54} stroke="var(--chart-amber)" strokeWidth="1.6" strokeOpacity={0.75} />
+                          <line x1={190} y1={54} x2={314} y2={24} stroke="var(--chart-violet)" strokeWidth="1.6" strokeDasharray="3,2" />
+                          <line x1={190} y1={102} x2={190} y2={54} stroke="var(--chart-emerald)" strokeWidth="1.8" />
                           {nodes.map((n, idx) => {
                             const selected = idx === activeGraphNodeIdx;
                             return (
@@ -872,10 +876,10 @@ export default function LandingPage() {
                                 onClick={() => setActiveGraphNodeIdx(idx)}
                               >
                                 <rect
-                                  x={n.x - 50}
-                                  y={n.y - 12}
-                                  width={100}
-                                  height={24}
+                                  x={n.x - n.rectW / 2}
+                                  y={n.y - 13}
+                                  width={n.rectW}
+                                  height={26}
                                   rx={6}
                                   fill={selected ? "var(--bg-graphite)" : "var(--bg-elevated)"}
                                   stroke={selected ? n.tone : "var(--border-subtle)"}
@@ -883,9 +887,9 @@ export default function LandingPage() {
                                 />
                                 <text
                                   x={n.x}
-                                  y={n.y + 3.5}
+                                  y={n.y + 4}
                                   textAnchor="middle"
-                                  fontSize="9"
+                                  fontSize="11"
                                   fontWeight={selected ? "700" : "600"}
                                   fill="var(--text-primary)"
                                   className="omnis-mono"
@@ -897,12 +901,12 @@ export default function LandingPage() {
                           })}
                         </svg>
                       </div>
-                      <div className="omnis-surface-slate p-3 space-y-1 text-xs">
+                      <div className="omnis-surface-slate p-3 space-y-1 text-[13px]">
                         <div className="font-bold text-[var(--text-primary)]">{activeNode.title}</div>
-                        <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+                        <p className="text-[13.5px] text-[var(--text-secondary)] leading-relaxed">
                           {activeNode.claim}
                         </p>
-                        <div className="text-[10px] omnis-mono text-[var(--text-muted)]">
+                        <div className="text-xs omnis-mono text-[var(--text-muted)]">
                           Provenance: {activeNode.source}
                         </div>
                       </div>
@@ -915,14 +919,14 @@ export default function LandingPage() {
                     href={`/research?q=${encodeURIComponent(
                       `Explain ${activeCountry.name}'s economic and energy trajectory`
                     )}`}
-                    className="omnis-magnetic-arrow px-3.5 py-2 rounded-xl badge-tone-verified hover:brightness-105 text-xs font-semibold inline-flex items-center gap-1.5 transition-all"
+                    className="omnis-magnetic-arrow px-3.5 py-2 rounded-xl badge-tone-verified hover:brightness-105 text-[13px] font-semibold inline-flex items-center gap-1.5 transition-all"
                   >
                     <span>Launch Deep Research</span>
                     <ArrowRight className="omnis-arrow-glyph w-3 h-3" />
                   </Link>
                   <Link
                     href={`/knowledge-graph?topic=${encodeURIComponent(activeCountry.name)}`}
-                    className="omnis-magnetic-arrow px-3.5 py-2 rounded-xl badge-tone-blue hover:brightness-105 text-xs font-semibold inline-flex items-center gap-1.5 transition-all"
+                    className="omnis-magnetic-arrow px-3.5 py-2 rounded-xl badge-tone-blue hover:brightness-105 text-[13px] font-semibold inline-flex items-center gap-1.5 transition-all"
                   >
                     <span>Launch Knowledge Graph</span>
                     <ArrowRight className="omnis-arrow-glyph w-3 h-3" />
@@ -938,14 +942,14 @@ export default function LandingPage() {
       <section className="py-12 px-4 sm:px-8 border-b border-[var(--border-subtle)]">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 border-y border-[var(--border-subtle)]">
           <div className="py-8 lg:pr-10 border-b lg:border-b-0 lg:border-r border-[var(--border-subtle)] space-y-4">
-            <div className="flex items-center gap-2 tone-blue text-xs font-bold uppercase tracking-wider omnis-mono">
+            <div className="flex items-center gap-2 tone-blue text-[13px] font-bold uppercase tracking-wider omnis-mono">
               <Terminal className="w-4 h-4" />
               <span>04 / Technology & Polyglot Architecture</span>
             </div>
-            <ClipMaskHeading as="h3" className="text-xl font-bold text-[var(--text-primary)]">
+            <ClipMaskHeading as="h3" className="text-xl sm:text-2xl font-bold text-[var(--text-primary)]">
               Engineered for Precision, Speed & Reproducibility
             </ClipMaskHeading>
-            <ul className="space-y-3 text-xs text-[var(--text-secondary)]">
+            <ul className="space-y-3 text-[15px] leading-relaxed text-[var(--text-secondary)]">
               <li className="flex items-start gap-2.5">
                 <CheckCircle2 className="w-4 h-4 tone-verified shrink-0 mt-0.5" />
                 <span>
@@ -978,14 +982,14 @@ export default function LandingPage() {
           </div>
 
           <div className="py-8 lg:pl-10 space-y-4">
-            <div className="flex items-center gap-2 tone-verified text-xs font-bold uppercase tracking-wider omnis-mono">
+            <div className="flex items-center gap-2 tone-verified text-[13px] font-bold uppercase tracking-wider omnis-mono">
               <ShieldCheck className="w-4 h-4" />
               <span>05 / Trust, Provenance & Epistemic Integrity</span>
             </div>
-            <ClipMaskHeading as="h3" className="text-xl font-bold text-[var(--text-primary)]">
+            <ClipMaskHeading as="h3" className="text-xl sm:text-2xl font-bold text-[var(--text-primary)]">
               Non-Negotiable Separation of Verified Data and Hypotheses
             </ClipMaskHeading>
-            <ul className="space-y-3 text-xs text-[var(--text-secondary)]">
+            <ul className="space-y-3 text-[15px] leading-relaxed text-[var(--text-secondary)]">
               <li className="flex items-start gap-2.5">
                 <Database className="w-4 h-4 tone-blue shrink-0 mt-0.5" />
                 <span>
@@ -1021,27 +1025,27 @@ export default function LandingPage() {
       {/* SECTION 11: FINAL CALL TO ACTION */}
       <section className="py-16 px-4 sm:px-8 border-b border-[var(--border-subtle)] bg-gradient-to-b from-[var(--bg-obsidian)] to-[var(--bg-graphite)] text-center">
         <div className="max-w-3xl mx-auto space-y-5">
-          <ClipMaskHeading className="omnis-display-section text-3xl sm:text-4xl font-extrabold text-[var(--text-primary)]">
+          <ClipMaskHeading className="omnis-display-section font-extrabold text-[var(--text-primary)]">
             Ready to Explore an Entirely New Way of{" "}
             <span className="omnis-editorial font-normal text-[1.12em]">
               Understanding the World?
             </span>
           </ClipMaskHeading>
-          <p className="text-sm sm:text-base text-[var(--text-secondary)] leading-relaxed">
+          <p className="text-base sm:text-[18px] text-[var(--text-secondary)] leading-relaxed">
             Enter the OMNIS Intelligence Command Center to investigate sovereign economies, expand
             infinite knowledge graphs, run Monte Carlo simulations, and organize your research.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <Link
               href="/command"
-              className="omnis-magnetic-arrow px-6 py-3 rounded-xl bg-[var(--accent-blue-solid)] hover:brightness-110 text-white text-sm font-semibold inline-flex items-center gap-2 shadow-md transition-all"
+              className="omnis-magnetic-arrow px-6 py-3 rounded-xl bg-[var(--accent-blue-solid)] hover:brightness-110 text-white text-[15px] font-semibold inline-flex items-center gap-2 shadow-md transition-all"
             >
               <span>Enter Intelligence Command Center</span>
               <ArrowRight className="omnis-arrow-glyph w-4 h-4" />
             </Link>
             <Link
               href="/explore"
-              className="omnis-magnetic-arrow px-6 py-3 rounded-xl bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-sm font-semibold text-[var(--text-primary)] inline-flex items-center gap-2 transition-all"
+              className="omnis-magnetic-arrow px-6 py-3 rounded-xl bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[15px] font-semibold text-[var(--text-primary)] inline-flex items-center gap-2 transition-all"
             >
               <span>Open Universal Search Engine</span>
               <ArrowRight className="omnis-arrow-glyph w-3.5 h-3.5 opacity-75" />
@@ -1051,7 +1055,7 @@ export default function LandingPage() {
       </section>
 
       {/* SECTION 12: PROFESSIONAL FOOTER */}
-      <footer className="py-12 px-4 sm:px-8 bg-[var(--bg-obsidian)] text-xs text-[var(--text-secondary)]">
+      <footer className="py-12 px-4 sm:px-8 bg-[var(--bg-obsidian)] text-[13.5px] sm:text-sm text-[var(--text-secondary)]">
         <div className="max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-8 pb-8 border-b border-[var(--border-subtle)]">
           <div className="col-span-2 sm:col-span-1 space-y-3">
             <OmnisWordmark compact />
@@ -1062,7 +1066,7 @@ export default function LandingPage() {
           </div>
 
           <div className="space-y-2.5">
-            <div className="font-bold text-[var(--text-primary)] uppercase tracking-wider text-[11px] omnis-mono">
+            <div className="font-bold text-[var(--text-primary)] uppercase tracking-wider text-xs omnis-mono">
               Flagship Modules
             </div>
             <ul className="space-y-1.5">
@@ -1076,7 +1080,7 @@ export default function LandingPage() {
           </div>
 
           <div className="space-y-2.5">
-            <div className="font-bold text-[var(--text-primary)] uppercase tracking-wider text-[11px] omnis-mono">
+            <div className="font-bold text-[var(--text-primary)] uppercase tracking-wider text-xs omnis-mono">
               Platform & Workspace
             </div>
             <ul className="space-y-1.5">
@@ -1089,7 +1093,7 @@ export default function LandingPage() {
           </div>
 
           <div className="space-y-2.5">
-            <div className="font-bold text-[var(--text-primary)] uppercase tracking-wider text-[11px] omnis-mono">
+            <div className="font-bold text-[var(--text-primary)] uppercase tracking-wider text-xs omnis-mono">
               Verified Data Sources
             </div>
             <ul className="space-y-1.5 text-[var(--text-muted)]">
@@ -1109,7 +1113,7 @@ export default function LandingPage() {
               type="button"
               onClick={toggleMotionPaused}
               aria-pressed={motionPaused}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[11px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors cursor-pointer omnis-mono"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors cursor-pointer omnis-mono"
             >
               {motionPaused ? (
                 <Play className="w-3 h-3 tone-blue" />
@@ -1118,7 +1122,7 @@ export default function LandingPage() {
               )}
               <span>{motionPaused ? "Resume motion" : "Pause motion"}</span>
             </button>
-            <span className="omnis-mono text-[11px]">
+            <span className="omnis-mono text-xs">
               Epistemic Integrity Verified • Dual-Theme Contrast Engineered
             </span>
           </div>

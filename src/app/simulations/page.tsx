@@ -212,7 +212,7 @@ function SimulationsContent() {
         }
       >
         {(parsedOilShock !== null || paramCountry || promptQuery) ? (
-          <div className="px-3 py-2 rounded-xl badge-tone-blue text-xs flex flex-wrap items-center justify-between gap-2">
+          <div className="px-3 py-2 rounded-xl badge-tone-blue text-[13px] flex flex-wrap items-center justify-between gap-2">
             <span>
               Anchored Baseline:{" "}
               <strong className="omnis-mono">
@@ -233,7 +233,7 @@ function SimulationsContent() {
             <button
               type="button"
               onClick={handleReset}
-              className="text-[11px] font-semibold underline cursor-pointer"
+              className="text-xs font-semibold underline cursor-pointer"
             >
               Revert to Default Baseline
             </button>
@@ -246,13 +246,13 @@ function SimulationsContent() {
         {/* Left Parameter Controls */}
         <div className="lg:col-span-4 omnis-card p-5 space-y-5">
           <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
-            <h2 className="text-sm font-bold text-[var(--text-primary)]">
+            <h2 className="text-base font-bold text-[var(--text-primary)]">
               Scenario Variables &amp; Baseline
             </h2>
             <button
               type="button"
               onClick={handleReset}
-              className="inline-flex items-center gap-1 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+              className="inline-flex items-center gap-1 text-[13px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               Reset Baseline
@@ -260,7 +260,7 @@ function SimulationsContent() {
           </div>
 
           <div className="space-y-1.5">
-            <div className="text-[10.5px] font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
+            <div className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
               Country Baseline Calibration
             </div>
             <OmnisSelect
@@ -326,8 +326,8 @@ function SimulationsContent() {
                 onReset={() => setHorizonYears(15)}
               />
 
-              <div className="flex items-center justify-between px-3.5 py-2.5 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-xs">
-                <span className="text-[11px] text-[var(--text-secondary)]">
+              <div className="flex items-center justify-between px-3.5 py-2.5 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[13.5px]">
+                <span className="text-[13px] text-[var(--text-secondary)]">
                   Monte Carlo Seed (500 paths):
                 </span>
                 <input
@@ -335,7 +335,7 @@ function SimulationsContent() {
                   value={seed}
                   aria-label="Monte Carlo Seed"
                   onChange={(e) => setSeed(Number(e.target.value) || 42)}
-                  className="w-20 px-2.5 py-1 rounded-md bg-[var(--bg-graphite)] border border-[var(--border-subtle)] text-xs font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]"
+                  className="w-20 px-2.5 py-1 rounded-md bg-[var(--bg-graphite)] border border-[var(--border-subtle)] text-base sm:text-sm font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]"
                 />
               </div>
             </div>
@@ -377,7 +377,7 @@ function SimulationsContent() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 tone-blue" />
-                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                <h3 className="text-base font-bold text-[var(--text-primary)]">
                   Historical Observations (2023–2025) vs Baseline & Stochastic Projection
                 </h3>
               </div>
@@ -390,7 +390,7 @@ function SimulationsContent() {
 
             {/* Interactive Parameter Elasticity Strip */}
             <div className="pt-3 border-t border-[var(--border-subtle)] space-y-2.5">
-              <div className="flex items-center justify-between text-[11px] omnis-mono">
+              <div className="flex items-center justify-between text-xs sm:text-[13px] omnis-mono">
                 <span className="font-bold uppercase tracking-wider tone-cyan">
                   Parameter Sensitivity / Elasticity Strip
                 </span>
@@ -403,12 +403,12 @@ function SimulationsContent() {
                   const pctWidth = Math.max(8, (item.elasticityScore / maxElasticity) * 100);
                   const specParam = activeSpec.parameters.find((p) => p.key === item.parameterKey);
                   return (
-                    <div key={item.parameterKey} className="space-y-1 text-xs">
+                    <div key={item.parameterKey} className="space-y-1 text-[13.5px] sm:text-sm">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="font-medium text-[var(--text-primary)] truncate">
                           {item.label}
                         </span>
-                        <div className="flex items-center gap-2 omnis-mono omnis-tabular text-[10.5px]">
+                        <div className="flex items-center gap-2 omnis-mono omnis-tabular text-xs">
                           <span className="text-[var(--text-muted)]">
                             Low {item.lowOutcomeDelta >= 0 ? "+" : ""}
                             {item.lowOutcomeDelta} / High {item.highOutcomeDelta >= 0 ? "+" : ""}
@@ -423,7 +423,7 @@ function SimulationsContent() {
                                   [specParam.key]: specParam.max,
                                 }))
                               }
-                              className="px-1.5 py-0.5 rounded border border-[var(--border-subtle)] bg-[var(--bg-slate)] hover:border-[var(--accent-blue)] text-[10px] tone-blue cursor-pointer"
+                              className="px-2 py-0.5 rounded border border-[var(--border-subtle)] bg-[var(--bg-slate)] hover:border-[var(--accent-blue)] text-[11.5px] sm:text-xs tone-blue cursor-pointer"
                             >
                               Stress Max
                             </button>
@@ -446,7 +446,7 @@ function SimulationsContent() {
               </div>
             </div>
 
-            <p className="text-xs text-[var(--text-secondary)] leading-relaxed bg-[var(--bg-slate)] p-3.5 rounded-xl border border-[var(--border-subtle)]">
+            <p className="text-[14.5px] sm:text-[15px] text-[var(--text-secondary)] leading-relaxed bg-[var(--bg-slate)] p-3.5 rounded-xl border border-[var(--border-subtle)]">
               <strong className="text-[var(--text-primary)]">Analytical Interpretation:</strong>{" "}
               {simulationOutput.analyticalExplanation}
             </p>
@@ -455,14 +455,14 @@ function SimulationsContent() {
           {/* Tornado Sensitivity Analysis & Model Governance */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="omnis-card p-5 space-y-4">
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider tone-violet omnis-mono">
+              <div className="flex items-center gap-2 text-[13px] font-bold uppercase tracking-wider tone-violet omnis-mono">
                 <BarChart3 className="w-4 h-4" />
                 <span>Tornado Parameter Sensitivity Analysis</span>
               </div>
               <TornadoSensitivityChart sensitivity={simulationOutput.sensitivity} />
             </div>
 
-            <div className="omnis-card p-5 space-y-3 text-xs">
+            <div className="omnis-card p-5 space-y-3 text-[13.5px] sm:text-sm">
               <div className="flex items-center gap-2 font-bold uppercase tracking-wider tone-warning omnis-mono">
                 <AlertCircle className="w-4 h-4" />
                 <span>Model Assumptions & Epistemic Limitations</span>

@@ -319,7 +319,7 @@ function IntelligenceCompareContent() {
           />
 
           {/* Preset Quick Comparisons */}
-          <div className="flex flex-wrap gap-1.5 lg:ml-auto text-xs">
+          <div className="flex flex-wrap gap-1.5 lg:ml-auto text-[13px]">
             {[
               { l: "IND", r: "CHN", label: "India vs China" },
               { l: "IND", r: "USA", label: "India vs USA" },
@@ -346,18 +346,18 @@ function IntelligenceCompareContent() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-7 omnis-card p-6 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-bold text-[var(--text-primary)]">
+            <h2 className="text-[15px] sm:text-base font-bold text-[var(--text-primary)]">
               Side-by-Side Indicator & Relative Delta Matrix
             </h2>
-            <span className="text-[11px] text-[var(--text-muted)] omnis-mono">
+            <span className="text-xs text-[var(--text-muted)] omnis-mono">
               Source: World Bank WDI & IMF 2026
             </span>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-[13.5px] sm:text-sm">
               <thead>
-                <tr className="border-b border-[var(--border-subtle)] text-[var(--text-muted)]">
+                <tr className="border-b border-[var(--border-subtle)] text-xs text-[var(--text-muted)]">
                   <th className="py-2.5 pr-3">Metric / Indicator</th>
                   <th className="py-2.5 pr-3 tone-blue omnis-mono">
                     {leftCountry.flagEmoji} {leftCountry.name}
@@ -408,10 +408,10 @@ function IntelligenceCompareContent() {
         {/* Interactive 6-Axis Normalised Radar Chart */}
         <div className="lg:col-span-5 omnis-card p-6 flex flex-col justify-between space-y-4">
           <div>
-            <h2 className="text-sm font-bold text-[var(--text-primary)]">
+            <h2 className="text-[15px] sm:text-base font-bold text-[var(--text-primary)]">
               6-Dimension Normalized Radar Profile
             </h2>
-            <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+            <p className="text-[13.5px] sm:text-sm text-[var(--text-secondary)] mt-1">
               Hover axis vertices to inspect raw values scaled transparently against the global frontier.
             </p>
           </div>
@@ -422,7 +422,7 @@ function IntelligenceCompareContent() {
 
       {/* Technology & Industry Comparable Entities (De-boxed 2x2 Architectural Grid) */}
       <div className="omnis-card p-6 space-y-4">
-        <h2 className="text-sm font-bold flex items-center gap-2 text-[var(--text-primary)]">
+        <h2 className="text-[15px] sm:text-base font-bold flex items-center gap-2 text-[var(--text-primary)]">
           <TrendingUp className="w-4 h-4 tone-verified" />
           Cross-Sector Technology & Industrial Benchmark Matrix
         </h2>
@@ -430,23 +430,23 @@ function IntelligenceCompareContent() {
           {COMPARABLE_ENTITIES.map((ent, idx) => (
             <div
               key={ent.id}
-              className={`p-5 space-y-2.5 text-xs ${
+              className={`p-5 space-y-2.5 text-sm ${
                 idx < COMPARABLE_ENTITIES.length - 1 ? "border-b border-[var(--border-subtle)]" : ""
               } ${idx % 2 === 0 ? "md:border-r md:border-[var(--border-subtle)]" : ""}`}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md badge-tone-blue omnis-mono">
+                <span className="text-[11.5px] font-bold uppercase px-2 py-0.5 rounded-md badge-tone-blue omnis-mono">
                   {ent.category}
                 </span>
-                <span className="omnis-mono omnis-tabular text-[11px] tone-verified font-semibold">
+                <span className="omnis-mono omnis-tabular text-xs tone-verified font-semibold">
                   Velocity: {ent.metrics.growthVelocity}/100
                 </span>
               </div>
-              <h3 className="font-bold text-sm text-[var(--text-primary)]">{ent.name}</h3>
+              <h3 className="font-bold text-base sm:text-[17px] text-[var(--text-primary)]">{ent.name}</h3>
               <p className="text-[var(--text-secondary)] leading-relaxed">{ent.subtitle}</p>
               <div className="pt-2 border-t border-[var(--border-subtle)] divide-y divide-[var(--border-subtle)]">
                 {Object.entries(ent.keyAttributes).map(([k, v]) => (
-                  <div key={k} className="flex justify-between gap-2 py-1 text-[11px]">
+                  <div key={k} className="flex justify-between gap-2 py-1.5 text-[13px]">
                     <span className="text-[var(--text-muted)]">{k}</span>
                     <span className="font-semibold omnis-tabular text-[var(--text-primary)] text-right">
                       {v}
@@ -454,7 +454,7 @@ function IntelligenceCompareContent() {
                   </div>
                 ))}
               </div>
-              <div className="text-[10px] text-[var(--text-muted)] pt-1">Source: {ent.source}</div>
+              <div className="text-xs text-[var(--text-muted)] pt-1">Source: {ent.source}</div>
             </div>
           ))}
         </div>
@@ -463,11 +463,11 @@ function IntelligenceCompareContent() {
       {/* Personalised Intelligence Feed (Explicitly Followed Topics Only) */}
       <div className="omnis-card p-6 space-y-4">
         <div>
-          <h2 className="text-base font-bold flex items-center gap-2 text-[var(--text-primary)]">
+          <h2 className="text-base sm:text-lg font-bold flex items-center gap-2 text-[var(--text-primary)]">
             <Sparkles className="w-4 h-4 tone-blue" />
             Personalised Intelligence Feed (Explicitly Followed Topics)
           </h2>
-          <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+          <p className="text-[13.5px] sm:text-sm text-[var(--text-secondary)] mt-1">
             Zero opaque algorithmic profiling. Toggle topics below to curate your verified feed.
           </p>
         </div>
@@ -480,7 +480,7 @@ function IntelligenceCompareContent() {
                 key={topic}
                 type="button"
                 onClick={() => toggleFollowedTopic(topic)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold inline-flex items-center gap-1.5 border transition-colors cursor-pointer ${
+                className={`px-3 py-1.5 rounded-full text-[13px] font-semibold inline-flex items-center gap-1.5 border transition-colors cursor-pointer ${
                   active
                     ? "badge-tone-blue"
                     : "bg-[var(--bg-slate)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
@@ -509,12 +509,12 @@ function IntelligenceCompareContent() {
             return (
               <div
                 key={topic}
-                className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[13.5px] sm:text-sm"
               >
                 <div className="space-y-1.5 min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2 text-[10px] omnis-mono font-semibold">
+                  <div className="flex flex-wrap items-center gap-2 text-xs omnis-mono font-semibold">
                     <span
-                      className={`px-1.5 py-0.5 rounded uppercase ${
+                      className={`px-2 py-0.5 rounded uppercase ${
                         isLive ? "badge-tone-verified" : "badge-tone-cyan"
                       }`}
                     >
@@ -523,17 +523,17 @@ function IntelligenceCompareContent() {
                     <span className="tone-blue uppercase tracking-wider">{topic}</span>
                     <span className="text-[var(--text-muted)]">• {dateBadge}</span>
                   </div>
-                  <h3 className="font-bold text-sm text-[var(--text-primary)] leading-snug">
+                  <h3 className="font-bold text-base sm:text-[17px] text-[var(--text-primary)] leading-snug">
                     {title}
                   </h3>
                   <p className="text-[var(--text-secondary)] leading-relaxed line-clamp-2 omnis-prose">
                     {summary}
                   </p>
-                  <div className="text-[10px] text-[var(--text-muted)]">
+                  <div className="text-xs text-[var(--text-muted)]">
                     Source: {sourceText}
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2.5 shrink-0">
                   <button
                     type="button"
                     onClick={() => {
@@ -547,14 +547,14 @@ function IntelligenceCompareContent() {
                       });
                       setPinnedTopics((p) => ({ ...p, [topic]: true }));
                     }}
-                    className="px-2.5 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] hover:border-[var(--border-strong)] text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer"
+                    className="px-2.5 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] hover:border-[var(--border-strong)] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Pin className="w-3 h-3 tone-blue" />
+                    <Pin className="w-3.5 h-3.5 tone-blue" />
                     <span>{isPinned ? "Pinned" : "Pin to Workspace"}</span>
                   </button>
                   <Link
                     href={`/research?q=${encodeURIComponent(topic)}`}
-                    className="omnis-magnetic-arrow tone-blue hover:underline font-semibold inline-flex items-center gap-1"
+                    className="omnis-magnetic-arrow text-[13.5px] tone-blue hover:underline font-semibold inline-flex items-center gap-1"
                   >
                     <span>Investigate</span>
                     <ArrowRight className="omnis-arrow-glyph w-3.5 h-3.5" />

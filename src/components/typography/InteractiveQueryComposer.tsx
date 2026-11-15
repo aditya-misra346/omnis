@@ -97,8 +97,8 @@ export function InteractiveQueryComposer({
   return (
     <div className="space-y-2.5">
       {showPresetStrip && (
-        <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-          <span className="text-[var(--text-muted)] omnis-mono uppercase tracking-wider text-[10px]">
+        <div className="flex flex-wrap items-center gap-1.5 text-[13px]">
+          <span className="text-[var(--text-muted)] omnis-mono uppercase tracking-wider text-xs">
             Explore:
           </span>
           {QUICK_PRESETS.map((chip) => (
@@ -116,7 +116,7 @@ export function InteractiveQueryComposer({
 
       {/* Modular Research Query Composer */}
       <div className="omnis-surface-slate p-3 space-y-2.5">
-        <div className="flex flex-wrap items-center justify-between gap-2 text-[10.5px] omnis-mono">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs omnis-mono">
           <span className="inline-flex items-center gap-1.5 font-semibold uppercase tracking-wider tone-blue">
             <Sparkles className="w-3 h-3" />
             Research Query Composer
@@ -135,7 +135,7 @@ export function InteractiveQueryComposer({
                 type="button"
                 onClick={() => toggleAction(verb)}
                 aria-pressed={active}
-                className={`px-2 py-0.5 rounded-md text-[11px] font-semibold transition-all cursor-pointer border ${
+                className={`px-2 py-0.5 rounded-md text-[13px] font-semibold transition-all cursor-pointer border ${
                   active
                     ? "bg-[var(--accent-blue-solid)] text-white border-transparent shadow-2xs"
                     : "bg-[var(--bg-graphite)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]"
@@ -146,7 +146,7 @@ export function InteractiveQueryComposer({
             );
           })}
 
-          <span aria-hidden="true" className="text-[var(--text-muted)] omnis-mono text-[10px] px-0.5">
+          <span aria-hidden="true" className="text-[var(--text-muted)] omnis-mono text-xs px-0.5">
             /
           </span>
 
@@ -158,7 +158,7 @@ export function InteractiveQueryComposer({
                 type="button"
                 onClick={() => toggleTopic(topic)}
                 aria-pressed={active}
-                className={`px-2 py-0.5 rounded-md text-[11px] font-medium transition-all cursor-pointer border ${
+                className={`px-2 py-0.5 rounded-md text-[13px] font-medium transition-all cursor-pointer border ${
                   active
                     ? "badge-tone-violet font-semibold"
                     : "bg-[var(--bg-graphite)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]"
@@ -179,15 +179,15 @@ export function InteractiveQueryComposer({
                   type="button"
                   onClick={() => removeToken(tok)}
                   title={`Remove "${tok.label}"`}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--bg-graphite)] border border-[var(--border-strong)] text-[11px] text-[var(--text-primary)] hover:opacity-80 cursor-pointer"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--bg-graphite)] border border-[var(--border-strong)] text-[13px] text-[var(--text-primary)] hover:opacity-80 cursor-pointer"
                 >
-                  <span className="omnis-editorial text-[14px] leading-none tone-blue">
+                  <span className="omnis-editorial text-[15px] leading-none tone-blue">
                     {tok.label}
                   </span>
                   <X className="w-3 h-3 text-[var(--text-muted)]" />
                 </button>
               ))}
-              <span className="omnis-editorial text-[15px] text-[var(--text-secondary)] truncate pl-1">
+              <span className="omnis-editorial text-base sm:text-[17px] text-[var(--text-secondary)] truncate pl-1">
                 → “{composedQuery}”
               </span>
             </div>
@@ -196,7 +196,7 @@ export function InteractiveQueryComposer({
               <button
                 type="button"
                 onClick={handleReset}
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] text-[13px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
               >
                 <RotateCcw className="w-3 h-3" />
                 Reset
@@ -204,7 +204,7 @@ export function InteractiveQueryComposer({
               <button
                 type="button"
                 onClick={() => onSubmitQuery(composedQuery)}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--accent-blue-solid)] hover:brightness-110 text-white text-[11px] font-semibold cursor-pointer shadow-2xs"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--accent-blue-solid)] hover:brightness-110 text-white text-[13px] font-semibold cursor-pointer shadow-2xs"
               >
                 <span>Investigate</span>
                 <ArrowRight className="w-3 h-3" />

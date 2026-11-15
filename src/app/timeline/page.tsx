@@ -165,7 +165,7 @@ function TimelineContent() {
             </div>
 
             {/* Search, Category & Milestone Filters */}
-            <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-3 text-[13.5px] sm:text-sm">
               <div className="flex-1 min-w-[220px] flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)]">
                 <Search className="w-3.5 h-3.5 tone-blue shrink-0" />
                 <input
@@ -173,7 +173,7 @@ function TimelineContent() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search historical events, participants, or locations..."
-                  className="w-full bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
+                  className="w-full bg-transparent text-base sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
                 />
               </div>
 
@@ -223,16 +223,16 @@ function TimelineContent() {
                   }`}
                 >
                   <div className="space-y-1">
-                    <div className="flex items-center justify-between text-[10px] omnis-mono tone-blue font-bold">
+                    <div className="flex items-center justify-between text-xs omnis-mono tone-blue font-bold">
                       <span>{evt.dateDisplay}</span>
                       {evt.isMilestone && <span className="tone-warning">★ MILESTONE</span>}
                     </div>
-                    <div className="font-bold text-sm text-[var(--text-primary)]">{evt.title}</div>
-                    <p className="text-xs text-[var(--text-secondary)] line-clamp-2">
+                    <div className="font-bold text-[15px] sm:text-base text-[var(--text-primary)]">{evt.title}</div>
+                    <p className="text-[13.5px] text-[var(--text-secondary)] line-clamp-2">
                       {evt.description}
                     </p>
                   </div>
-                  <div className="text-[10px] text-[var(--text-muted)] pt-2 border-t border-[var(--border-subtle)]">
+                  <div className="text-xs text-[var(--text-muted)] pt-2 border-t border-[var(--border-subtle)]">
                     {evt.location}
                   </div>
                 </button>
@@ -257,16 +257,16 @@ function TimelineContent() {
         const activePct = mapYearToTimelinePercent(activeEvent.yearNumeric);
         return (
           <div className="omnis-card p-4 sm:p-5 space-y-2.5">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-[13px]">
               <div className="flex items-center gap-2">
-                <span className="text-[10.5px] font-bold uppercase tracking-wider tone-cyan omnis-mono">
+                <span className="text-xs font-bold uppercase tracking-wider tone-cyan omnis-mono">
                   5,000-Year Logarithmic Temporal Scrubber
                 </span>
-                <span className="text-[11px] omnis-mono px-2 py-0.5 rounded badge-tone-blue font-semibold">
+                <span className="text-xs omnis-mono px-2 py-0.5 rounded badge-tone-blue font-semibold">
                   Active: {activeEvent.dateDisplay}
                 </span>
               </div>
-              <span className="text-[10.5px] text-[var(--text-muted)] omnis-mono hidden sm:inline">
+              <span className="text-xs text-[var(--text-muted)] omnis-mono hidden sm:inline">
                 Drag track or tap milestone tick • Compressed Ancient → Expanded 1800–2026 CE
               </span>
             </div>
@@ -349,7 +349,7 @@ function TimelineContent() {
               </div>
             </div>
 
-            <div className="relative h-4 text-[10px] omnis-mono omnis-tabular text-[var(--text-muted)]">
+            <div className="relative h-5 text-xs omnis-mono omnis-tabular text-[var(--text-muted)]">
               <span className="absolute left-0">3000 BCE</span>
               <span style={{ left: "22%" }} className="absolute -translate-x-1/2">
                 500 CE
@@ -367,7 +367,7 @@ function TimelineContent() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pb-16 lg:pb-0">
         {/* Left Chronological Timeline List */}
         <div className="lg:col-span-5 omnis-card p-5 space-y-3 max-h-[680px] overflow-y-auto">
-          <div className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
+          <div className="text-[13px] font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
             Chronological Sequence ({filteredEvents.length} Verified Events)
           </div>
           <div className="relative pl-4 border-l-2 border-[var(--accent-blue)]/40 space-y-3">
@@ -390,14 +390,14 @@ function TimelineContent() {
                         : "bg-[var(--bg-obsidian)] border-[var(--accent-blue)]"
                     }`}
                   />
-                  <div className="flex items-center justify-between text-[11px] omnis-mono">
+                  <div className="flex items-center justify-between text-xs omnis-mono">
                     <span className="tone-blue font-bold">{evt.dateDisplay}</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--bg-graphite)] border border-[var(--border-subtle)] text-[var(--text-secondary)]">
+                    <span className="text-[11.5px] px-1.5 py-0.5 rounded bg-[var(--bg-graphite)] border border-[var(--border-subtle)] text-[var(--text-secondary)]">
                       {evt.category}
                     </span>
                   </div>
-                  <h3 className="text-sm font-bold mt-1 text-[var(--text-primary)]">{evt.title}</h3>
-                  <div className="text-[11px] text-[var(--text-muted)] mt-0.5">{evt.location}</div>
+                  <h3 className="text-[15px] font-bold mt-1 text-[var(--text-primary)]">{evt.title}</h3>
+                  <div className="text-xs text-[var(--text-muted)] mt-0.5">{evt.location}</div>
                 </div>
               );
             })}
@@ -407,13 +407,13 @@ function TimelineContent() {
         {/* Right Detailed Historical Event Dossier (De-boxed Editorial Callouts & Hairlines) */}
         <div className="lg:col-span-7 omnis-card p-6 sm:p-7 space-y-6">
           <div className="space-y-2 pb-4 border-b border-[var(--border-subtle)]">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-[13px]">
               <span className="px-2.5 py-0.5 rounded-full badge-tone-blue font-bold omnis-mono">
                 {activeEvent.dateDisplay} • {activeEvent.era.toUpperCase()} ERA
               </span>
               <span className="text-[var(--text-muted)] font-medium">{activeEvent.location}</span>
             </div>
-            <h2 className="omnis-display-section text-2xl font-extrabold text-[var(--text-primary)]">
+            <h2 className="omnis-display-section font-extrabold text-[var(--text-primary)]">
               {activeEvent.title}
             </h2>
             <p className="omnis-prose text-[var(--text-secondary)]">
@@ -421,7 +421,7 @@ function TimelineContent() {
             </p>
           </div>
 
-          <div className="border-l-2 border-[var(--accent-blue)] pl-4 py-1 space-y-1.5 text-xs">
+          <div className="border-l-2 border-[var(--accent-blue)] pl-4 py-1 space-y-1.5 text-[13px]">
             <div className="font-bold uppercase tracking-wider tone-blue omnis-mono">
               Historical Context &amp; Structural Significance
             </div>
@@ -431,9 +431,9 @@ function TimelineContent() {
           </div>
 
           {/* Causes & Consequences (Architectural Split Hairline Grid) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 border border-[var(--border-subtle)] rounded-xl overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-[var(--border-subtle)] text-xs bg-[var(--bg-obsidian)]/30">
+          <div className="grid grid-cols-1 sm:grid-cols-2 border border-[var(--border-subtle)] rounded-xl overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-[var(--border-subtle)] text-[14.5px] sm:text-[15px] bg-[var(--bg-obsidian)]/30">
             <div className="p-4 space-y-2">
-              <div className="font-bold uppercase tracking-wider tone-warning omnis-mono">
+              <div className="font-bold uppercase tracking-wider tone-warning omnis-mono text-xs">
                 Antecedent Causes
               </div>
               <ul className="space-y-1.5 list-disc pl-4 text-[var(--text-secondary)] leading-relaxed">
@@ -443,7 +443,7 @@ function TimelineContent() {
               </ul>
             </div>
             <div className="p-4 space-y-2">
-              <div className="font-bold uppercase tracking-wider tone-verified omnis-mono">
+              <div className="font-bold uppercase tracking-wider tone-verified omnis-mono text-xs">
                 Systemic Consequences
               </div>
               <ul className="space-y-1.5 list-disc pl-4 text-[var(--text-secondary)] leading-relaxed">
@@ -455,7 +455,7 @@ function TimelineContent() {
           </div>
 
           {/* Major Participants */}
-          <div className="space-y-2 text-xs">
+          <div className="space-y-2 text-[13px]">
             <div className="font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
               Major Historical Participants &amp; Institutions
             </div>
@@ -473,12 +473,12 @@ function TimelineContent() {
 
           {/* Connected History -> Transition into Infinite Knowledge Graph */}
           <div className="border-t border-[var(--border-subtle)] pt-4 space-y-2.5">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-[13.5px]">
               <span className="font-bold tone-violet flex items-center gap-1.5">
                 <Network className="w-4 h-4" />
                 Connected History → Knowledge Graph Bridges
               </span>
-              <span className="text-[10px] text-[var(--text-muted)]">
+              <span className="text-xs text-[var(--text-muted)]">
                 Click any bridge to transition into Module 02
               </span>
             </div>
@@ -490,7 +490,7 @@ function TimelineContent() {
                   onClick={() =>
                     router.push(`/knowledge-graph?topic=${encodeURIComponent(topic)}`)
                   }
-                  className="omnis-magnetic-arrow px-3 py-1.5 rounded-lg badge-tone-violet hover:brightness-105 text-xs font-semibold inline-flex items-center gap-1.5 transition-all cursor-pointer"
+                  className="omnis-magnetic-arrow px-3 py-1.5 rounded-lg badge-tone-violet hover:brightness-105 text-[13px] font-semibold inline-flex items-center gap-1.5 transition-all cursor-pointer"
                 >
                   <Sparkles className="w-3 h-3" />
                   <span>{topic}</span>
@@ -501,8 +501,8 @@ function TimelineContent() {
           </div>
 
           {/* Primary & Academic Sources */}
-          <div className="space-y-2 text-xs border-t border-[var(--border-subtle)] pt-4">
-            <div className="font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
+          <div className="space-y-2 text-[13.5px] border-t border-[var(--border-subtle)] pt-4">
+            <div className="font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono text-xs">
               Verified Primary &amp; Academic Sources
             </div>
             <div className="divide-y divide-[var(--border-subtle)] border-t border-[var(--border-subtle)]">
@@ -516,7 +516,7 @@ function TimelineContent() {
                 >
                   <div className="min-w-0 pr-3">
                     <div className="font-bold tone-blue truncate">{src.title}</div>
-                    <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                    <div className="text-xs text-[var(--text-muted)] mt-0.5">
                       {src.author ? `${src.author} • ` : ""}
                       {src.publisher} ({src.year}) • {src.sourceType}
                     </div>
@@ -534,10 +534,10 @@ function TimelineContent() {
         <button
           type="button"
           onClick={() => setMobileDossierOpen(true)}
-          className="w-full omnis-hud-pill rounded-2xl px-4 py-3 flex items-center justify-between gap-3 text-left text-xs cursor-pointer"
+          className="w-full omnis-hud-pill rounded-2xl px-4 py-3 flex items-center justify-between gap-3 text-left text-[13.5px] cursor-pointer"
         >
           <div className="min-w-0">
-            <div className="text-[10px] omnis-mono font-bold tone-blue">
+            <div className="text-xs omnis-mono font-bold tone-blue">
               {activeEvent.dateDisplay}
             </div>
             <div className="font-bold text-[var(--text-primary)] truncate">
@@ -571,10 +571,10 @@ function TimelineContent() {
             >
               <div className="flex items-center justify-between gap-2 pb-2 border-b border-[var(--border-subtle)]">
                 <div>
-                  <div className="text-[10px] omnis-mono font-bold tone-blue">
+                  <div className="text-xs omnis-mono font-bold tone-blue">
                     {activeEvent.dateDisplay} • {activeEvent.location}
                   </div>
-                  <div className="font-bold text-base text-[var(--text-primary)]">
+                  <div className="font-bold text-lg text-[var(--text-primary)]">
                     {activeEvent.title}
                   </div>
                 </div>
@@ -587,7 +587,7 @@ function TimelineContent() {
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+              <p className="text-[14.5px] text-[var(--text-secondary)] leading-relaxed">
                 {activeEvent.historicalContext}
               </p>
               <div className="flex flex-wrap gap-1.5">
@@ -598,7 +598,7 @@ function TimelineContent() {
                     onClick={() =>
                       router.push(`/knowledge-graph?topic=${encodeURIComponent(topic)}`)
                     }
-                    className="px-2.5 py-1 rounded-lg badge-tone-violet text-xs font-semibold cursor-pointer"
+                    className="px-2.5 py-1 rounded-lg badge-tone-violet text-[13px] font-semibold cursor-pointer"
                   >
                     {topic} →
                   </button>

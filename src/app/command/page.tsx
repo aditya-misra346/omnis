@@ -104,7 +104,7 @@ export default function CommandCenterPage() {
               value={commandInput}
               onChange={(e) => setCommandInput(e.target.value)}
               placeholder="Natural language command: 'Explain India's economic development since 1991', 'Compare India and China', 'Graph Semiconductors'..."
-              className="w-full bg-transparent text-sm focus:outline-none text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+              className="w-full bg-transparent text-base sm:text-[15px] focus:outline-none text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
             />
           </div>
           <OmnisButton type="submit" size="md" className="omnis-magnetic-arrow">
@@ -113,8 +113,8 @@ export default function CommandCenterPage() {
           </OmnisButton>
         </form>
 
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="text-[var(--text-muted)] font-semibold omnis-mono uppercase tracking-wider text-[10px]">
+        <div className="flex flex-wrap items-center gap-2 text-[13px]">
+          <span className="text-[var(--text-muted)] font-semibold omnis-mono uppercase tracking-wider text-xs">
             Instant Triggers:
           </span>
           {[
@@ -139,10 +139,10 @@ export default function CommandCenterPage() {
         <div className="p-4 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-strong)] space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h2 className="text-sm font-bold text-[var(--text-primary)]">
+              <h2 className="text-base font-bold text-[var(--text-primary)]">
                 Customise Command Cockpit Sections
               </h2>
-              <p className="text-xs text-[var(--text-secondary)]">
+              <p className="text-sm text-[var(--text-secondary)]">
                 Toggle section visibility or adjust layout priorities. Persisted in local storage.
               </p>
             </div>
@@ -156,7 +156,7 @@ export default function CommandCenterPage() {
             {sortedWidgets.map((w, idx) => (
               <div
                 key={w.id}
-                className="p-3 rounded-lg bg-[var(--bg-graphite)] border border-[var(--border-subtle)] flex flex-col justify-between gap-2 text-xs"
+                className="p-3 rounded-lg bg-[var(--bg-graphite)] border border-[var(--border-subtle)] flex flex-col justify-between gap-2 text-[13px]"
               >
                 <div className="font-semibold text-[var(--text-primary)]">{w.title}</div>
                 <div className="flex items-center justify-between pt-2 border-t border-[var(--border-subtle)]">
@@ -206,11 +206,11 @@ export default function CommandCenterPage() {
               <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[var(--border-subtle)]">
                 <div className="flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 tone-blue" />
-                  <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono">
+                  <h2 className="text-[15px] font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono">
                     Sovereign Macroeconomic Matrix
                   </h2>
                 </div>
-                <span className="text-[11px] text-[var(--text-muted)] omnis-mono">
+                <span className="text-xs text-[var(--text-muted)] omnis-mono">
                   World Bank WDI & IMF WEO 2026
                 </span>
               </div>
@@ -234,23 +234,23 @@ export default function CommandCenterPage() {
                       className="p-4 border-r border-b border-[var(--border-subtle)] hover:bg-[var(--bg-slate)]/60 transition-colors space-y-2.5 group"
                     >
                       <div className="flex items-center justify-between gap-1.5">
-                        <span className="font-bold text-xs sm:text-sm text-[var(--text-primary)] truncate group-hover:text-[var(--accent-blue)] transition-colors">
+                        <span className="font-bold text-sm sm:text-[15px] text-[var(--text-primary)] truncate group-hover:text-[var(--accent-blue)] transition-colors">
                           {c.flagEmoji} {c.name}
                         </span>
-                        <span className="text-[10px] font-semibold omnis-mono px-1.5 py-0.5 rounded badge-tone-blue shrink-0">
+                        <span className="text-[11.5px] font-semibold omnis-mono px-1.5 py-0.5 rounded badge-tone-blue shrink-0">
                           {c.iso3}
                         </span>
                       </div>
                       <div className="flex items-end justify-between gap-2">
-                        <div className="grid grid-cols-2 gap-3 text-xs">
+                        <div className="grid grid-cols-2 gap-3 text-[13.5px] sm:text-sm">
                           <div>
-                            <div className="text-[10px] text-[var(--text-muted)]">GDP (Nom.)</div>
+                            <div className="text-xs text-[var(--text-muted)]">GDP (Nom.)</div>
                             <div className="font-bold omnis-mono omnis-tabular text-[var(--text-primary)]">
                               ${c.gdpUsdBn.toLocaleString()}B
                             </div>
                           </div>
                           <div>
-                            <div className="text-[10px] text-[var(--text-muted)]">Real/yr</div>
+                            <div className="text-xs text-[var(--text-muted)]">Real/yr</div>
                             <div
                               className={`font-bold omnis-mono omnis-tabular ${
                                 c.gdpGrowthPct >= 0 ? "tone-verified" : "tone-danger"
@@ -275,7 +275,7 @@ export default function CommandCenterPage() {
                           />
                         </svg>
                       </div>
-                      <div className="text-[10.5px] text-[var(--text-muted)] flex justify-between pt-2 border-t border-[var(--border-subtle)] omnis-mono omnis-tabular">
+                      <div className="text-xs text-[var(--text-muted)] flex justify-between pt-2 border-t border-[var(--border-subtle)] omnis-mono omnis-tabular">
                         <span>Clean: {c.energyProfile.renewableSharePct}%</span>
                         <span>AI: {c.technologyProfile.aiReadinessIndex}</span>
                       </div>
@@ -291,11 +291,11 @@ export default function CommandCenterPage() {
               <div className="flex items-center justify-between pb-2 border-b border-[var(--border-subtle)]">
                 <div className="flex items-center gap-2">
                   <Layers className="w-4 h-4 tone-violet" />
-                  <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono">
+                  <h2 className="text-[15px] font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono">
                     Core Intelligence Modules
                   </h2>
                 </div>
-                <span className="text-[11px] text-[var(--text-muted)] omnis-mono">
+                <span className="text-xs text-[var(--text-muted)] omnis-mono">
                   6 Dedicated Environments
                 </span>
               </div>
@@ -350,10 +350,10 @@ export default function CommandCenterPage() {
                         <Icon className="w-4 h-4" />
                       </div>
                       <div className="space-y-1 min-w-0">
-                        <div className="font-bold text-xs text-[var(--text-primary)] group-hover:text-[var(--accent-blue)] transition-colors">
+                        <div className="font-bold text-sm text-[var(--text-primary)] group-hover:text-[var(--accent-blue)] transition-colors">
                           {m.title}
                         </div>
-                        <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+                        <p className="text-[13px] sm:text-[13.5px] text-[var(--text-secondary)] leading-relaxed">
                           {m.desc}
                         </p>
                       </div>
@@ -367,12 +367,12 @@ export default function CommandCenterPage() {
           {isWidgetVisible("global-developments") ? (
             <section className="space-y-3">
               <div className="flex items-center justify-between pb-2 border-b border-[var(--border-subtle)]">
-                <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono">
+                <h2 className="text-[15px] font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono">
                   Curated Sovereign Developments
                 </h2>
                 <Link
                   href="/timeline"
-                  className="omnis-magnetic-arrow text-xs tone-blue font-semibold hover:underline inline-flex items-center gap-1"
+                  className="omnis-magnetic-arrow text-[13px] tone-blue font-semibold hover:underline inline-flex items-center gap-1"
                 >
                   <span>Open Reality Timeline</span>
                   <ArrowRight className="omnis-arrow-glyph w-3 h-3" />
@@ -387,19 +387,19 @@ export default function CommandCenterPage() {
                       key={c.iso3}
                       className="p-4 border-r border-b border-[var(--border-subtle)] space-y-2"
                     >
-                      <div className="flex items-center justify-between text-[11px] tone-blue font-bold">
+                      <div className="flex items-center justify-between text-xs tone-blue font-bold">
                         <span>
                           {c.flagEmoji} {c.name}
                         </span>
                         <span className="omnis-mono omnis-tabular">{dev?.date ?? "2026"}</span>
                       </div>
-                      <h3 className="text-xs font-bold text-[var(--text-primary)]">
+                      <h3 className="text-sm font-bold text-[var(--text-primary)]">
                         {dev?.headline}
                       </h3>
-                      <p className="text-[11.5px] text-[var(--text-secondary)] leading-relaxed">
+                      <p className="text-[13.5px] text-[var(--text-secondary)] leading-relaxed">
                         {dev?.summary}
                       </p>
-                      <div className="text-[10px] text-[var(--text-muted)] pt-1 border-t border-[var(--border-subtle)]">
+                      <div className="text-xs text-[var(--text-muted)] pt-1 border-t border-[var(--border-subtle)]">
                         Source: {dev?.source}
                       </div>
                     </div>
@@ -416,13 +416,13 @@ export default function CommandCenterPage() {
           {isWidgetVisible("recent-explorations") ? (
             <div className="p-4 space-y-2.5">
               <div className="flex items-center justify-between">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono flex items-center gap-1.5">
+                <h2 className="text-[13px] font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono flex items-center gap-1.5">
                   <Search className="w-3.5 h-3.5 tone-violet" />
                   Query History
                 </h2>
                 <Link
                   href="/explore"
-                  className="omnis-magnetic-arrow text-[11px] tone-blue font-semibold hover:underline inline-flex items-center gap-1"
+                  className="omnis-magnetic-arrow text-xs tone-blue font-semibold hover:underline inline-flex items-center gap-1"
                 >
                   <span>Search All</span>
                   <ArrowRight className="omnis-arrow-glyph w-3 h-3" />
@@ -433,7 +433,7 @@ export default function CommandCenterPage() {
                   <Link
                     key={q}
                     href={`/explore?q=${encodeURIComponent(q)}`}
-                    className="omnis-magnetic-arrow flex items-center justify-between py-2 text-xs text-[var(--text-secondary)] hover:text-[var(--accent-blue)] transition-colors gap-2"
+                    className="omnis-magnetic-arrow flex items-center justify-between py-2 text-[13.5px] text-[var(--text-secondary)] hover:text-[var(--accent-blue)] transition-colors gap-2"
                   >
                     <span className="truncate font-medium">{q}</span>
                     <ArrowRight className="omnis-arrow-glyph w-3 h-3 shrink-0 opacity-70" />
@@ -447,11 +447,11 @@ export default function CommandCenterPage() {
           {isWidgetVisible("recent-explorations") ? (
             <div className="p-4 space-y-2.5">
               <div className="flex items-center justify-between">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono flex items-center gap-1.5">
+                <h2 className="text-[13px] font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono flex items-center gap-1.5">
                   <Bookmark className="w-3.5 h-3.5 tone-blue" />
                   Pinned Workspace ({workspaceItems.length})
                 </h2>
-                <Link href="/workspace" className="text-[11px] tone-blue font-semibold hover:underline">
+                <Link href="/workspace" className="text-xs tone-blue font-semibold hover:underline">
                   Manage →
                 </Link>
               </div>
@@ -462,13 +462,13 @@ export default function CommandCenterPage() {
                     href={item.href}
                     className="block py-2.5 hover:bg-[var(--bg-slate)]/50 -mx-2 px-2 rounded transition-colors"
                   >
-                    <div className="flex items-center justify-between gap-2 text-xs font-semibold">
+                    <div className="flex items-center justify-between gap-2 text-[13.5px] font-semibold">
                       <span className="text-[var(--text-primary)] truncate">{item.title}</span>
-                      <span className="text-[9.5px] uppercase px-1.5 py-0.5 rounded badge-tone-blue omnis-mono shrink-0">
+                      <span className="text-[11px] uppercase px-1.5 py-0.5 rounded badge-tone-blue omnis-mono shrink-0">
                         {item.type}
                       </span>
                     </div>
-                    <div className="text-[11px] text-[var(--text-secondary)] mt-0.5 truncate">
+                    <div className="text-xs text-[var(--text-secondary)] mt-0.5 truncate">
                       {item.subtitle}
                     </div>
                   </Link>
@@ -480,11 +480,11 @@ export default function CommandCenterPage() {
           {/* Timeline Digest */}
           <div className="p-4 space-y-2.5">
             <div className="flex items-center justify-between">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono flex items-center gap-1.5">
+              <h2 className="text-[13px] font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 tone-warning" />
                 Timeline Inflection Digest
               </h2>
-              <Link href="/timeline" className="text-[11px] tone-blue font-semibold hover:underline">
+              <Link href="/timeline" className="text-xs tone-blue font-semibold hover:underline">
                 Full Era View →
               </Link>
             </div>
@@ -495,11 +495,11 @@ export default function CommandCenterPage() {
                   href={`/timeline?event=${evt.id}`}
                   className="block py-2.5 space-y-1 hover:bg-[var(--bg-slate)]/50 -mx-2 px-2 rounded transition-colors"
                 >
-                  <div className="text-[10px] tone-blue font-bold omnis-mono">
+                  <div className="text-xs tone-blue font-bold omnis-mono">
                     {evt.dateDisplay} • {evt.category}
                   </div>
-                  <div className="text-xs font-bold text-[var(--text-primary)]">{evt.title}</div>
-                  <p className="text-[11px] text-[var(--text-secondary)] line-clamp-2">
+                  <div className="text-[13.5px] font-bold text-[var(--text-primary)]">{evt.title}</div>
+                  <p className="text-[13px] text-[var(--text-secondary)] line-clamp-2">
                     {evt.description}
                   </p>
                 </Link>

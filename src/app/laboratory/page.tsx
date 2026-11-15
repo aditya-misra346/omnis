@@ -309,8 +309,12 @@ function LaboratoryContent() {
         ctx.fill();
 
         ctx.fillStyle = palette.ink;
-        ctx.font = "600 11px monospace";
-        ctx.fillText(`θ = ${((theta * 180) / Math.PI).toFixed(1)}°`, Math.max(12, bobX - 28), Math.min(H - 12, bobY + 34));
+        ctx.font = "600 13px monospace";
+        ctx.fillText(
+          `θ = ${((theta * 180) / Math.PI).toFixed(1)}°`,
+          Math.min(W - 104, Math.max(12, bobX - 30)),
+          Math.min(H - 12, bobY + 34)
+        );
 
         // Harmonic wave trace on right side
         ctx.strokeStyle = palette.emerald;
@@ -329,8 +333,9 @@ function LaboratoryContent() {
         ctx.stroke();
 
         ctx.fillStyle = palette.muted;
-        ctx.font = "600 11px monospace";
-        ctx.fillText("Oscillatory Phase-Wave Envelope (Drag bob to set θ)", W * 0.52, 34);
+        ctx.font = "600 12.5px monospace";
+        const waveLabelX = Math.min(W * 0.5, Math.max(16, W - 400));
+        ctx.fillText("Oscillatory Phase-Wave Envelope (Drag bob to set θ)", waveLabelX, 34, W - waveLabelX - 16);
       } else if (activeId === "space") {
         const cx = W / 2 + 28;
         const cy = H / 2;
@@ -375,9 +380,9 @@ function LaboratoryContent() {
         const peri = (p3 * (1 - p2)).toFixed(2);
         const apo = (p3 * (1 + p2)).toFixed(2);
         ctx.fillStyle = palette.muted;
-        ctx.font = "600 11px monospace";
-        ctx.fillText(`Focus Star (${p1.toFixed(1)} M☉)`, starX - 42, starY + 34);
-        ctx.fillText(`Periapsis: ${peri} AU  |  Apoapsis: ${apo} AU  |  Drag orbit to reshape a/e`, 24, 28);
+        ctx.font = "600 12.5px monospace";
+        ctx.fillText(`Focus Star (${p1.toFixed(1)} M☉)`, Math.max(16, starX - 48), starY + 36, W - 32);
+        ctx.fillText(`Periapsis: ${peri} AU  |  Apoapsis: ${apo} AU  |  Drag orbit to reshape a/e`, 20, 28, W - 40);
       } else if (activeId === "chemistry") {
         const cx = W / 2;
         const cy = H / 2 - 18;
@@ -417,8 +422,8 @@ function LaboratoryContent() {
         ctx.fill();
 
         ctx.fillStyle = palette.ink;
-        ctx.font = "700 12px monospace";
-        ctx.fillText(`θ = ${p1.toFixed(1)}°`, cx - 28, cy + 72);
+        ctx.font = "700 14px monospace";
+        ctx.fillText(`θ = ${p1.toFixed(1)}°`, cx - 34, cy + 74);
       } else if (activeId === "biology") {
         ctx.lineWidth = 2.6;
         let prey = 40;
@@ -446,11 +451,15 @@ function LaboratoryContent() {
         predPts.forEach(([x, y], idx) => (idx === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
         ctx.stroke();
 
-        ctx.font = "600 11px monospace";
+        ctx.font = "600 13px monospace";
         ctx.fillStyle = palette.emerald;
-        ctx.fillText("● Prey Population (x)", 44, 28);
+        ctx.fillText("● Prey Population (x)", 28, 28);
         ctx.fillStyle = palette.amber;
-        ctx.fillText("● Predator Population (y)", 220, 28);
+        if (W < 450) {
+          ctx.fillText("● Predator Population (y)", 28, 48, W - 48);
+        } else {
+          ctx.fillText("● Predator Population (y)", 224, 28, W - 240);
+        }
       } else if (activeId === "climate") {
         const forcing = 5.35 * Math.log(p1 / 280);
         const eqTempC = 14.0 + forcing * 0.8 - (p2 - 0.3) * 85 + (p3 - 1361) * 0.07;
@@ -472,11 +481,12 @@ function LaboratoryContent() {
         ctx.fillRect(0, H - 165, W, 101);
 
         ctx.fillStyle = palette.ink;
-        ctx.font = "700 14px monospace";
+        ctx.font = "700 15px monospace";
         ctx.fillText(
           `Equilibrium Global Mean Temp: ${eqTempC.toFixed(2)} °C  |  ΔF = +${forcing.toFixed(2)} W/m²`,
-          28,
-          44
+          24,
+          44,
+          W - 48
         );
       } else {
         // Pratt Truss Bridge Structural Analysis with interactive bay highlighting
@@ -528,11 +538,16 @@ function LaboratoryContent() {
           ctx.stroke();
         }
 
-        ctx.font = "600 11px monospace";
+        ctx.font = "600 12.5px monospace";
+        const legendX = W < 580 ? 24 : 72;
         ctx.fillStyle = palette.blue;
-        ctx.fillText("━ Bottom Chord (Tension)", 72, 32);
+        ctx.fillText("━ Bottom Chord (Tension)", legendX, 32);
         ctx.fillStyle = palette.amber;
-        ctx.fillText("━ Top Chord (Compression) • Click bay to inspect strut force", 270, 32);
+        if (W < 580) {
+          ctx.fillText("━ Top Chord (Compression) • Click bay to inspect strut force", legendX, 50, W - 48);
+        } else {
+          ctx.fillText("━ Top Chord (Compression) • Click bay to inspect strut force", 272, 32, W - 290);
+        }
       }
 
       if (isAnimating) {
@@ -701,18 +716,18 @@ function LaboratoryContent() {
         {/* Left Controls & Governing Equations */}
         <div className="lg:col-span-4 omnis-card p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
-            <h2 className="text-sm font-bold text-[var(--text-primary)]">
+            <h2 className="text-[15px] font-bold text-[var(--text-primary)]">
               Experimental Parameters
             </h2>
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setRunning((r) => !r)}
-                className="p-1.5 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[var(--text-primary)] cursor-pointer"
+                className="p-2 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[var(--text-primary)] cursor-pointer"
                 title={running ? "Pause Simulation" : "Resume Simulation"}
                 aria-label={running ? "Pause Simulation" : "Resume Simulation"}
               >
-                {running ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                {running ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
               </button>
               <button
                 type="button"
@@ -721,11 +736,11 @@ function LaboratoryContent() {
                   setP2(exp.param2.defaultVal);
                   setP3(exp.param3.defaultVal);
                 }}
-                className="p-1.5 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[var(--text-primary)] cursor-pointer"
+                className="p-2 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[var(--text-primary)] cursor-pointer"
                 title="Reset Parameters"
                 aria-label="Reset Parameters"
               >
-                <RotateCcw className="w-3.5 h-3.5" />
+                <RotateCcw className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -755,7 +770,7 @@ function LaboratoryContent() {
             latex={LAB_EQUATIONS_LATEX[exp.id] ?? exp.equations}
           />
 
-          <div className="p-3 rounded-xl badge-tone-warning text-[11px] flex items-start gap-2 leading-relaxed">
+          <div className="p-3.5 rounded-xl badge-tone-warning text-[12.5px] sm:text-[13px] flex items-start gap-2.5 leading-relaxed">
             <Info className="w-4 h-4 shrink-0 mt-0.5" />
             <span>{exp.modelDisclosure}</span>
           </div>
@@ -764,7 +779,7 @@ function LaboratoryContent() {
         {/* Right Live Visualisation Canvas & Learning Context */}
         <div className="lg:col-span-8 space-y-6">
           <div className="omnis-card p-5 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-[12.5px] sm:text-[13px]">
               <span className="font-bold tone-blue uppercase tracking-wider omnis-mono">
                 Live Mathematical Simulation Canvas
               </span>
@@ -782,31 +797,31 @@ function LaboratoryContent() {
                 className="w-full h-72 block touch-none cursor-crosshair"
               />
               {motionPaused ? (
-                <span className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-md omnis-hud-pill text-[10px] omnis-mono font-semibold tone-warning">
+                <span className="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-md omnis-hud-pill text-xs omnis-mono font-semibold tone-warning">
                   Motion Paused
                 </span>
               ) : null}
             </div>
 
             {interactiveReadout ? (
-              <div className="px-3 py-2 rounded-lg badge-tone-cyan text-xs omnis-mono font-semibold">
+              <div className="px-3.5 py-2.5 rounded-lg badge-tone-cyan text-[13px] omnis-mono font-semibold">
                 {interactiveReadout}
               </div>
             ) : null}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
-            <div className="omnis-card p-5 space-y-2">
-              <div className="font-bold uppercase tracking-wider tone-blue omnis-mono">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="omnis-card p-5 space-y-2.5">
+              <div className="text-xs font-bold uppercase tracking-wider tone-blue omnis-mono">
                 Experimental Objective
               </div>
-              <p className="text-[var(--text-secondary)] leading-relaxed">{exp.objective}</p>
+              <p className="text-sm sm:text-[15px] text-[var(--text-secondary)] leading-relaxed">{exp.objective}</p>
             </div>
-            <div className="omnis-card p-5 space-y-2">
-              <div className="font-bold uppercase tracking-wider tone-verified omnis-mono">
+            <div className="omnis-card p-5 space-y-2.5">
+              <div className="text-xs font-bold uppercase tracking-wider tone-verified omnis-mono">
                 Scientific Background & Physical Interpretation
               </div>
-              <p className="text-[var(--text-secondary)] leading-relaxed">{exp.background}</p>
+              <p className="text-sm sm:text-[15px] text-[var(--text-secondary)] leading-relaxed">{exp.background}</p>
             </div>
           </div>
         </div>

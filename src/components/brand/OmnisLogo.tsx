@@ -247,7 +247,7 @@ export function OmnisLogo({
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <span
-            className="font-bold tracking-[0.22em] text-[14px] leading-none"
+            className="font-bold tracking-[0.22em] text-[15px] leading-none"
             style={{
               color: "var(--omnis-logo-wordmark, var(--text-primary))",
               fontFamily: "var(--font-display), var(--font-sans), sans-serif",
@@ -256,13 +256,13 @@ export function OmnisLogo({
             OMNIS
           </span>
           {showVersionBadge && (
-            <span className="hidden sm:inline-flex items-center text-[9.5px] font-semibold uppercase tracking-widest px-1.5 py-0.5 rounded-md badge-tone-blue omnis-mono leading-none">
+            <span className="hidden sm:inline-flex items-center text-[11px] font-semibold uppercase tracking-widest px-1.5 py-0.5 rounded-md badge-tone-blue omnis-mono leading-none">
               v2.0
             </span>
           )}
         </div>
         {!isCompact && (
-          <p className="hidden xl:block text-[10.5px] font-medium tracking-wide text-[var(--text-muted)] mt-0.5 truncate">
+          <p className="hidden xl:block text-xs font-medium tracking-wide text-[var(--text-muted)] mt-0.5 truncate">
             The Intelligence of Everything
           </p>
         )}
@@ -302,10 +302,10 @@ export function OmnisLoader({
         <OmnisMark size={30} />
       </div>
       <div className="space-y-1">
-        <div className="text-xs font-semibold uppercase tracking-[0.16em] tone-blue omnis-mono">
+        <div className="text-[13px] font-semibold uppercase tracking-[0.16em] tone-blue omnis-mono">
           OMNIS CORE ENGINE
         </div>
-        <p className="text-xs text-[var(--text-secondary)]">{label}</p>
+        <p className="text-sm text-[var(--text-secondary)]">{label}</p>
       </div>
     </div>
   );

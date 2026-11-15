@@ -10,13 +10,13 @@ export default function NotFound() {
           <div className="p-3 rounded-2xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] inline-flex items-center justify-center">
             <OmnisMark size={44} />
           </div>
-          <div className="text-[11px] font-bold uppercase tracking-[0.2em] tone-blue omnis-mono">
+          <div className="text-xs font-bold uppercase tracking-[0.2em] tone-blue omnis-mono">
             HTTP 404 • Coordinate Outside Indexed Ontology
           </div>
           <h1 className="omnis-display-section text-[var(--text-primary)] font-bold">
             Route Not Found in Global Index
           </h1>
-          <p className="text-sm text-[var(--text-secondary)] leading-relaxed max-w-md mx-auto">
+          <p className="text-base text-[var(--text-secondary)] leading-relaxed max-w-md mx-auto">
             The requested intelligence coordinate does not exist or has moved. Return to the
             live planetary workbench or launch a verified module directly.
           </p>
@@ -30,13 +30,13 @@ export default function NotFound() {
             <div className="flex items-center gap-2.5">
               <Home className="w-4 h-4 tone-blue shrink-0" />
               <div>
-                <div className="text-xs font-semibold text-[var(--text-primary)]">
+                <div className="text-sm font-semibold text-[var(--text-primary)]">
                   Executive Landing
                 </div>
-                <div className="text-[11px] text-[var(--text-muted)] omnis-mono">/</div>
+                <div className="text-xs text-[var(--text-muted)] omnis-mono">/</div>
               </div>
             </div>
-            <span className="omnis-magnetic-arrow text-xs tone-blue">→</span>
+            <span className="omnis-magnetic-arrow text-sm tone-blue">→</span>
           </Link>
 
           <Link
@@ -46,13 +46,13 @@ export default function NotFound() {
             <div className="flex items-center gap-2.5">
               <Globe2 className="w-4 h-4 tone-blue shrink-0" />
               <div>
-                <div className="text-xs font-semibold text-[var(--text-primary)]">
+                <div className="text-sm font-semibold text-[var(--text-primary)]">
                   3D Global Atlas
                 </div>
-                <div className="text-[11px] text-[var(--text-muted)] omnis-mono">/atlas</div>
+                <div className="text-xs text-[var(--text-muted)] omnis-mono">/atlas</div>
               </div>
             </div>
-            <span className="omnis-magnetic-arrow text-xs tone-blue">→</span>
+            <span className="omnis-magnetic-arrow text-sm tone-blue">→</span>
           </Link>
 
           <Link
@@ -62,13 +62,13 @@ export default function NotFound() {
             <div className="flex items-center gap-2.5">
               <FileSearch className="w-4 h-4 tone-blue shrink-0" />
               <div>
-                <div className="text-xs font-semibold text-[var(--text-primary)]">
+                <div className="text-sm font-semibold text-[var(--text-primary)]">
                   Deep Research Engine
                 </div>
-                <div className="text-[11px] text-[var(--text-muted)] omnis-mono">/research</div>
+                <div className="text-xs text-[var(--text-muted)] omnis-mono">/research</div>
               </div>
             </div>
-            <span className="omnis-magnetic-arrow text-xs tone-blue">→</span>
+            <span className="omnis-magnetic-arrow text-sm tone-blue">→</span>
           </Link>
 
           <Link
@@ -78,13 +78,13 @@ export default function NotFound() {
             <div className="flex items-center gap-2.5">
               <Compass className="w-4 h-4 tone-blue shrink-0" />
               <div>
-                <div className="text-xs font-semibold text-[var(--text-primary)]">
+                <div className="text-sm font-semibold text-[var(--text-primary)]">
                   Semantic Explorer
                 </div>
-                <div className="text-[11px] text-[var(--text-muted)] omnis-mono">/explore</div>
+                <div className="text-xs text-[var(--text-muted)] omnis-mono">/explore</div>
               </div>
             </div>
-            <span className="omnis-magnetic-arrow text-xs tone-blue">→</span>
+            <span className="omnis-magnetic-arrow text-sm tone-blue">→</span>
           </Link>
         </div>
       </div>
