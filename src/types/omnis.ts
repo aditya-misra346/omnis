@@ -206,6 +206,8 @@ export interface KnowledgeGraphEdge {
 export interface KnowledgeGraphData {
   rootTopic: string;
   generatedAt: string;
+  domainMatched?: string;
+  isSynthesizedFallback?: boolean;
   nodes: KnowledgeGraphNode[];
   edges: KnowledgeGraphEdge[];
   provenance: ProvenanceMetadata;

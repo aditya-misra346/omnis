@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -86,13 +86,54 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [paletteQuery, setPaletteQuery] = useState("");
+  const [paletteActiveIdx, setPaletteActiveIdx] = useState(0);
   const [assistantInput, setAssistantInput] = useState("");
   const [assistantLoading, setAssistantLoading] = useState(false);
+  const [providerTelemetry, setProviderTelemetry] = useState<{
+    status: "checking" | "operational" | "degraded" | "unreachable";
+    operationalCount: number;
+    totalCount: number;
+  }>({ status: "checking", operationalCount: 0, totalCount: 4 });
+
+  useEffect(() => {
+    let active = true;
+    const pollHealth = () => {
+      fetch("/api/v1/health")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (!active || !data) return;
+          const list = Array.isArray(data.providers) ? data.providers : [];
+          const opCount = list.filter(
+            (p: { status?: string }) => p.status === "operational"
+          ).length;
+          setProviderTelemetry({
+            status: data.status ?? (opCount === list.length ? "operational" : "degraded"),
+            operationalCount: opCount,
+            totalCount: list.length || 4,
+          });
+        })
+        .catch(() => {
+          if (active) {
+            setProviderTelemetry((prev) => ({ ...prev, status: "unreachable" }));
+          }
+        });
+    };
+    pollHealth();
+    const timer = setInterval(pollHealth, 60_000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, []);
 
   // Sync theme and motion preference attributes on <html>
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme-ready", "true");
+  }, []);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-motion-paused", String(motionPaused));
@@ -109,6 +150,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         setAssistantOpen(!assistantOpen);
       } else if (e.key === "Escape") {
         setCommandPaletteOpen(false);
+        setAssistantOpen(false);
         setMobileMenuOpen(false);
       }
     };
@@ -181,14 +223,99 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isLandingPage = pathname === "/";
   const liveIntent = paletteQuery.trim() ? classifyQueryIntent(paletteQuery) : null;
 
+  interface CommandPaletteAction {
+    id: string;
+    label: string;
+    subtitle: string;
+    category: "Module" | "Action" | "Route";
+    run: () => void;
+  }
+
+  const commandActions: CommandPaletteAction[] = useMemo(() => {
+    const navActions: CommandPaletteAction[] = NAV_ITEMS.map((item) => ({
+      id: `nav-${item.href}`,
+      label: item.label,
+      subtitle: item.badge ? `${item.badge} • ${item.href}` : item.href,
+      category: "Module",
+      run: () => {
+        setCommandPaletteOpen(false);
+        router.push(item.href);
+      },
+    }));
+
+    const quickActions: CommandPaletteAction[] = [
+      {
+        id: "act-theme",
+        label: `Switch Theme to ${theme === "dark" ? "Archival Light" : "Obsidian Dark"}`,
+        subtitle: "Toggle global visual mode",
+        category: "Action",
+        run: () => {
+          toggleTheme();
+          setCommandPaletteOpen(false);
+        },
+      },
+      {
+        id: "act-motion",
+        label: motionPaused ? "Resume Kinetic Typography & Motion" : "Pause Kinetic Typography & Motion",
+        subtitle: "Global animation & shader motion toggle",
+        category: "Action",
+        run: () => {
+          toggleMotionPaused();
+          setCommandPaletteOpen(false);
+        },
+      },
+      {
+        id: "act-assistant",
+        label: "Open Contextual AI Assistant Drawer (⌘J)",
+        subtitle: "Grounded multi-provider synthesis sidebar",
+        category: "Action",
+        run: () => {
+          setCommandPaletteOpen(false);
+          setAssistantOpen(true);
+        },
+      },
+      {
+        id: "act-landing",
+        label: "Return to Landing Presentation",
+        subtitle: "Public executive showcase /",
+        category: "Route",
+        run: () => {
+          setCommandPaletteOpen(false);
+          router.push("/");
+        },
+      },
+    ];
+
+    const q = paletteQuery.trim().toLowerCase();
+    const combined = [...navActions, ...quickActions];
+    if (!q) return [];
+    return combined
+      .filter(
+        (act) =>
+          act.label.toLowerCase().includes(q) || act.subtitle.toLowerCase().includes(q)
+      )
+      .sort((a, b) => {
+        const aStarts = a.label.toLowerCase().startsWith(q) ? 0 : 1;
+        const bStarts = b.label.toLowerCase().startsWith(q) ? 0 : 1;
+        return aStarts - bStarts;
+      });
+  }, [paletteQuery, theme, motionPaused, toggleTheme, toggleMotionPaused, setCommandPaletteOpen, setAssistantOpen, router]);
+
+  useEffect(() => {
+    setPaletteActiveIdx(0);
+  }, [paletteQuery, commandPaletteOpen]);
+
   return (
     <QueryClientProvider client={queryClient}>
       <MotionConfig reducedMotion="user">
         <div className="min-h-screen flex flex-col bg-[var(--bg-obsidian)] text-[var(--text-primary)]">
           {/* Top Global Intelligence Header */}
           <header
-            className="sticky top-0 z-40 h-14 border-b border-[var(--border-subtle)] backdrop-blur-xl px-3 sm:px-4 flex items-center justify-between gap-2 sm:gap-3 overflow-x-clip"
-            style={{ backgroundColor: "var(--glass-bg)" }}
+            className="sticky top-0 z-40 h-14 backdrop-blur-xl px-3 sm:px-4 flex items-center justify-between gap-2 sm:gap-3 overflow-x-clip"
+            style={{
+              backgroundColor: "var(--bg-glass)",
+              boxShadow: "inset 0 -1px 0 var(--border-subtle)",
+            }}
           >
             <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
               <button
@@ -230,7 +357,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
 
             {/* Universal Command & Search Trigger */}
-            <div className="flex-1 min-w-0 max-w-sm xl:max-w-md mx-0.5 sm:mx-2">
+            <div className="flex-1 min-w-0 max-w-md xl:max-w-lg mx-0.5 sm:mx-2">
               <button
                 type="button"
                 onClick={() => setCommandPaletteOpen(true)}
@@ -240,7 +367,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <Search className="w-3.5 h-3.5 tone-blue shrink-0" />
                   <span className="sm:hidden truncate">Search OMNIS...</span>
                   <span className="hidden sm:inline truncate">
-                    Ask anything, inspect nations, or open a simulation...
+                    Search nations, graphs, simulations...
                   </span>
                 </span>
                 <kbd className="hidden sm:inline-block shrink-0 px-1.5 py-0.5 text-[10px] rounded-md bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-muted)] omnis-mono">
@@ -251,10 +378,32 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
             {/* Right Action Controls */}
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-              <div className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1 rounded-full badge-tone-verified text-[11px] font-medium">
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--status-verified)] animate-pulse" />
-                <span>Live Providers</span>
-              </div>
+              <Link
+                href="/settings"
+                title={`Provider Telemetry: ${providerTelemetry.operationalCount}/${providerTelemetry.totalCount} operational`}
+                className={`hidden 2xl:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${
+                  providerTelemetry.status === "operational"
+                    ? "badge-tone-verified"
+                    : providerTelemetry.status === "checking"
+                      ? "badge-tone-blue"
+                      : "badge-tone-warning"
+                }`}
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    providerTelemetry.status === "operational"
+                      ? "bg-[var(--status-verified)] animate-pulse"
+                      : providerTelemetry.status === "checking"
+                        ? "bg-[var(--accent-blue)] animate-pulse"
+                        : "bg-[var(--status-warning)]"
+                  }`}
+                />
+                <span className="omnis-tabular">
+                  {providerTelemetry.status === "checking"
+                    ? "Probing Providers..."
+                    : `${providerTelemetry.operationalCount}/${providerTelemetry.totalCount} Providers`}
+                </span>
+              </Link>
 
               <button
                 type="button"
@@ -301,13 +450,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
               <Link
                 href="/settings"
+                title={user?.verified ? `${user.displayName} (${user.role})` : "Local Browser Workspace"}
                 className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:border-[var(--border-strong)] text-xs font-medium text-[var(--text-primary)] transition-colors shrink-0"
               >
-                <ShieldCheck className="w-3.5 h-3.5 tone-verified shrink-0" />
-                <span className="truncate max-w-[100px]">
+                <ShieldCheck
+                  className={`w-3.5 h-3.5 shrink-0 ${
+                    user?.verified ? "tone-verified" : "text-[var(--text-muted)]"
+                  }`}
+                />
+                <span className="truncate max-w-[110px]">
                   {user
-                    ? user.displayName.replace(/^Dr\.\s*/i, "").split(" ")[0] ||
-                      user.displayName.split(" ")[0]
+                    ? user.verified
+                      ? user.displayName.replace(/^Dr\.\s*/i, "").split(" ")[0] ||
+                        user.displayName.split(" ")[0]
+                      : "Local Session"
                     : "Sign In"}
                 </span>
               </Link>
@@ -538,11 +694,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -8, scale: 0.985 }}
                   transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="OMNIS Command Palette"
                   className="relative z-10 w-full max-w-2xl omnis-card overflow-hidden shadow-2xl"
                 >
                   <form
                     onSubmit={(e) => {
                       e.preventDefault();
+                      const selectedAction = commandActions[paletteActiveIdx];
+                      if (paletteQuery.trim() && selectedAction) {
+                        selectedAction.run();
+                        return;
+                      }
                       handleUniversalSearchSubmit(paletteQuery);
                     }}
                     className="flex items-center gap-3 px-4 py-3.5 border-b border-[var(--border-subtle)] bg-[var(--bg-graphite)]"
@@ -553,7 +717,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       autoFocus
                       value={paletteQuery}
                       onChange={(e) => setPaletteQuery(e.target.value)}
-                      placeholder="Enter a natural language question, country, concept, or scenario..."
+                      onKeyDown={(e) => {
+                        if (commandActions.length === 0) return;
+                        if (e.key === "ArrowDown") {
+                          e.preventDefault();
+                          setPaletteActiveIdx((i) => (i + 1) % commandActions.length);
+                        } else if (e.key === "ArrowUp") {
+                          e.preventDefault();
+                          setPaletteActiveIdx(
+                            (i) => (i - 1 + commandActions.length) % commandActions.length
+                          );
+                        }
+                      }}
+                      placeholder="Jump to module, run action (theme/motion), or search..."
                       className="w-full bg-transparent text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
                     />
                     <button
@@ -564,6 +740,39 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       ESC
                     </button>
                   </form>
+
+                  {commandActions.length > 0 ? (
+                    <div className="px-3 py-2.5 border-b border-[var(--border-subtle)] bg-[var(--bg-graphite)] space-y-1">
+                      <div className="px-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-muted)] omnis-mono">
+                        Direct Module & Action Matches (↵ to launch)
+                      </div>
+                      {commandActions.slice(0, 6).map((act, idx) => (
+                        <button
+                          key={act.id}
+                          type="button"
+                          onMouseEnter={() => setPaletteActiveIdx(idx)}
+                          onClick={act.run}
+                          className={`w-full px-3 py-2 rounded-lg text-left text-xs flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                            idx === paletteActiveIdx
+                              ? "bg-[var(--badge-blue-bg)] border border-[var(--badge-blue-border)] text-[var(--text-primary)]"
+                              : "hover:bg-[var(--bg-slate)] text-[var(--text-secondary)] border border-transparent"
+                          }`}
+                        >
+                          <div className="min-w-0">
+                            <div className="font-semibold text-[var(--text-primary)] truncate">
+                              {act.label}
+                            </div>
+                            <div className="text-[10.5px] text-[var(--text-muted)] truncate omnis-mono">
+                              {act.subtitle}
+                            </div>
+                          </div>
+                          <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-muted)] omnis-mono shrink-0">
+                            {act.category}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
 
                   {liveIntent && (
                     <div className="px-4 py-2.5 bg-[var(--bg-slate)] border-b border-[var(--border-subtle)] flex items-center justify-between text-xs">
@@ -639,16 +848,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             )}
           </AnimatePresence>
 
-          {/* Persistent Context-Aware Universal AI Assistant Drawer (Cmd+J) */}
+          {/* Docked Right-Side Context-Aware Universal AI Assistant Drawer (Cmd+J) */}
           <AnimatePresence>
             {assistantOpen && (
-              <motion.div
-                initial={{ opacity: 0, y: 16, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 12, scale: 0.98 }}
-                transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                className="fixed right-4 bottom-4 z-50 w-96 max-w-[calc(100vw-2rem)] h-[540px] max-h-[82vh] omnis-card flex flex-col overflow-hidden shadow-2xl border-[var(--border-strong)]"
-              >
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.16 }}
+                  onClick={() => setAssistantOpen(false)}
+                  className="fixed inset-0 top-14 z-40 bg-black/35 backdrop-blur-[1px]"
+                />
+                <motion.div
+                  initial={{ x: "100%" }}
+                  animate={{ x: 0 }}
+                  exit={{ x: "100%" }}
+                  transition={{ type: "spring", damping: 30, stiffness: 320 }}
+                  role="dialog"
+                  aria-label="OMNIS Contextual AI Assistant Drawer"
+                  className="fixed top-14 bottom-0 right-0 z-50 w-full sm:w-[400px] bg-[var(--bg-graphite)] border-l border-[var(--border-subtle)] flex flex-col shadow-2xl"
+                >
                 <div className="px-4 py-3 bg-[var(--bg-slate)] border-b border-[var(--border-subtle)] flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     <div className="w-7 h-7 rounded-lg badge-tone-blue flex items-center justify-center shrink-0">
@@ -757,6 +977,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   </button>
                 </form>
               </motion.div>
+              </>
             )}
           </AnimatePresence>
         </div>

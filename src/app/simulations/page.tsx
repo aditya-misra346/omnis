@@ -20,6 +20,8 @@ import { ProvenancePanel } from "@/components/ui/ProvenancePanel";
 import { MonteCarloFanChart, TornadoSensitivityChart } from "@/components/charts/OmnisCharts";
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
 import { OmnisButton, OmnisModuleHeader, OmnisStatTile } from "@/components/ui/OmnisPrimitives";
+import { OmnisParameterSlider } from "@/components/ui/OmnisParameterSlider";
+import { OmnisMathBlock } from "@/components/ui/OmnisMathBlock";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 import type { SimulationCategory } from "@/types/omnis";
 
@@ -134,6 +136,7 @@ function SimulationsContent() {
         title={activeSpec.title}
         subtitle={`${activeSpec.subtitle} • Governing Model: ${activeSpec.modelName}`}
         icon={<Sliders className="w-3.5 h-3.5" />}
+        mobileFilterLabel={`Model: ${CATEGORIES.find((c) => c.id === category)?.label.split(" ")[0] ?? "Category"}`}
         actions={
           <>
             <OmnisButton onClick={handleSaveExperiment}>
@@ -146,24 +149,25 @@ function SimulationsContent() {
             </OmnisButton>
           </>
         }
-      >
-        <div className="flex flex-wrap gap-2 pt-1">
-          {CATEGORIES.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => setCategory(c.id)}
-              className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                category === c.id
-                  ? "bg-[var(--accent-blue-solid)] text-white shadow-sm"
-                  : "bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]"
-              }`}
-            >
-              {c.label}
-            </button>
-          ))}
-        </div>
-      </OmnisModuleHeader>
+        secondaryControls={
+          <div className="flex flex-wrap gap-2 pt-1">
+            {CATEGORIES.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setCategory(c.id)}
+                className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  category === c.id
+                    ? "bg-[var(--accent-blue-solid)] text-white shadow-sm"
+                    : "bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]"
+                }`}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+        }
+      />
 
       {/* Main Simulation Workspace */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -183,65 +187,53 @@ function SimulationsContent() {
             </button>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {activeSpec.parameters.map((param) => {
               const currentVal = overrides[param.key] ?? param.defaultModifiedValue;
               return (
-                <div key={param.key} className="omnis-surface-slate p-3.5 space-y-2">
-                  <div className="flex items-center justify-between gap-2 text-xs">
-                    <span className="font-semibold text-[var(--text-primary)]">{param.label}</span>
-                    <span className="font-bold omnis-mono tone-blue shrink-0">
-                      {currentVal} {param.unit}
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={param.min}
-                    max={param.max}
-                    step={param.step}
-                    value={currentVal}
-                    aria-label={param.label}
-                    onChange={(e) =>
-                      setOverrides((prev) => ({
-                        ...prev,
-                        [param.key]: Number(e.target.value),
-                      }))
-                    }
-                    className="w-full accent-[var(--accent-blue)] cursor-pointer"
-                  />
-                  <div className="flex justify-between text-[10px] text-[var(--text-muted)] omnis-mono">
-                    <span>Min: {param.min}</span>
-                    <span>Base: {param.baselineValue}</span>
-                    <span>Max: {param.max}</span>
-                  </div>
-                  <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
-                    {param.description}
-                  </p>
-                </div>
+                <OmnisParameterSlider
+                  key={param.key}
+                  label={param.label}
+                  unit={param.unit}
+                  min={param.min}
+                  max={param.max}
+                  step={param.step}
+                  baselineValue={param.baselineValue}
+                  description={param.description}
+                  value={currentVal}
+                  accent="blue"
+                  onChange={(nextVal) =>
+                    setOverrides((prev) => ({
+                      ...prev,
+                      [param.key]: nextVal,
+                    }))
+                  }
+                  onReset={() =>
+                    setOverrides((prev) => ({
+                      ...prev,
+                      [param.key]: param.baselineValue,
+                    }))
+                  }
+                />
               );
             })}
 
             {/* Timeframe Horizon & Seed */}
-            <div className="omnis-surface-slate p-3.5 space-y-2.5 text-xs">
-              <div className="flex justify-between">
-                <span className="font-semibold text-[var(--text-primary)]">
-                  Projection Timeframe Horizon
-                </span>
-                <span className="font-bold omnis-mono tone-violet">
-                  {horizonYears} Years (2026–{2026 + horizonYears})
-                </span>
-              </div>
-              <input
-                type="range"
+            <div className="space-y-3">
+              <OmnisParameterSlider
+                label="Projection Timeframe Horizon"
+                unit={`Years (2026–${2026 + horizonYears})`}
                 min={5}
                 max={35}
                 step={5}
+                baselineValue={15}
                 value={horizonYears}
-                aria-label="Projection Timeframe Horizon"
-                onChange={(e) => setHorizonYears(Number(e.target.value))}
-                className="w-full accent-[var(--accent-violet)] cursor-pointer"
+                accent="violet"
+                onChange={setHorizonYears}
+                onReset={() => setHorizonYears(15)}
               />
-              <div className="flex items-center justify-between pt-2 border-t border-[var(--border-subtle)]">
+
+              <div className="flex items-center justify-between px-3.5 py-2.5 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-xs">
                 <span className="text-[11px] text-[var(--text-secondary)]">
                   Monte Carlo Seed (500 paths):
                 </span>
@@ -250,7 +242,7 @@ function SimulationsContent() {
                   value={seed}
                   aria-label="Monte Carlo Seed"
                   onChange={(e) => setSeed(Number(e.target.value) || 42)}
-                  className="w-20 px-2.5 py-1 rounded-lg bg-[var(--bg-graphite)] border border-[var(--border-subtle)] text-xs font-semibold omnis-mono text-[var(--text-primary)]"
+                  className="w-20 px-2.5 py-1 rounded-md bg-[var(--bg-graphite)] border border-[var(--border-subtle)] text-xs font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]"
                 />
               </div>
             </div>
@@ -324,9 +316,10 @@ function SimulationsContent() {
                 <AlertCircle className="w-4 h-4" />
                 <span>Model Assumptions & Epistemic Limitations</span>
               </div>
-              <div className="p-3 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] omnis-mono text-[11px] text-[var(--text-primary)] overflow-x-auto">
-                {activeSpec.equationsLatex}
-              </div>
+              <OmnisMathBlock
+                latex={activeSpec.equationsLatex}
+                label="Stochastic Governing Law"
+              />
               <ul className="space-y-1.5 text-[var(--text-secondary)] list-disc pl-4 leading-relaxed">
                 {simulationOutput.initialAssumptions.map((a) => (
                   <li key={a}>{a}</li>

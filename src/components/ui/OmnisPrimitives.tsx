@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { motion } from "framer-motion";
+import React, { useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 
@@ -52,6 +52,8 @@ export function OmnisModuleHeader({
   subtitle,
   icon,
   actions,
+  mobileFilterLabel = "Filters & Controls",
+  secondaryControls,
   children,
 }: {
   moduleTag: string;
@@ -59,36 +61,57 @@ export function OmnisModuleHeader({
   subtitle?: string;
   icon: React.ReactNode;
   actions?: React.ReactNode;
+  mobileFilterLabel?: string;
+  secondaryControls?: React.ReactNode;
   children?: React.ReactNode;
 }) {
+  const [mobileExpanded, setMobileExpanded] = useState(false);
+
   return (
-    <motion.section
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-      className="omnis-card p-5 sm:p-6 space-y-4 relative overflow-hidden"
-    >
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="space-y-1.5 min-w-0">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full badge-tone-blue text-[11px] font-semibold uppercase tracking-wider omnis-mono">
+    <section className="pb-4 sm:pb-5 border-b border-[var(--border-subtle)] space-y-3 sm:space-y-4 relative">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3 sm:gap-4">
+        <div className="space-y-1 sm:space-y-1.5 min-w-0">
+          <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] tone-blue omnis-mono">
             {icon}
             <span>{moduleTag}</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--text-primary)] leading-tight">
+          <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-[var(--text-primary)] leading-tight">
             {title}
           </h1>
           {subtitle && (
-            <p className="text-xs sm:text-sm text-[var(--text-secondary)] max-w-3xl leading-relaxed">
+            <p className="text-xs sm:text-sm text-[var(--text-secondary)] max-w-3xl leading-relaxed line-clamp-2 sm:line-clamp-none">
               {subtitle}
             </p>
           )}
         </div>
 
-        {actions && <div className="flex flex-wrap items-center gap-2 shrink-0">{actions}</div>}
+        {(actions || secondaryControls) && (
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {actions}
+            {secondaryControls && (
+              <button
+                type="button"
+                onClick={() => setMobileExpanded((prev) => !prev)}
+                aria-expanded={mobileExpanded}
+                className="sm:hidden inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-xs font-semibold text-[var(--text-primary)] cursor-pointer"
+              >
+                <span>{mobileFilterLabel}</span>
+                {mobileExpanded ? (
+                  <ChevronUp className="w-3.5 h-3.5 tone-blue" />
+                ) : (
+                  <ChevronDown className="w-3.5 h-3.5 tone-blue" />
+                )}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {children}
-    </motion.section>
+      {secondaryControls && (
+        <div className={mobileExpanded ? "block" : "hidden sm:block"}>{secondaryControls}</div>
+      )}
+    </section>
   );
 }
 
@@ -112,15 +135,15 @@ export function OmnisStatTile({
   }[tone];
 
   return (
-    <div className="omnis-surface-slate p-3.5 space-y-1 hover:border-[var(--border-strong)]">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] truncate">
+    <div className="omnis-surface-slate p-3.5 space-y-1 hover:border-[var(--border-strong)] min-w-0">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] leading-snug">
         {label}
       </div>
-      <div className={`text-lg sm:text-xl font-bold omnis-mono leading-tight ${toneClass}`}>
+      <div className={`text-lg sm:text-xl font-bold omnis-mono omnis-tabular leading-tight ${toneClass}`}>
         {value}
       </div>
       {subValue && (
-        <div className="text-[11px] text-[var(--text-secondary)] omnis-mono truncate">
+        <div className="text-[11px] text-[var(--text-secondary)] omnis-mono omnis-tabular leading-snug break-words">
           {subValue}
         </div>
       )}

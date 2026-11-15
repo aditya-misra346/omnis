@@ -19,8 +19,16 @@ interface ProviderStatus {
   id: string;
   name: string;
   endpoint: string;
-  status: string;
+  status: "operational" | "degraded" | "unreachable" | string;
+  httpStatus?: number | null;
+  latencyMs?: number;
   license: string;
+}
+
+function getProviderToneClass(status: string): string {
+  if (status === "operational") return "badge-tone-verified";
+  if (status === "degraded") return "badge-tone-warning";
+  return "badge-tone-danger";
 }
 
 export default function SettingsPage() {
@@ -34,19 +42,23 @@ export default function SettingsPage() {
     setActiveContext,
   } = useOmnisStore();
 
-  const [emailInput, setEmailInput] = useState("researcher@omnis-intelligence.org");
-  const [nameInput, setNameInput] = useState("Dr. Aditya Misra");
+  const [emailInput, setEmailInput] = useState("analyst@institution.org");
+  const [nameInput, setNameInput] = useState("Research Analyst");
   const [providers, setProviders] = useState<ProviderStatus[]>([]);
+  const [overallHealthStatus, setOverallHealthStatus] = useState<string>("checking");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setActiveContext("Settings, Security & Data Governance", "System Configuration");
     fetch("/api/v1/health")
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => (r.ok || r.status === 503 ? r.json() : null))
       .then((data) => {
         if (data?.providers) setProviders(data.providers);
+        if (data?.status) setOverallHealthStatus(data.status);
       })
-      .catch(() => {});
+      .catch(() => {
+        setOverallHealthStatus("unreachable");
+      });
   }, [setActiveContext]);
 
   const handleLogin = (e: React.FormEvent) => {
@@ -126,13 +138,13 @@ export default function SettingsPage() {
             Researcher Authentication & Session
           </h2>
 
-          {user ? (
+          {user && user.verified ? (
             <div className="space-y-3 text-xs">
               <div className="omnis-surface-slate p-3.5 space-y-1">
                 <div className="font-bold text-sm text-[var(--text-primary)]">{user.displayName}</div>
                 <div className="text-[var(--text-secondary)] omnis-mono">{user.email}</div>
                 <div className="text-[11px] tone-verified font-semibold pt-1">
-                  ✓ Verified Role: {user.role} • Isolated Workspace Active
+                  ✓ Signed-In Session: {user.role} • Local Browser Workspace Active
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -144,36 +156,61 @@ export default function SettingsPage() {
                   variant="danger"
                   onClick={() => {
                     deleteAccountAndData();
-                    setStatusMessage("Account and all private workspace data permanently deleted.");
+                    setStatusMessage("Session signed out and local workspace data cleared.");
                   }}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  <span>Delete Account & Data</span>
+                  <span>Delete Local Workspace Data</span>
                 </OmnisButton>
               </div>
             </div>
           ) : (
-            <form onSubmit={handleLogin} className="space-y-3 text-xs">
-              <input
-                type="text"
-                required
-                value={nameInput}
-                onChange={(e) => setNameInput(e.target.value)}
-                placeholder="Display Name"
-                className="w-full px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]"
-              />
-              <input
-                type="email"
-                required
-                value={emailInput}
-                onChange={(e) => setEmailInput(e.target.value)}
-                placeholder="Institutional Email"
-                className="w-full px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]"
-              />
-              <OmnisButton type="submit" className="w-full">
-                Sign In / Provision Researcher Session
-              </OmnisButton>
-            </form>
+            <div className="space-y-3 text-xs">
+              {user && !user.verified && (
+                <div className="omnis-surface-slate p-3 space-y-1 border-dashed">
+                  <div className="font-bold text-[var(--text-primary)]">{user.displayName}</div>
+                  <div className="text-[11px] text-[var(--text-secondary)]">
+                    Role: {user.role} (Unverified guest workspace in `localStorage`)
+                  </div>
+                </div>
+              )}
+              <form onSubmit={handleLogin} className="space-y-3">
+                <input
+                  type="text"
+                  required
+                  value={nameInput}
+                  onChange={(e) => setNameInput(e.target.value)}
+                  placeholder="Display Name"
+                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]"
+                />
+                <input
+                  type="email"
+                  required
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
+                  placeholder="Institutional Email"
+                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]"
+                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <OmnisButton type="submit" className="flex-1">
+                    Sign In / Set Local Researcher Profile
+                  </OmnisButton>
+                  {user && (
+                    <OmnisButton
+                      type="button"
+                      variant="danger"
+                      onClick={() => {
+                        deleteAccountAndData();
+                        setStatusMessage("Local workspace data cleared.");
+                      }}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Clear</span>
+                    </OmnisButton>
+                  )}
+                </div>
+              </form>
+            </div>
           )}
         </div>
       </div>
@@ -185,8 +222,22 @@ export default function SettingsPage() {
             <Database className="w-4 h-4 tone-blue" />
             Centralised External Data Provider Telemetry
           </h2>
-          <span className="text-xs px-2.5 py-0.5 rounded-full badge-tone-verified font-semibold omnis-mono">
-            All Providers Operational
+          <span
+            className={`text-xs px-2.5 py-0.5 rounded-full font-semibold omnis-mono uppercase ${
+              overallHealthStatus === "operational"
+                ? "badge-tone-verified"
+                : overallHealthStatus === "checking"
+                  ? "badge-tone-blue"
+                  : overallHealthStatus === "degraded"
+                    ? "badge-tone-warning"
+                    : "badge-tone-danger"
+            }`}
+          >
+            {overallHealthStatus === "operational"
+              ? "All Providers Operational"
+              : overallHealthStatus === "checking"
+                ? "Probing Upstream APIs..."
+                : `Status: ${overallHealthStatus}`}
           </span>
         </div>
 
@@ -195,12 +246,18 @@ export default function SettingsPage() {
             <div key={p.id} className="omnis-surface-slate p-4 space-y-1.5">
               <div className="flex items-center justify-between gap-2">
                 <span className="font-bold text-[var(--text-primary)]">{p.name}</span>
-                <span className="px-2 py-0.5 rounded-full badge-tone-verified text-[10px] font-semibold omnis-mono uppercase">
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-semibold omnis-mono uppercase ${getProviderToneClass(
+                    p.status
+                  )}`}
+                >
                   {p.status}
+                  {typeof p.latencyMs === "number" ? ` • ${p.latencyMs}ms` : ""}
                 </span>
               </div>
               <div className="text-[11px] text-[var(--text-muted)] omnis-mono truncate">
                 {p.endpoint}
+                {typeof p.httpStatus === "number" ? ` (HTTP ${p.httpStatus})` : ""}
               </div>
               <div className="text-[10.5px] text-[var(--text-secondary)]">License: {p.license}</div>
             </div>

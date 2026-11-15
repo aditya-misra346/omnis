@@ -460,40 +460,56 @@ ${report.sources
                     </span>
                   </div>
                   <div className="space-y-2.5">
-                    {report.visualisationSeries.data.map((d) => {
-                      const pPct = Math.min(100, Math.max(4, (d.primaryValue / maxChartVal) * 100));
-                      const hasComp = d.comparisonValue !== undefined;
-                      const cPct = hasComp
-                        ? Math.min(100, Math.max(4, ((d.comparisonValue ?? 0) / maxChartVal) * 100))
-                        : 0;
-                      return (
-                        <div key={d.label} className="space-y-1 text-[11px] omnis-mono">
-                          <div className="flex justify-between text-[var(--text-secondary)]">
-                            <span className="font-semibold text-[var(--text-primary)]">{d.label}</span>
-                            <span>
-                              {d.primaryValue}
-                              {hasComp ? ` vs ${d.comparisonValue}` : ""}
-                            </span>
-                          </div>
-                          <div className="space-y-1">
-                            <div className="w-full h-2 rounded-full bg-[var(--bg-slate)] overflow-hidden">
-                              <div
-                                className="h-full rounded-full"
-                                style={{ width: `${pPct}%`, backgroundColor: "var(--chart-blue)" }}
-                              />
+                    {report.visualisationSeries.data.length === 0 ? (
+                      <div className="p-3 rounded-lg bg-[var(--bg-slate)] border border-dashed border-[var(--border-subtle)] text-[11px] text-[var(--text-secondary)]">
+                        {report.visualisationSeries.source}. Consult the Source Credibility Registry
+                        below for live primary records.
+                      </div>
+                    ) : (
+                      report.visualisationSeries.data.map((d) => {
+                        const pPct = Math.min(
+                          100,
+                          Math.max(4, (d.primaryValue / maxChartVal) * 100)
+                        );
+                        const hasComp = d.comparisonValue !== undefined;
+                        const cPct = hasComp
+                          ? Math.min(
+                              100,
+                              Math.max(4, ((d.comparisonValue ?? 0) / maxChartVal) * 100)
+                            )
+                          : 0;
+                        return (
+                          <div key={d.label} className="space-y-1 text-[11px] omnis-mono omnis-tabular">
+                            <div className="flex justify-between text-[var(--text-secondary)]">
+                              <span className="font-semibold text-[var(--text-primary)]">{d.label}</span>
+                              <span>
+                                {d.primaryValue.toLocaleString()}
+                                {hasComp ? ` vs ${d.comparisonValue?.toLocaleString()}` : ""}
+                              </span>
                             </div>
-                            {hasComp && (
-                              <div className="w-full h-1.5 rounded-full bg-[var(--bg-slate)] overflow-hidden">
+                            <div className="space-y-1">
+                              <div className="w-full h-2 rounded-full bg-[var(--bg-slate)] overflow-hidden">
                                 <div
                                   className="h-full rounded-full"
-                                  style={{ width: `${cPct}%`, backgroundColor: "var(--chart-violet)" }}
+                                  style={{ width: `${pPct}%`, backgroundColor: "var(--chart-blue)" }}
                                 />
                               </div>
-                            )}
+                              {hasComp ? (
+                                <div className="w-full h-1.5 rounded-full bg-[var(--bg-slate)] overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full"
+                                    style={{
+                                      width: `${cPct}%`,
+                                      backgroundColor: "var(--chart-violet)",
+                                    }}
+                                  />
+                                </div>
+                              ) : null}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })
+                    )}
                   </div>
                 </div>
               </div>

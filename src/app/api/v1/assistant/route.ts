@@ -1,4 +1,5 @@
 import { COUNTRIES_DATA } from "@/lib/data/global-intelligence";
+import { fetchOpenAlexSources, fetchWikimediaSummary } from "@/lib/providers/live-data";
 import { classifyQueryIntent } from "@/lib/research/engine";
 import { checkApiRateLimit, validateAndSanitizeInput } from "@/lib/security/guardrails";
 
@@ -31,46 +32,79 @@ export async function POST(request: Request) {
         contextTopic.toUpperCase() === c.iso3
     );
 
-    const reply = matchedCountry
-      ? `Context-Grounded Analysis for **${matchedCountry.name} (${matchedCountry.iso3})** [Active Context: ${
+    const [openAlexWorks, wikiSummary] = await Promise.all([
+      fetchOpenAlexSources(msg, 3),
+      fetchWikimediaSummary(matchedCountry?.name ?? msg),
+    ]);
+
+    let reply = "";
+    if (matchedCountry) {
+      reply =
+        `Retrieved Country Profile — **${matchedCountry.name} (${matchedCountry.iso3})** [Context: ${
           body.contextLabel ?? "OMNIS"
-        }]:\n\n• **Macroeconomic Baseline**: Nominal GDP stands at **$${
-          matchedCountry.gdpUsdBn
-        }B** ($${matchedCountry.gdpPerCapitaUsd.toLocaleString()} per capita) with **${
-          matchedCountry.gdpGrowthPct
-        }%** real annual growth and **${matchedCountry.inflationPct}%** CPI inflation.\n• **Energy & Technology**: Renewable electricity share is **${
-          matchedCountry.energyProfile.renewableSharePct
-        }%** (Nuclear: ${matchedCountry.energyProfile.nuclearSharePct}%), R&D intensity is **${
-          matchedCountry.technologyProfile.rdSpendPctGdp
-        }% of GDP**, and Internet penetration reaches **${
-          matchedCountry.technologyProfile.internetPenetrationPct
-        }%**.\n• **Provenance**: ${matchedCountry.provenance.source} (${
-          matchedCountry.provenance.methodology
-        }).`
-      : `Context-Grounded Synthesis [Active Module: **${
-          body.contextLabel ?? "Command Center"
-        }** | Topic: **${contextTopic}**]:\n\nBased on OMNIS multi-source verification (World Bank WDI, OpenAlex Scholarly Corpus, and IMF WEO calibration), your query ("${msg}") maps to intent **${intentInfo.intent.replace(
+        }]:\n\n` +
+        `• **Macroeconomic Baseline**: Nominal GDP $${matchedCountry.gdpUsdBn.toLocaleString()}B ($${matchedCountry.gdpPerCapitaUsd.toLocaleString()}/capita), ${matchedCountry.gdpGrowthPct}% real annual growth, ${matchedCountry.inflationPct}% CPI inflation.\n` +
+        `• **Energy & R&D**: Renewable electricity ${matchedCountry.energyProfile.renewableSharePct}% (Nuclear ${matchedCountry.energyProfile.nuclearSharePct}%), R&D spend ${matchedCountry.technologyProfile.rdSpendPctGdp}% of GDP.\n` +
+        `• **Source Provenance**: ${matchedCountry.provenance.source} (${matchedCountry.provenance.methodology}).`;
+    } else if (openAlexWorks.length > 0 || wikiSummary) {
+      const topWork = openAlexWorks[0];
+      const wikiSnippet = wikiSummary ? `\n\n• **Reference Context (${wikiSummary.title})**: ${wikiSummary.extract.slice(0, 260)}${wikiSummary.extract.length > 260 ? "..." : ""}` : "";
+      const papersBullet =
+        openAlexWorks.length > 0
+          ? `\n• **Live OpenAlex Peer-Reviewed Citations Retrieved (${openAlexWorks.length})**:\n${openAlexWorks
+              .map((w) => `  - "${w.title}" (${w.publisher}, ${w.publishedDate})`)
+              .join("\n")}`
+          : "";
+      reply =
+        `Context-Grounded Retrieval for **"${msg}"** [Active Context: ${
+          body.contextLabel ?? "Command Cockpit"
+        } | Classified Intent: ${intentInfo.intent.replace(/_/g, " ")}]:` +
+        wikiSnippet +
+        papersBullet +
+        (topWork
+          ? `\n\nUse the Deep Research module to decompose empirical claims across these retrieved citations.`
+          : "");
+    } else {
+      reply =
+        `No pre-cached sovereign dossier directly matched **"${msg}"** under active context (${
+          body.contextLabel ?? "Command Cockpit"
+        }), and live upstream OpenAlex/Wikimedia providers returned zero records within timeout.\n\n` +
+        `Intent classification routes this query to **${intentInfo.intent.replace(
           /_/g,
           " "
-        )}**.\n\n1. **Verified Empirical Finding**: Primary institutional series confirm strong coupling between capital formation, energy grid elasticity, and technological diffusion.\n2. **Methodological Guardrail**: Historical observations are strictly separated from forward Monte Carlo scenario projections.`;
+        )}**. Open Deep Research or Universal Explore directly to query external databases.`;
+    }
+
+    const citations = [
+      ...(matchedCountry
+        ? [
+            {
+              label: `World Bank Open Data — ${matchedCountry.name}`,
+              url: matchedCountry.provenance.url,
+            },
+          ]
+        : []),
+      ...openAlexWorks.slice(0, 2).map((w) => ({
+        label: `${w.title} (${w.publishedDate})`,
+        url: w.url,
+      })),
+      ...(wikiSummary
+        ? [{ label: `Wikimedia — ${wikiSummary.title}`, url: wikiSummary.url }]
+        : []),
+      ...(openAlexWorks.length === 0 && !matchedCountry
+        ? [
+            {
+              label: `OpenAlex Search: ${msg}`,
+              url: `https://openalex.org/works?search=${encodeURIComponent(msg)}`,
+            },
+          ]
+        : []),
+    ];
 
     return Response.json({
       reply,
       timestamp: new Date().toISOString(),
-      citations: [
-        {
-          label: matchedCountry
-            ? `World Bank Open Data — ${matchedCountry.name}`
-            : "World Bank Open Data API (v2)",
-          url: matchedCountry
-            ? matchedCountry.provenance.url
-            : "https://data.worldbank.org",
-        },
-        {
-          label: "OpenAlex Peer-Reviewed Literature Graph",
-          url: `https://openalex.org/works?search=${encodeURIComponent(msg)}`,
-        },
-      ],
+      citations,
       suggestedActions: [
         {
           label: `Explore Knowledge Graph: ${matchedCountry?.name ?? msg.slice(0, 24)}`,

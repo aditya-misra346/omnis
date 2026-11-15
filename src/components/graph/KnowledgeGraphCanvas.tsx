@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ZoomIn,
   ZoomOut,
@@ -9,6 +9,7 @@ import {
   RotateCcw,
   Download,
   PlusCircle,
+  Scan,
 } from "lucide-react";
 import type {
   GraphLayoutMode,
@@ -39,16 +40,18 @@ function computeLayoutPositions(
   nodes: KnowledgeGraphNode[],
   edges: KnowledgeGraphEdge[],
   mode: GraphLayoutMode,
-  width = 920,
-  height = 560
+  width: number,
+  height: number
 ): PositionedNode[] {
-  const cx = width / 2;
-  const cy = height / 2;
+  const safeW = Math.max(360, width);
+  const safeH = Math.max(320, height);
+  const cx = safeW / 2;
+  const cy = safeH / 2;
   const count = nodes.length;
   if (count === 0) return [];
 
   if (mode === "circular") {
-    const r = Math.min(width, height) * 0.36;
+    const r = Math.min(safeW, safeH) * 0.36;
     return nodes.map((n, idx) => {
       const angle = (2 * Math.PI * idx) / count - Math.PI / 2;
       return {
@@ -60,10 +63,12 @@ function computeLayoutPositions(
   }
 
   if (mode === "radial") {
+    const r1 = Math.min(safeW, safeH) * 0.27;
+    const r2 = Math.min(safeW, safeH) * 0.41;
     return nodes.map((n, idx) => {
       if (idx === 0) return { ...n, x: cx, y: cy };
       const ring = idx <= 6 ? 1 : 2;
-      const radius = ring === 1 ? 158 : 238;
+      const radius = ring === 1 ? r1 : r2;
       const ringNodes = ring === 1 ? Math.min(6, count - 1) : Math.max(1, count - 7);
       const localIdx = ring === 1 ? idx - 1 : idx - 7;
       const angle = (2 * Math.PI * localIdx) / ringNodes - Math.PI / 4;
@@ -83,14 +88,17 @@ function computeLayoutPositions(
       else levels[1].push(n);
     });
     const out: PositionedNode[] = [];
+    const topY = safeH * 0.16;
+    const stepY = (safeH * 0.66) / 2;
     levels.forEach((lvlNodes, lvlIdx) => {
-      const y = 92 + lvlIdx * 186;
-      const span = width - 170;
+      const y = topY + lvlIdx * stepY;
+      const padX = Math.max(76, safeW * 0.1);
+      const span = Math.max(120, safeW - padX * 2);
       lvlNodes.forEach((n, i) => {
         const x =
           lvlNodes.length === 1
             ? cx
-            : 85 + (span * i) / Math.max(1, lvlNodes.length - 1);
+            : padX + (span * i) / Math.max(1, lvlNodes.length - 1);
         out.push({ ...n, x, y });
       });
     });
@@ -99,13 +107,15 @@ function computeLayoutPositions(
 
   if (mode === "clustered") {
     const categories = Array.from(new Set(nodes.map((n) => n.category)));
+    const rx = safeW * 0.21;
+    const ry = safeH * 0.27;
     return nodes.map((n, idx) => {
       const catIdx = categories.indexOf(n.category);
       const clusterAngle = (2 * Math.PI * catIdx) / Math.max(1, categories.length);
-      const clusterCx = cx + (catIdx === 0 ? 0 : 182 * Math.cos(clusterAngle));
-      const clusterCy = cy + (catIdx === 0 ? 0 : 148 * Math.sin(clusterAngle));
+      const clusterCx = cx + (catIdx === 0 ? 0 : rx * Math.cos(clusterAngle));
+      const clusterCy = cy + (catIdx === 0 ? 0 : ry * Math.sin(clusterAngle));
       const jitterAngle = idx * 1.9;
-      const jitterR = idx === 0 ? 0 : 52;
+      const jitterR = idx === 0 ? 0 : Math.min(54, Math.min(safeW, safeH) * 0.1);
       return {
         ...n,
         x: clusterCx + jitterR * Math.cos(jitterAngle),
@@ -114,11 +124,11 @@ function computeLayoutPositions(
     });
   }
 
-  // Deterministic Force-Directed layout with ideal spring rest length to avoid center crowding
+  const baseDist = Math.min(safeW, safeH) * 0.34;
   const pos = nodes.map((n, idx) => {
     if (idx === 0) return { ...n, x: cx, y: cy };
     const angle = (2 * Math.PI * (idx - 1)) / Math.max(1, count - 1);
-    const dist = 195 + ((idx * 41) % 68);
+    const dist = baseDist + ((idx * 41) % 64) - 24;
     return {
       ...n,
       x: cx + dist * Math.cos(angle),
@@ -126,6 +136,8 @@ function computeLayoutPositions(
     };
   });
 
+  const padX = Math.max(82, safeW * 0.1);
+  const padY = Math.max(66, safeH * 0.12);
   const idToIdx = new Map(pos.map((p, i) => [p.id, i]));
   for (let iter = 0; iter < 48; iter++) {
     for (let i = 1; i < pos.length; i++) {
@@ -149,13 +161,13 @@ function computeLayoutPositions(
           const dx = pos[otherIdx].x - pos[i].x;
           const dy = pos[otherIdx].y - pos[i].y;
           const dist = Math.max(1, Math.hypot(dx, dy));
-          const spring = (dist - 178) * 0.036;
+          const spring = (dist - Math.min(182, baseDist * 0.92)) * 0.036;
           fx += (dx / dist) * spring;
           fy += (dy / dist) * spring;
         }
       }
-      pos[i].x = Math.max(92, Math.min(width - 92, pos[i].x + fx * 0.25));
-      pos[i].y = Math.max(70, Math.min(height - 76, pos[i].y + fy * 0.25));
+      pos[i].x = Math.max(padX, Math.min(safeW - padX, pos[i].x + fx * 0.25));
+      pos[i].y = Math.max(padY, Math.min(safeH - padY - 12, pos[i].y + fy * 0.25));
     }
   }
 
@@ -181,6 +193,9 @@ export function KnowledgeGraphCanvas({
   relationshipFilter?: RelationshipType | "ALL";
   searchFilter?: string;
 }) {
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const nodeGroupRefs = useRef<Map<string, SVGGElement>>(new Map());
+  const [canvasSize, setCanvasSize] = useState({ width: 920, height: 560 });
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -192,9 +207,32 @@ export function KnowledgeGraphCanvas({
   const [panningCanvas, setPanningCanvas] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const syncSize = () => {
+      const w = Math.max(360, el.clientWidth || 920);
+      const h = Math.max(360, el.clientHeight || 560);
+      setCanvasSize((prev) =>
+        Math.abs(prev.width - w) > 2 || Math.abs(prev.height - h) > 2
+          ? { width: w, height: h }
+          : prev
+      );
+    };
+    syncSize();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(syncSize) : null;
+    ro?.observe(el);
+    window.addEventListener("resize", syncSize);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", syncSize);
+    };
+  }, [isFullscreen]);
+
   const basePositions = useMemo(
-    () => computeLayoutPositions(nodes, edges, layoutMode),
-    [nodes, edges, layoutMode]
+    () =>
+      computeLayoutPositions(nodes, edges, layoutMode, canvasSize.width, canvasSize.height),
+    [nodes, edges, layoutMode, canvasSize.width, canvasSize.height]
   );
 
   const positionedNodes = useMemo(
@@ -232,6 +270,63 @@ export function KnowledgeGraphCanvas({
     return set;
   }, [focusNodeId, filteredEdges]);
 
+  const handleFitToScreen = useCallback(() => {
+    if (positionedNodes.length === 0) return;
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (const n of positionedNodes) {
+      minX = Math.min(minX, n.x - 60);
+      maxX = Math.max(maxX, n.x + 60);
+      minY = Math.min(minY, n.y - 40);
+      maxY = Math.max(maxY, n.y + 52);
+    }
+    const bboxW = Math.max(120, maxX - minX);
+    const bboxH = Math.max(120, maxY - minY);
+    const fitZoom = Math.min(
+      1.6,
+      Math.max(0.55, Math.min((canvasSize.width * 0.88) / bboxW, (canvasSize.height * 0.82) / bboxH))
+    );
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    setZoom(Number(fitZoom.toFixed(2)));
+    setPan({
+      x: canvasSize.width / 2 - centerX * fitZoom,
+      y: canvasSize.height / 2 - centerY * fitZoom,
+    });
+  }, [positionedNodes, canvasSize.width, canvasSize.height]);
+
+  const handleWheelZoom = useCallback(
+    (e: WheelEvent) => {
+      const el = stageRef.current;
+      if (!el) return;
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const pointerX = e.clientX - rect.left;
+      const pointerY = e.clientY - rect.top;
+      const factor = e.deltaY < 0 ? 1.09 : 0.91;
+
+      setZoom((prevZoom) => {
+        const nextZoom = Math.min(2.2, Math.max(0.45, Number((prevZoom * factor).toFixed(3))));
+        const ratio = nextZoom / prevZoom;
+        setPan((prevPan) => ({
+          x: pointerX - (pointerX - prevPan.x) * ratio,
+          y: pointerY - (pointerY - prevPan.y) * ratio,
+        }));
+        return nextZoom;
+      });
+    },
+    []
+  );
+
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    el.addEventListener("wheel", handleWheelZoom, { passive: false });
+    return () => el.removeEventListener("wheel", handleWheelZoom);
+  }, [handleWheelZoom]);
+
   const handleExportSvg = () => {
     const svgElement = document.getElementById("omnis-knowledge-graph-svg");
     if (!svgElement) return;
@@ -258,7 +353,7 @@ export function KnowledgeGraphCanvas({
           <span className="font-semibold text-[var(--text-primary)]">
             Layout: <span className="uppercase tone-blue omnis-mono">{layoutMode}</span>
           </span>
-          <span className="text-[var(--text-muted)] omnis-mono">
+          <span className="text-[var(--text-muted)] omnis-mono omnis-tabular">
             {positionedNodes.length} Entities • {filteredEdges.length} Typed Links
           </span>
         </div>
@@ -266,19 +361,31 @@ export function KnowledgeGraphCanvas({
         <div className="flex items-center gap-1.5">
           <button
             type="button"
-            onClick={() => setZoom((z) => Math.min(1.85, Number((z + 0.15).toFixed(2))))}
+            onClick={() => setZoom((z) => Math.min(2.2, Number((z + 0.15).toFixed(2))))}
             title="Zoom In"
+            aria-label="Zoom In"
             className="p-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:border-[var(--border-strong)] cursor-pointer"
           >
             <ZoomIn className="w-3.5 h-3.5" />
           </button>
           <button
             type="button"
-            onClick={() => setZoom((z) => Math.max(0.55, Number((z - 0.15).toFixed(2))))}
+            onClick={() => setZoom((z) => Math.max(0.45, Number((z - 0.15).toFixed(2))))}
             title="Zoom Out"
+            aria-label="Zoom Out"
             className="p-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:border-[var(--border-strong)] cursor-pointer"
           >
             <ZoomOut className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={handleFitToScreen}
+            title="Fit Graph to Screen"
+            aria-label="Fit Graph to Screen"
+            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:border-[var(--border-strong)] cursor-pointer font-medium"
+          >
+            <Scan className="w-3.5 h-3.5 tone-blue" />
+            <span className="hidden sm:inline">Fit</span>
           </button>
           <button
             type="button"
@@ -288,6 +395,7 @@ export function KnowledgeGraphCanvas({
               setDraggedOffsets({});
             }}
             title="Reset Graph Positions & Zoom"
+            aria-label="Reset Graph Positions"
             className="p-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:border-[var(--border-strong)] cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -305,6 +413,7 @@ export function KnowledgeGraphCanvas({
             type="button"
             onClick={() => setIsFullscreen((f) => !f)}
             title="Toggle Fullscreen Graph Exploration"
+            aria-label="Toggle Fullscreen Graph"
             className="p-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:border-[var(--border-strong)] cursor-pointer"
           >
             {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
@@ -312,8 +421,9 @@ export function KnowledgeGraphCanvas({
         </div>
       </div>
 
-      {/* Theme-Adaptive Interactive SVG Canvas */}
+      {/* Responsive Interactive SVG Canvas */}
       <div
+        ref={stageRef}
         className="flex-1 relative omnis-subtle-dots bg-[var(--bg-graphite)] overflow-hidden"
         onPointerDown={(e) => {
           setPanningCanvas(true);
@@ -345,7 +455,7 @@ export function KnowledgeGraphCanvas({
       >
         <svg
           id="omnis-knowledge-graph-svg"
-          viewBox="0 0 920 560"
+          viewBox={`0 0 ${canvasSize.width} ${canvasSize.height}`}
           className="w-full h-full select-none"
         >
           <defs>
@@ -384,7 +494,7 @@ export function KnowledgeGraphCanvas({
               const dx = tgt.x - src.x;
               const dy = tgt.y - src.y;
               const dist = Math.hypot(dx, dy) || 1;
-              const curveOffset = ((edgeIdx % 2 === 0 ? 1 : -1) * Math.min(28, dist * 0.14));
+              const curveOffset = (edgeIdx % 2 === 0 ? 1 : -1) * Math.min(28, dist * 0.14);
               const nx = -dy / dist;
               const ny = dx / dist;
               const cx = (src.x + tgt.x) / 2 + nx * curveOffset;
@@ -392,25 +502,28 @@ export function KnowledgeGraphCanvas({
               const mx = 0.25 * src.x + 0.5 * cx + 0.25 * tgt.x;
               const my = 0.25 * src.y + 0.5 * cy + 0.25 * tgt.y;
 
+              const formattedRel = edge.relationshipType.replace(/_/g, " ");
+              const pillWidth = Math.max(60, formattedRel.length * 6.2 + 16);
+
               return (
-                <g key={edge.id} opacity={isRelated ? 1 : 0.34}>
+                <g key={edge.id} opacity={isRelated ? 1 : 0.25}>
                   <path
                     d={`M ${src.x} ${src.y} Q ${cx} ${cy} ${tgt.x} ${tgt.y}`}
                     fill="none"
                     stroke={edge.isHypothesis ? "var(--chart-violet)" : "var(--chart-blue)"}
-                    strokeWidth={isRelated ? 2.2 : 1.5}
+                    strokeWidth={isRelated ? 2.2 : 1.4}
                     strokeDasharray={edge.isHypothesis ? "5,4" : undefined}
                     markerEnd={
                       edge.isHypothesis ? "url(#arrow-hypothesis)" : "url(#arrow-verified)"
                     }
                   />
-                  {isRelated && (
+                  {isRelated ? (
                     <g>
                       <rect
-                        x={mx - 46}
+                        x={mx - pillWidth / 2}
                         y={my - 9}
-                        width={92}
-                        height={17}
+                        width={pillWidth}
+                        height={18}
                         rx={5}
                         fill="var(--bg-graphite)"
                         stroke="var(--border-subtle)"
@@ -424,15 +537,15 @@ export function KnowledgeGraphCanvas({
                         fontWeight="600"
                         className="omnis-mono"
                       >
-                        {edge.relationshipType}
+                        {formattedRel}
                       </text>
                     </g>
-                  )}
+                  ) : null}
                 </g>
               );
             })}
 
-            {/* Differentiated Category Nodes */}
+            {/* Differentiated Category Nodes with 1-hop & Keyboard Accessibility */}
             {positionedNodes.map((node, idx) => {
               const isSelected = node.id === selectedNodeId;
               const isConnected = connectedNodeIds.has(node.id);
@@ -442,16 +555,43 @@ export function KnowledgeGraphCanvas({
               const color = CATEGORY_COLORS[node.category] ?? "#2563eb";
               const radius = idx === 0 ? 23 : isSelected ? 19 : 14.5;
 
-              const effectiveOpacity = !matchesSearch ? 0.2 : isConnected ? 1 : 0.45;
+              const effectiveOpacity = !matchesSearch ? 0.18 : isConnected ? 1 : 0.25;
 
               return (
                 <g
                   key={node.id}
+                  ref={(el) => {
+                    if (el) nodeGroupRefs.current.set(node.id, el);
+                    else nodeGroupRefs.current.delete(node.id);
+                  }}
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`${node.label} (${node.category})`}
+                  aria-pressed={isSelected}
                   transform={`translate(${node.x}, ${node.y})`}
                   opacity={effectiveOpacity}
-                  className="cursor-pointer"
+                  className="cursor-pointer focus:outline-none"
                   onMouseEnter={() => setHoveredNodeId(node.id)}
                   onMouseLeave={() => setHoveredNodeId(null)}
+                  onFocus={() => setHoveredNodeId(node.id)}
+                  onBlur={() => setHoveredNodeId(null)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onSelectNode(node.id);
+                    } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+                      e.preventDefault();
+                      const nextNode = positionedNodes[(idx + 1) % positionedNodes.length];
+                      if (nextNode) nodeGroupRefs.current.get(nextNode.id)?.focus();
+                    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+                      e.preventDefault();
+                      const prevNode =
+                        positionedNodes[
+                          (idx - 1 + positionedNodes.length) % positionedNodes.length
+                        ];
+                      if (prevNode) nodeGroupRefs.current.get(prevNode.id)?.focus();
+                    }
+                  }}
                   onPointerDown={(e) => {
                     e.stopPropagation();
                     onSelectNode(node.id);
@@ -460,7 +600,7 @@ export function KnowledgeGraphCanvas({
                   }}
                   onDoubleClick={() => onExpandNode?.(node.id)}
                 >
-                  {isSelected && (
+                  {isSelected ? (
                     <circle
                       r={radius + 7}
                       fill="none"
@@ -468,7 +608,7 @@ export function KnowledgeGraphCanvas({
                       strokeWidth="2"
                       strokeDasharray="3.5,3"
                     />
-                  )}
+                  ) : null}
                   <circle
                     r={radius}
                     fill={node.verificationStatus === "ai_hypothesis" ? "var(--bg-slate)" : color}
@@ -477,13 +617,19 @@ export function KnowledgeGraphCanvas({
                     strokeWidth={isSelected ? 2.5 : 1.75}
                     strokeDasharray={node.verificationStatus === "ai_hypothesis" ? "3,2" : undefined}
                   />
-                  {/* Inner core glyph differentiation */}
-                  {idx === 0 && <circle r={6} fill="#ffffff" fillOpacity={0.92} />}
-                  {node.category === "Geopolitics" && idx !== 0 && (
-                    <rect x={-4} y={-4} width={8} height={8} rx={1.5} fill="#ffffff" fillOpacity={0.9} />
-                  )}
+                  {idx === 0 ? <circle r={6} fill="#ffffff" fillOpacity={0.92} /> : null}
+                  {node.category === "Geopolitics" && idx !== 0 ? (
+                    <rect
+                      x={-4}
+                      y={-4}
+                      width={8}
+                      height={8}
+                      rx={1.5}
+                      fill="#ffffff"
+                      fillOpacity={0.9}
+                    />
+                  ) : null}
 
-                  {/* Theme-crisp label pill behind text for zero overlap/washout in both Dark & Light */}
                   <text
                     y={radius + 15}
                     textAnchor="middle"
@@ -511,10 +657,10 @@ export function KnowledgeGraphCanvas({
               AI Hypothesis (Dashed Arc)
             </span>
             <span className="hidden sm:inline text-[var(--text-muted)]">
-              Drag background to pan • Drag node to rearrange
+              Scroll to zoom • Drag canvas to pan • Tab/Arrows to focus nodes
             </span>
           </div>
-          {onExpandNode && (
+          {onExpandNode ? (
             <button
               type="button"
               onClick={() => onExpandNode(selectedNodeId)}
@@ -523,7 +669,7 @@ export function KnowledgeGraphCanvas({
               <PlusCircle className="w-3.5 h-3.5" />
               <span>Expand Node (+4)</span>
             </button>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

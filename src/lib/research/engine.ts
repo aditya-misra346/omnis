@@ -3,7 +3,11 @@ import {
   COUNTRIES_DATA,
   TIMELINE_EVENTS,
 } from "@/lib/data/global-intelligence";
-import { fetchOpenAlexSources, fetchWikimediaSummary } from "@/lib/providers/live-data";
+import {
+  fetchOpenAlexPublicationTrend,
+  fetchOpenAlexSources,
+  fetchWikimediaSummary,
+} from "@/lib/providers/live-data";
 import type { ResearchMode, ResearchReportData, ResearchSourceItem } from "@/types/omnis";
 
 export type QueryIntent =
@@ -128,11 +132,38 @@ function scoreTypoTolerantMatch(text: string, query: string): number {
   return score;
 }
 
-export function executeUniversalSearch(query: string, categoryFilter = "all") {
+export type UniversalSearchSourceFilter = "all" | "worldbank" | "openalex" | "wikimedia";
+
+function matchesSourceFilter(
+  sourceText: string,
+  urls: string[],
+  filter: UniversalSearchSourceFilter
+): boolean {
+  if (filter === "all") return true;
+  const hay = `${sourceText} ${urls.join(" ")}`.toLowerCase();
+  if (filter === "worldbank") {
+    return /world\s*bank|\bimf\b|unfccc|indiabudget|iea|wsts|irena/.test(hay);
+  }
+  if (filter === "openalex") {
+    return /openalex|nature\.com|arxiv\.org|journals\.aps|monograph|stanford\s*hai|quantum\s*flagship|primary\s*archive/.test(
+      hay
+    );
+  }
+  if (filter === "wikimedia") {
+    return /wikipedia\.org|wikimedia/.test(hay);
+  }
+  return true;
+}
+
+export function executeUniversalSearch(
+  query: string,
+  categoryFilter = "all",
+  sourceFilter: UniversalSearchSourceFilter = "all"
+) {
   const cleanQuery = query.trim();
   const classification = classifyQueryIntent(cleanQuery);
 
-  const countries = Object.values(COUNTRIES_DATA)
+  const scoredCountries = Object.values(COUNTRIES_DATA)
     .map((c) => ({
       item: c,
       score: scoreTypoTolerantMatch(
@@ -146,7 +177,17 @@ export function executeUniversalSearch(query: string, categoryFilter = "all") {
     .sort((a, b) => b.score - a.score)
     .map((x) => x.item);
 
-  const events = TIMELINE_EVENTS.map((e) => ({
+  const baseCountries =
+    scoredCountries.length > 0 ? scoredCountries : Object.values(COUNTRIES_DATA).slice(0, 4);
+  const countries = baseCountries.filter((c) =>
+    matchesSourceFilter(
+      `${c.provenance.source} ${c.provenance.publisher}`,
+      [c.provenance.url],
+      sourceFilter
+    )
+  );
+
+  const scoredEvents = TIMELINE_EVENTS.map((e) => ({
     item: e,
     score: scoreTypoTolerantMatch(
       `${e.title} ${e.yearNumeric} ${e.description} ${e.historicalContext} ${e.connectedGraphTopics.join(" ")}`,
@@ -157,7 +198,16 @@ export function executeUniversalSearch(query: string, categoryFilter = "all") {
     .sort((a, b) => b.score - a.score)
     .map((x) => x.item);
 
-  const entities = COMPARABLE_ENTITIES.map((ent) => ({
+  const baseEvents = scoredEvents.length > 0 ? scoredEvents : TIMELINE_EVENTS.slice(0, 4);
+  const historicalEvents = baseEvents.filter((e) =>
+    matchesSourceFilter(
+      e.sources.map((s) => `${s.publisher} ${s.sourceType} ${s.title}`).join(" "),
+      e.sources.map((s) => s.url),
+      sourceFilter
+    )
+  );
+
+  const scoredEntities = COMPARABLE_ENTITIES.map((ent) => ({
     item: ent,
     score: scoreTypoTolerantMatch(`${ent.name} ${ent.subtitle} ${ent.category}`, cleanQuery),
   }))
@@ -165,14 +215,19 @@ export function executeUniversalSearch(query: string, categoryFilter = "all") {
     .sort((a, b) => b.score - a.score)
     .map((x) => x.item);
 
+  const baseEntities = scoredEntities.length > 0 ? scoredEntities : COMPARABLE_ENTITIES;
+  const technologiesAndOrganizations = baseEntities.filter((ent) =>
+    matchesSourceFilter(ent.source, [], sourceFilter)
+  );
+
   return {
     query: cleanQuery,
     classification,
     categoryFilter,
-    countries: countries.length > 0 ? countries : Object.values(COUNTRIES_DATA).slice(0, 4),
-    historicalEvents: events.length > 0 ? events : TIMELINE_EVENTS.slice(0, 4),
-    technologiesAndOrganizations:
-      entities.length > 0 ? entities : COMPARABLE_ENTITIES,
+    sourceFilter,
+    countries,
+    historicalEvents,
+    technologiesAndOrganizations,
     relatedConcepts: [
       "India's Economic Development Since 1991",
       "Semiconductor Manufacturing & Geopolitics",
@@ -191,9 +246,9 @@ export async function orchestrateDeepResearch(
   const cleanQuery = query.trim();
   const nowIso = new Date().toISOString();
 
-  // Retrieve live academic citations from OpenAlex and encyclopedic summary from Wikimedia in parallel
-  const [openAlexSources, wikiSummary] = await Promise.all([
+  const [openAlexSources, openAlexTrend, wikiSummary] = await Promise.all([
     fetchOpenAlexSources(cleanQuery, 4),
+    fetchOpenAlexPublicationTrend(cleanQuery),
     fetchWikimediaSummary(
       cleanQuery.length > 45 ? cleanQuery.split(/\s+/).slice(0, 3).join(" ") : cleanQuery
     ),
@@ -251,6 +306,7 @@ export async function orchestrateDeepResearch(
   const primarySourceId = allSources[0]?.id ?? "src-wb-wdi";
   const secondarySourceId = allSources[1]?.id ?? "src-imf-weo";
 
+  const lowerQuery = cleanQuery.toLowerCase();
   const isIndiaQuery = /india|1991|upi|rupee/i.test(cleanQuery);
   const isSemiQuery = /semiconductor|chip|euv|tsmc|geopolit/i.test(cleanQuery);
   const isClimateQuery = /climate|carbon|warming|energy|nuclear/i.test(cleanQuery);
@@ -264,6 +320,106 @@ export async function orchestrateDeepResearch(
     : `Multi-source intelligence synthesis for "${cleanQuery}" (Mode: ${mode.toUpperCase()}). Cross-referencing ${allSources.length} traceable primary, institutional, and peer-reviewed OpenAlex sources reveals strong structural linkages between capital formation, technological diffusion, energy constraints, and institutional governance.${
         wikiSummary ? ` Context: ${wikiSummary.extract}` : ""
       }`;
+
+  const matchedCountries = Object.values(COUNTRIES_DATA).filter(
+    (c) =>
+      lowerQuery.includes(c.name.toLowerCase()) ||
+      lowerQuery.includes(c.iso3.toLowerCase())
+  );
+  const leadCountry = matchedCountries[0];
+  const compareCountry = matchedCountries[1];
+
+  const relevantStatistics: ResearchReportData["relevantStatistics"] = leadCountry
+    ? [
+        {
+          metric: `${leadCountry.name} Nominal GDP`,
+          value: `$${leadCountry.gdpUsdBn.toLocaleString()}B`,
+          unit: "USD Billions",
+          period: "2026 Verified Baseline",
+          sourceId: "src-wb-wdi",
+        },
+        {
+          metric: `${leadCountry.name} Real GDP Growth`,
+          value: `${leadCountry.gdpGrowthPct >= 0 ? "+" : ""}${leadCountry.gdpGrowthPct}%`,
+          unit: "Annual %",
+          period: "2026 Verified Baseline",
+          sourceId: "src-wb-wdi",
+        },
+        {
+          metric: `${leadCountry.name} Clean Electricity Share`,
+          value: `${leadCountry.energyProfile.renewableSharePct}%`,
+          unit: "% of Generation",
+          period: "2026 Baseline",
+          sourceId: "src-wb-wdi",
+        },
+        {
+          metric: "Peer-Reviewed Works Retrieved",
+          value: String(openAlexSources.length),
+          unit: "OpenAlex Live",
+          period: "Live Retrieval",
+          sourceId: primarySourceId,
+        },
+      ]
+    : [
+        {
+          metric: "OpenAlex Peer-Reviewed Citations",
+          value: String(openAlexSources.length),
+          unit: "Works Retrieved",
+          period: "Live API Retrieval",
+          sourceId: primarySourceId,
+        },
+        ...(openAlexTrend.length > 0
+          ? [
+              {
+                metric: `Latest Annual Works (${openAlexTrend[openAlexTrend.length - 1].year})`,
+                value: openAlexTrend[openAlexTrend.length - 1].count.toLocaleString(),
+                unit: "Indexed Papers",
+                period: String(openAlexTrend[openAlexTrend.length - 1].year),
+                sourceId: primarySourceId,
+              },
+            ]
+          : []),
+        {
+          metric: "Wikimedia Encyclopedic Grounding",
+          value: wikiSummary ? "Verified" : "Unavailable",
+          unit: "REST v1 Status",
+          period: "Live Check",
+          sourceId: wikiSummary ? "src-wikimedia-rest" : primarySourceId,
+        },
+      ];
+
+  const visualisationSeries: ResearchReportData["visualisationSeries"] = leadCountry
+    ? {
+        title: compareCountry
+          ? `${leadCountry.name} vs ${compareCountry.name} Historical Real Growth (%)`
+          : `${leadCountry.name} Historical Nominal GDP ($B, 1991–2026)`,
+        unit: compareCountry ? "GDP ($B)" : "GDP ($B)",
+        source: "World Bank Development Indicators (Country Dossier Series)",
+        data: leadCountry.historicalSeries.map((pt) => {
+          const matchPeer = compareCountry?.historicalSeries.find((p) => p.year === pt.year);
+          return {
+            label: String(pt.year),
+            primaryValue: pt.gdpUsdBn,
+            comparisonValue: matchPeer?.gdpUsdBn,
+          };
+        }),
+      }
+    : openAlexTrend.length > 0
+      ? {
+          title: `Scholarly Publication Trajectory: "${cleanQuery.slice(0, 36)}"`,
+          unit: "Peer-Reviewed Works / Yr",
+          source: "OpenAlex Works API (group_by=publication_year)",
+          data: openAlexTrend.map((pt) => ({
+            label: String(pt.year),
+            primaryValue: pt.count,
+          })),
+        }
+      : {
+          title: `Quantitative Series Unavailable for "${cleanQuery.slice(0, 34)}"`,
+          unit: "Sparse Upstream Telemetry",
+          source: "OpenAlex group_by unavailable (no dummy series substituted)",
+          data: [],
+        };
 
   return {
     id: `rep-${Date.now()}`,
@@ -299,10 +455,14 @@ export async function orchestrateDeepResearch(
     ],
     executiveSummary,
     keyFindings: [
-      `Primary statistical series confirm high structural persistence and compounding capital returns across "${cleanQuery}".`,
-      `Peer-reviewed literature (${openAlexSources.length} OpenAlex works retrieved) highlights a 3-to-5 year institutional lag between technological deployment and aggregate productivity gains.`,
-      "Supply-side physical bottlenecks (grid interconnection, EUV lithography, or skilled cohort supply) dominate short-term fiscal impulses.",
-      "Divergent econometric baselines explain why institutional forecasts differ by ±1.4 percentage points over a 10-year horizon.",
+      openAlexSources.length > 0
+        ? `Retrieved ${openAlexSources.length} peer-reviewed OpenAlex records directly matching "${cleanQuery}" (earliest/top cited: ${openAlexSources[0].publishedDate}).`
+        : `No live OpenAlex works returned within timeout for "${cleanQuery}"; relying strictly on curated sovereign datasets without fabricated citations.`,
+      leadCountry
+        ? `${leadCountry.name} nominal GDP stands at $${leadCountry.gdpUsdBn.toLocaleString()}B (+${leadCountry.gdpGrowthPct}% real growth), with ${leadCountry.energyProfile.renewableSharePct}% clean electricity generation.`
+        : "Physical infrastructure capacity (grid transmission, wafer lithography, skilled cohorts) constrains aggregate productivity diffusion.",
+      "Macro-econometric national accounts frequently exhibit 3–5 year structural adjustment lags between R&D investment and total factor productivity gains.",
+      "Model uncertainty bands and forward-looking scenarios are isolated strictly from measured historical observations.",
     ],
     detailedAnalysis: [
       {
@@ -312,7 +472,7 @@ export async function orchestrateDeepResearch(
       {
         heading: "2. Cross-Disciplinary Transmission Mechanisms",
         content:
-          "Empirical decomposition shows that shocks in energy prices, compute availability, or regulatory trade barriers propagate non-linearly across downstream industries. Systems with diversified domestic energy and high digital public infrastructure resilience absorb external shocks with 35–45% lower output volatility.",
+          "Empirical decomposition shows that shocks in energy prices, compute availability, or regulatory trade barriers propagate non-linearly across downstream industries. Systems with diversified domestic energy and high digital public infrastructure resilience absorb external shocks more effectively.",
       },
       {
         heading: "3. Epistemic Evaluation & Source Cross-Verification",
@@ -322,9 +482,9 @@ export async function orchestrateDeepResearch(
     supportingEvidence: [
       {
         id: "claim-1",
-        statement: isIndiaQuery
-          ? "India's nominal GDP expanded from $270.1B in 1991 to $3,912.6B in 2026, while life expectancy rose from 58.9 to 72.0 years."
-          : `Primary institutional datasets confirm sustained capital intensification and measurable productivity divergence in domains linked to "${cleanQuery}".`,
+        statement: leadCountry
+          ? `${leadCountry.name} (${leadCountry.iso3}) recorded $${leadCountry.gdpUsdBn.toLocaleString()}B nominal GDP with ${leadCountry.energyProfile.renewableSharePct}% renewable electricity generation (World Bank WDI).`
+          : `Primary institutional datasets and OpenAlex literature retrieved ${allSources.length} traceable sources linked to "${cleanQuery}".`,
         category: "Macroeconomic & Institutional Series",
         verificationStatus: "verified",
         sourceIds: [primarySourceId, "src-wb-wdi"],
@@ -333,16 +493,17 @@ export async function orchestrateDeepResearch(
       {
         id: "claim-2",
         statement:
-          "Capital expenditure and human-capital density explain over 68% of cross-country variance in technology absorption speed.",
+          openAlexSources[0]?.excerpt ??
+          "Capital expenditure and human-capital density correlate strongly with cross-country technology absorption speed.",
         category: "Econometric Literature",
         verificationStatus: openAlexSources.length > 0 ? "verified" : "single_source",
         sourceIds: [secondarySourceId],
-        methodologyNote: "Derived from panel regression studies across OECD and G20 economies.",
+        methodologyNote: "Sourced directly from OpenAlex peer-reviewed works and institutional series.",
       },
       {
         id: "claim-3",
         statement:
-          "Second-order productivity spillovers between 2027 and 2035 could accelerate baseline CAGR by +0.8% to +1.4% if infrastructure bottlenecks are resolved.",
+          "Hypothesis: Resolving upstream physical bottlenecks (grid storage & semiconductor supply chains) accelerates medium-horizon productivity above baseline trajectories.",
         category: "Forward Scenario Projection",
         verificationStatus: "ai_hypothesis",
         sourceIds: ["src-imf-weo"],
@@ -353,64 +514,27 @@ export async function orchestrateDeepResearch(
       {
         pointOfContention: "Magnitude and Speed of Aggregate Productivity Pass-Through",
         perspectiveA:
-          "Techno-optimist micro-studies report 20–35% task-level speedups in controlled benchmarks.",
+          "Micro-level task benchmarks often report rapid localized efficiency improvements.",
         perspectiveB:
-          "Macro-econometric national accounts (Solow paradox school) observe slower aggregate GDP pass-through due to organisational adjustment costs and energy/capital bottlenecks.",
+          "Aggregate national accounts frequently exhibit slower multi-year productivity realization due to organisational and infrastructure adjustment lags.",
         epistemicResolution:
-          "Both observations are reconciled by separating immediate task-level efficiency from 3–5 year economy-wide structural diffusion lags.",
+          "Both observations reconcile cleanly when separating narrow micro-efficiency from economy-wide structural adoption lags.",
         sourceIds: [primarySourceId, "src-imf-weo"],
       },
     ],
-    relevantStatistics: [
-      {
-        metric: isIndiaQuery ? "India Real GDP Growth (2026)" : "Global R&D & Infrastructure Intensity",
-        value: isIndiaQuery ? "6.8%" : "2.74%",
-        unit: "Annual % / % of GDP",
-        period: "2026 Latest Measured",
-        sourceId: "src-wb-wdi",
-      },
-      {
-        metric: "Peer-Reviewed Literature Corpus Retrieved",
-        value: String(allSources.length),
-        unit: "Verified Sources",
-        period: "Live Retrieval",
-        sourceId: primarySourceId,
-      },
-      {
-        metric: "10-Year Scenario Confidence Spread (P90 - P10)",
-        value: "±14.2%",
-        unit: "Monte Carlo Band",
-        period: "2026–2036 Horizon",
-        sourceId: "src-imf-weo",
-      },
-    ],
-    visualisationSeries: {
-      title: isIndiaQuery
-        ? "India vs Global Baseline Indexed Real Output Trajectory (1991–2026)"
-        : `Empirical & Projected Trajectory Index: ${cleanQuery.slice(0, 42)}`,
-      unit: "Index (Base = 100)",
-      source: "World Bank Open Data & OMNIS Research Synthesis",
-      data: [
-        { label: "2000", primaryValue: 100, comparisonValue: 100 },
-        { label: "2005", primaryValue: 138, comparisonValue: 119 },
-        { label: "2010", primaryValue: 196, comparisonValue: 141 },
-        { label: "2015", primaryValue: 268, comparisonValue: 166 },
-        { label: "2020", primaryValue: 332, comparisonValue: 184 },
-        { label: "2023", primaryValue: 418, comparisonValue: 205 },
-        { label: "2026", primaryValue: 492, comparisonValue: 224 },
-      ],
-    },
+    relevantStatistics,
+    visualisationSeries,
     limitations: [
       "National statistical agencies revise quarterly GDP and trade balances up to 18 months post-publication.",
-      "OpenAlex citation counts favour older foundational publications over recent preprints.",
-      "Forward-looking scenario metrics represent conditional model outputs, never guaranteed predictions.",
+      "OpenAlex publication counts reflect indexed records matching search terms and vary by discipline indexing coverage.",
+      "Forward-looking hypotheses represent conditional analytical statements, never guaranteed predictions.",
     ],
-    conclusions: `Rigorous multi-source analysis of "${cleanQuery}" demonstrates that sustainable long-term performance depends on the synchronization of physical infrastructure (energy, semiconductors, logistics), human capital, and transparent institutional governance. Users can transition directly from this report into the Infinite Knowledge Graph or What-If Simulation Engine to test parameter sensitivities.`,
+    conclusions: `Multi-source synthesis for "${cleanQuery}" highlights the interplay of capital formation, infrastructure capacity, and institutional governance. Transition into the Infinite Knowledge Graph or What-If Simulation Engine to test specific parameters.`,
     sources: allSources,
     relatedGraphTopic: isIndiaQuery
-      ? "India Economic Development"
+      ? "Indian Economy"
       : isSemiQuery
-      ? "Semiconductor Infrastructure"
-      : cleanQuery.slice(0, 50),
+        ? "Semiconductors"
+        : cleanQuery.slice(0, 50),
   };
 }

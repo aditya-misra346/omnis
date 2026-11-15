@@ -16,9 +16,15 @@ import {
   ArrowRight,
   Trash2,
 } from "lucide-react";
-import { executeUniversalSearch } from "@/lib/research/engine";
+import {
+  executeUniversalSearch,
+  type UniversalSearchSourceFilter,
+} from "@/lib/research/engine";
+import { fetchOpenAlexSources } from "@/lib/providers/live-data";
+import type { ResearchSourceItem } from "@/types/omnis";
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
 import { OmnisButton, OmnisModuleHeader } from "@/components/ui/OmnisPrimitives";
+import { OmnisSelect } from "@/components/ui/OmnisSelect";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 
 const RESULT_CATEGORIES = [
@@ -39,7 +45,8 @@ function ExploreContent() {
   const [queryInput, setQueryInput] = useState(initialQ);
   const [activeQuery, setActiveQuery] = useState(initialQ);
   const [activeTab, setActiveTab] = useState("overview");
-  const [sourceFilter, setSourceFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState<UniversalSearchSourceFilter>("all");
+  const [openAlexWorks, setOpenAlexWorks] = useState<ResearchSourceItem[]>([]);
 
   const {
     searchHistory,
@@ -61,9 +68,23 @@ function ExploreContent() {
     setActiveContext("Universal Search & Knowledge Explorer", activeQuery);
   }, [activeQuery, setActiveContext]);
 
+  useEffect(() => {
+    let active = true;
+    fetchOpenAlexSources(activeQuery, 4)
+      .then((items) => {
+        if (active) setOpenAlexWorks(items);
+      })
+      .catch(() => {
+        if (active) setOpenAlexWorks([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [activeQuery]);
+
   const searchResults = useMemo(
-    () => executeUniversalSearch(activeQuery, activeTab),
-    [activeQuery, activeTab]
+    () => executeUniversalSearch(activeQuery, activeTab, sourceFilter),
+    [activeQuery, activeTab, sourceFilter]
   );
 
   const handleSearch = (e: React.FormEvent) => {
@@ -109,17 +130,18 @@ function ExploreContent() {
               className="w-full bg-transparent text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
             />
           </div>
-          <select
+          <OmnisSelect
             value={sourceFilter}
-            onChange={(e) => setSourceFilter(e.target.value)}
-            aria-label="Filter by Data Provider Source"
-            className="px-3 py-2 rounded-xl bg-[var(--bg-graphite)] border border-[var(--border-subtle)] text-xs font-medium text-[var(--text-primary)] cursor-pointer"
-          >
-            <option value="all">All Verified Sources</option>
-            <option value="worldbank">World Bank & IMF</option>
-            <option value="openalex">OpenAlex Peer-Reviewed</option>
-            <option value="wikimedia">Wikimedia & Archives</option>
-          </select>
+            onChange={(val) => setSourceFilter(val as UniversalSearchSourceFilter)}
+            ariaLabel="Filter by Data Provider Source"
+            size="md"
+            options={[
+              { value: "all", label: "All Verified Sources" },
+              { value: "worldbank", label: "World Bank & IMF" },
+              { value: "openalex", label: "OpenAlex Peer-Reviewed" },
+              { value: "wikimedia", label: "Wikimedia & Archives" },
+            ]}
+          />
           <OmnisButton type="submit">Search OMNIS</OmnisButton>
         </form>
 
@@ -187,34 +209,86 @@ function ExploreContent() {
                   Open 3D Global Atlas →
                 </Link>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {searchResults.countries.map((c) => (
-                  <Link
-                    key={c.iso3}
-                    href={`/atlas?country=${c.iso3}`}
-                    className="omnis-surface-slate omnis-card-interactive p-4 space-y-2"
+              {searchResults.countries.length === 0 ? (
+                <div className="omnis-surface-slate p-4 text-xs text-[var(--text-secondary)] flex flex-wrap items-center justify-between gap-2">
+                  <span>
+                    No Sovereign Country profiles match the active source filter ({sourceFilter}).
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSourceFilter("all")}
+                    className="tone-blue font-semibold hover:underline cursor-pointer"
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-bold text-sm text-[var(--text-primary)]">
-                        {c.flagEmoji} {c.officialName}
-                      </span>
-                      <span className="text-[10px] font-bold omnis-mono px-1.5 py-0.5 rounded-md badge-tone-blue shrink-0">
-                        {c.iso3}
-                      </span>
-                    </div>
-                    <div className="text-xs text-[var(--text-secondary)]">
-                      GDP: <strong className="text-[var(--text-primary)]">${c.gdpUsdBn.toLocaleString()}B</strong>{" "}
-                      (+{c.gdpGrowthPct}%/yr) • Capita: ${c.gdpPerCapitaUsd.toLocaleString()} • Clean:{" "}
-                      {c.energyProfile.renewableSharePct}%
-                    </div>
-                    <div className="text-[10px] text-[var(--text-muted)]">
-                      Source: {c.provenance.source}
-                    </div>
-                  </Link>
-                ))}
-              </div>
+                    Show All Verified Sources
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {searchResults.countries.map((c) => (
+                    <Link
+                      key={c.iso3}
+                      href={`/atlas?country=${c.iso3}`}
+                      className="omnis-surface-slate omnis-card-interactive p-4 space-y-2"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-bold text-sm text-[var(--text-primary)]">
+                          {c.flagEmoji} {c.officialName}
+                        </span>
+                        <span className="text-[10px] font-bold omnis-mono px-1.5 py-0.5 rounded-md badge-tone-blue shrink-0">
+                          {c.iso3}
+                        </span>
+                      </div>
+                      <div className="text-xs text-[var(--text-secondary)] omnis-tabular">
+                        GDP: <strong className="text-[var(--text-primary)]">${c.gdpUsdBn.toLocaleString()}B</strong>{" "}
+                        (+{c.gdpGrowthPct}%/yr) • Capita: ${c.gdpPerCapitaUsd.toLocaleString()} • Clean:{" "}
+                        {c.energyProfile.renewableSharePct}%
+                      </div>
+                      <div className="text-[10px] text-[var(--text-muted)]">
+                        Source: {c.provenance.source}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </section>
           )}
+
+          {/* Live Peer-Reviewed OpenAlex Literature Section */}
+          {(activeTab === "overview" || activeTab === "research") &&
+            (sourceFilter === "all" || sourceFilter === "openalex") &&
+            openAlexWorks.length > 0 && (
+              <section className="omnis-card p-5 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-sm font-bold flex items-center gap-2 text-[var(--text-primary)]">
+                    <FileSearch className="w-4 h-4 tone-verified" />
+                    Live OpenAlex Scholarly Literature ({openAlexWorks.length})
+                  </h2>
+                  <span className="px-2 py-0.5 rounded-full badge-tone-verified text-[10px] font-semibold omnis-mono uppercase">
+                    OpenAlex Live
+                  </span>
+                </div>
+                <div className="space-y-2.5">
+                  {openAlexWorks.map((work) => (
+                    <a
+                      key={work.id}
+                      href={work.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block omnis-surface-slate omnis-card-interactive p-4 space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between gap-2 text-[11px] omnis-mono">
+                        <span className="tone-verified font-semibold">{work.publishedDate}</span>
+                        <span className="text-[var(--text-muted)] truncate">{work.publisher}</span>
+                      </div>
+                      <div className="font-bold text-sm text-[var(--text-primary)]">{work.title}</div>
+                      <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                        {work.excerpt}
+                      </p>
+                    </a>
+                  ))}
+                </div>
+              </section>
+            )}
 
           {/* Historical Events Section */}
           {(activeTab === "overview" || activeTab === "events" || activeTab === "research") && (
@@ -228,24 +302,30 @@ function ExploreContent() {
                   Open Reality Timeline →
                 </Link>
               </div>
-              <div className="space-y-2.5">
-                {searchResults.historicalEvents.map((evt) => (
-                  <Link
-                    key={evt.id}
-                    href={`/timeline?event=${evt.id}`}
-                    className="block omnis-surface-slate omnis-card-interactive p-4 space-y-1.5"
-                  >
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold tone-blue omnis-mono">{evt.dateDisplay}</span>
-                      <span className="text-[10px] text-[var(--text-muted)]">{evt.location}</span>
-                    </div>
-                    <div className="font-bold text-sm text-[var(--text-primary)]">{evt.title}</div>
-                    <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                      {evt.description}
-                    </p>
-                  </Link>
-                ))}
-              </div>
+              {searchResults.historicalEvents.length === 0 ? (
+                <div className="omnis-surface-slate p-4 text-xs text-[var(--text-secondary)]">
+                  No timeline events match the active source filter ({sourceFilter}).
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {searchResults.historicalEvents.map((evt) => (
+                    <Link
+                      key={evt.id}
+                      href={`/timeline?event=${evt.id}`}
+                      className="block omnis-surface-slate omnis-card-interactive p-4 space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold tone-blue omnis-mono">{evt.dateDisplay}</span>
+                        <span className="text-[10px] text-[var(--text-muted)]">{evt.location}</span>
+                      </div>
+                      <div className="font-bold text-sm text-[var(--text-primary)]">{evt.title}</div>
+                      <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                        {evt.description}
+                      </p>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </section>
           )}
 
@@ -256,22 +336,29 @@ function ExploreContent() {
             <section className="omnis-card p-5 space-y-3">
               <h2 className="text-sm font-bold flex items-center gap-2 text-[var(--text-primary)]">
                 <Cpu className="w-4 h-4 tone-violet" />
-                Technologies, Industries & Related Concepts
+                Technologies, Industries & Related Concepts (
+                {searchResults.technologiesAndOrganizations.length})
               </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {searchResults.technologiesAndOrganizations.map((item) => (
-                  <div key={item.id} className="omnis-surface-slate p-4 space-y-2 text-xs">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-bold text-sm text-[var(--text-primary)]">{item.name}</span>
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md badge-tone-violet shrink-0">
-                        {item.category}
-                      </span>
+              {searchResults.technologiesAndOrganizations.length === 0 ? (
+                <div className="omnis-surface-slate p-4 text-xs text-[var(--text-secondary)]">
+                  No technology or industry benchmarks match the active source filter ({sourceFilter}).
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {searchResults.technologiesAndOrganizations.map((item) => (
+                    <div key={item.id} className="omnis-surface-slate p-4 space-y-2 text-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-bold text-sm text-[var(--text-primary)]">{item.name}</span>
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md badge-tone-violet shrink-0">
+                          {item.category}
+                        </span>
+                      </div>
+                      <p className="text-[var(--text-secondary)] leading-relaxed">{item.subtitle}</p>
+                      <div className="text-[10px] text-[var(--text-muted)]">Source: {item.source}</div>
                     </div>
-                    <p className="text-[var(--text-secondary)] leading-relaxed">{item.subtitle}</p>
-                    <div className="text-[10px] text-[var(--text-muted)]">Source: {item.source}</div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </section>
           )}
         </div>

@@ -50,6 +50,14 @@ export function HistoricalTrajectoryChart({
   const series = country.historicalSeries;
   const meta = METRIC_META[metric];
 
+  if (series.length === 0) {
+    return (
+      <div className="rounded-xl bg-[var(--bg-graphite)] border border-[var(--border-subtle)] p-6 text-center text-xs text-[var(--text-secondary)]">
+        Historical multi-year time-series records were not returned for {country.name} ({country.iso3}).
+      </div>
+    );
+  }
+
   const values = series.map((s) => Number(s[metric] ?? 0));
   const minVal = Math.min(...values, 0);
   const rawMax = Math.max(...values, 1);
@@ -478,46 +486,54 @@ export function TornadoSensitivityChart({
   sensitivity: SimulationSensitivityItem[];
 }) {
   const maxAbs = Math.max(
-    1,
+    0.01,
     ...sensitivity.flatMap((s) => [Math.abs(s.lowOutcomeDelta), Math.abs(s.highOutcomeDelta)])
   );
+
+  const fmtSigned = (n: number) => `${n > 0 ? "+" : ""}${n}`;
 
   return (
     <div className="space-y-3">
       {sensitivity.map((item) => {
-        const leftWidth = Math.min(48, (Math.abs(item.lowOutcomeDelta) / maxAbs) * 48);
-        const rightWidth = Math.min(48, (Math.abs(item.highOutcomeDelta) / maxAbs) * 48);
+        const negDelta = Math.min(0, item.lowOutcomeDelta, item.highOutcomeDelta);
+        const posDelta = Math.max(0, item.lowOutcomeDelta, item.highOutcomeDelta);
+        const leftWidth = Math.min(48, (Math.abs(negDelta) / maxAbs) * 48);
+        const rightWidth = Math.min(48, (Math.abs(posDelta) / maxAbs) * 48);
         return (
           <div key={item.parameterKey} className="space-y-1.5 text-xs">
             <div className="flex items-center justify-between gap-2">
               <span className="font-semibold text-[var(--text-primary)]">{item.label}</span>
-              <span className="omnis-mono text-[11px] text-[var(--text-muted)]">
-                [{item.lowOutcomeDelta}, +{item.highOutcomeDelta}]
+              <span className="omnis-mono omnis-tabular text-[11px] text-[var(--text-muted)] shrink-0">
+                min {fmtSigned(item.lowOutcomeDelta)} / max {fmtSigned(item.highOutcomeDelta)}
               </span>
             </div>
             <div className="relative h-3 rounded-full bg-[var(--bg-slate)] border border-[var(--border-subtle)] overflow-hidden">
               {/* Center zero axis */}
               <div className="absolute left-1/2 top-0 bottom-0 w-px bg-[var(--text-muted)] opacity-50 z-10" />
-              {/* Negative wing extending left from 50% */}
-              <div
-                className="absolute top-0 bottom-0 rounded-l-full"
-                style={{
-                  right: "50%",
-                  width: `${leftWidth}%`,
-                  backgroundColor: "var(--status-danger)",
-                  opacity: 0.8,
-                }}
-              />
-              {/* Positive wing extending right from 50% */}
-              <div
-                className="absolute top-0 bottom-0 rounded-r-full"
-                style={{
-                  left: "50%",
-                  width: `${rightWidth}%`,
-                  backgroundColor: "var(--status-verified)",
-                  opacity: 0.85,
-                }}
-              />
+              {/* Contraction / negative wing extending left from 50% */}
+              {leftWidth > 0 ? (
+                <div
+                  className="absolute top-0 bottom-0 rounded-l-full"
+                  style={{
+                    right: "50%",
+                    width: `${leftWidth}%`,
+                    backgroundColor: "var(--status-danger)",
+                    opacity: 0.82,
+                  }}
+                />
+              ) : null}
+              {/* Expansion / positive wing extending right from 50% */}
+              {rightWidth > 0 ? (
+                <div
+                  className="absolute top-0 bottom-0 rounded-r-full"
+                  style={{
+                    left: "50%",
+                    width: `${rightWidth}%`,
+                    backgroundColor: "var(--status-verified)",
+                    opacity: 0.85,
+                  }}
+                />
+              ) : null}
             </div>
           </div>
         );
@@ -538,6 +554,7 @@ export function ComparisonRadarChart({
   const radarAxes = [
     {
       label: "Real Growth",
+      maxLabel: "8% max",
       l: Math.min(1, leftCountry.gdpGrowthPct / 8),
       r: Math.min(1, rightCountry.gdpGrowthPct / 8),
       rawL: `${leftCountry.gdpGrowthPct}%`,
@@ -545,6 +562,7 @@ export function ComparisonRadarChart({
     },
     {
       label: "Clean Energy",
+      maxLabel: "90%",
       l: Math.min(1, leftCountry.energyProfile.renewableSharePct / 90),
       r: Math.min(1, rightCountry.energyProfile.renewableSharePct / 90),
       rawL: `${leftCountry.energyProfile.renewableSharePct}%`,
@@ -552,13 +570,15 @@ export function ComparisonRadarChart({
     },
     {
       label: "AI Index",
-      l: leftCountry.technologyProfile.aiReadinessIndex / 100,
-      r: rightCountry.technologyProfile.aiReadinessIndex / 100,
+      maxLabel: "100",
+      l: Math.min(1, leftCountry.technologyProfile.aiReadinessIndex / 100),
+      r: Math.min(1, rightCountry.technologyProfile.aiReadinessIndex / 100),
       rawL: `${leftCountry.technologyProfile.aiReadinessIndex}/100`,
       rawR: `${rightCountry.technologyProfile.aiReadinessIndex}/100`,
     },
     {
       label: "R&D Spend",
+      maxLabel: "4% GDP",
       l: Math.min(1, leftCountry.technologyProfile.rdSpendPctGdp / 4),
       r: Math.min(1, rightCountry.technologyProfile.rdSpendPctGdp / 4),
       rawL: `${leftCountry.technologyProfile.rdSpendPctGdp}%`,
@@ -566,27 +586,31 @@ export function ComparisonRadarChart({
     },
     {
       label: "Internet",
-      l: leftCountry.technologyProfile.internetPenetrationPct / 100,
-      r: rightCountry.technologyProfile.internetPenetrationPct / 100,
+      maxLabel: "100%",
+      l: Math.min(1, leftCountry.technologyProfile.internetPenetrationPct / 100),
+      r: Math.min(1, rightCountry.technologyProfile.internetPenetrationPct / 100),
       rawL: `${leftCountry.technologyProfile.internetPenetrationPct}%`,
       rawR: `${rightCountry.technologyProfile.internetPenetrationPct}%`,
     },
     {
       label: "Longevity",
-      l: leftCountry.lifeExpectancyYears / 90,
-      r: rightCountry.lifeExpectancyYears / 90,
+      maxLabel: "90y",
+      l: Math.min(1, leftCountry.lifeExpectancyYears / 90),
+      r: Math.min(1, rightCountry.lifeExpectancyYears / 90),
       rawL: `${leftCountry.lifeExpectancyYears} yrs`,
       rawR: `${rightCountry.lifeExpectancyYears} yrs`,
     },
   ];
 
-  const cx = 175;
-  const cy = 152;
+  const cx = 185;
+  const cy = 154;
+  const zeroRingRadius = 18;
   const radius = 104;
 
   const getCoord = (idx: number, val: number) => {
     const angle = (Math.PI * 2 * idx) / radarAxes.length - Math.PI / 2;
-    const r = radius * Math.max(0.14, val);
+    const normalized = Math.max(0, Math.min(1, val));
+    const r = zeroRingRadius + (radius - zeroRingRadius) * normalized;
     return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) };
   };
 
@@ -599,16 +623,43 @@ export function ComparisonRadarChart({
       .join(" ");
 
   const activeAxis = hoveredAxis !== null ? radarAxes[hoveredAxis] : null;
+  const contractionNotes = [
+    leftCountry.gdpGrowthPct < 0
+      ? `${leftCountry.iso3}: ${leftCountry.gdpGrowthPct}% contraction`
+      : null,
+    rightCountry.gdpGrowthPct < 0
+      ? `${rightCountry.iso3}: ${rightCountry.gdpGrowthPct}% contraction`
+      : null,
+  ].filter(Boolean);
 
   return (
     <div className="space-y-3">
-      <svg viewBox="0 0 350 304" className="w-full h-64 mx-auto">
-        {[0.33, 0.66, 1.0].map((ring) => (
+      <svg viewBox="0 0 370 310" className="w-full h-64 mx-auto">
+        {/* Explicit 0% inner reference ring */}
+        <circle
+          cx={cx}
+          cy={cy}
+          r={zeroRingRadius}
+          fill="none"
+          stroke="var(--chart-axis)"
+          strokeOpacity={0.55}
+          strokeDasharray="2,2"
+        />
+        <text
+          x={cx + 3}
+          y={cy - zeroRingRadius + 9}
+          fontSize="8"
+          fill="var(--text-muted)"
+          className="omnis-mono"
+        >
+          0%
+        </text>
+        {[0.5, 1.0].map((ring) => (
           <circle
             key={ring}
             cx={cx}
             cy={cy}
-            r={radius * ring}
+            r={zeroRingRadius + (radius - zeroRingRadius) * ring}
             fill="none"
             stroke="var(--chart-grid)"
             strokeDasharray="3,3"
@@ -618,7 +669,7 @@ export function ComparisonRadarChart({
           const angle = (Math.PI * 2 * i) / radarAxes.length - Math.PI / 2;
           const x2 = cx + radius * Math.cos(angle);
           const y2 = cy + radius * Math.sin(angle);
-          const lx = cx + (radius + 32) * Math.cos(angle);
+          const lx = cx + (radius + 36) * Math.cos(angle);
           const ly = cy + (radius + 20) * Math.sin(angle);
           return (
             <g
@@ -632,12 +683,22 @@ export function ComparisonRadarChart({
                 x={lx}
                 y={ly}
                 textAnchor="middle"
-                fontSize="10"
+                fontSize="9.5"
                 fontWeight={hoveredAxis === i ? "700" : "500"}
                 fill={hoveredAxis === i ? "var(--text-primary)" : "var(--chart-axis)"}
                 className="omnis-mono"
               >
                 {axis.label}
+              </text>
+              <text
+                x={lx}
+                y={ly + 10}
+                textAnchor="middle"
+                fontSize="7.5"
+                fill="var(--text-muted)"
+                className="omnis-mono"
+              >
+                ({axis.maxLabel})
               </text>
             </g>
           );
@@ -667,6 +728,12 @@ export function ComparisonRadarChart({
           );
         })}
       </svg>
+
+      {contractionNotes.length > 0 ? (
+        <div className="px-2.5 py-1.5 rounded-md badge-tone-warning text-[10.5px] omnis-mono text-center">
+          Below-zero real growth clamped to 0% ring: {contractionNotes.join(" • ")}
+        </div>
+      ) : null}
 
       {activeAxis ? (
         <div className="omnis-surface-slate px-3 py-2 text-[11px] flex items-center justify-between omnis-mono">

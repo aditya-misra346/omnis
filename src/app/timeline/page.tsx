@@ -16,6 +16,7 @@ import {
 import { TIMELINE_EVENTS } from "@/lib/data/global-intelligence";
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
 import { OmnisButton, OmnisModuleHeader } from "@/components/ui/OmnisPrimitives";
+import { OmnisSelect } from "@/components/ui/OmnisSelect";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 import type { TimelineEra } from "@/types/omnis";
 
@@ -94,6 +95,7 @@ function TimelineContent() {
         title="Chronological Causal Chains Across Civilisations, Science & Economics"
         subtitle="Trace primary historical milestones chronologically or horizontally and jump directly from historical inflection points into interactive causal Knowledge Graphs."
         icon={<Clock className="w-3.5 h-3.5" />}
+        mobileFilterLabel="Era & Filters"
         actions={
           <>
             <OmnisButton
@@ -120,76 +122,76 @@ function TimelineContent() {
             </OmnisButton>
           </>
         }
-      >
-        {/* Era Selector Tabs */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
-          {ERAS.map((era) => {
-            const active = selectedEra === era.id;
-            return (
-              <button
-                key={era.id}
-                type="button"
-                onClick={() => setSelectedEra(era.id)}
-                className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${
-                  active
-                    ? "bg-[var(--accent-blue-solid)] text-white border-transparent shadow-sm"
-                    : "bg-[var(--bg-slate)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]"
-                }`}
-              >
-                <div className="text-xs font-bold">{era.label}</div>
-                <div
-                  className={`text-[10px] omnis-mono ${
-                    active ? "text-white/80" : "text-[var(--text-muted)]"
+        secondaryControls={
+          <div className="space-y-3 pt-1">
+            {/* Era Selector Tabs */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              {ERAS.map((era) => {
+                const active = selectedEra === era.id;
+                return (
+                  <button
+                    key={era.id}
+                    type="button"
+                    onClick={() => setSelectedEra(era.id)}
+                    className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer ${
+                      active
+                        ? "bg-[var(--accent-blue-solid)] text-white border-transparent shadow-sm"
+                        : "bg-[var(--bg-slate)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]"
+                    }`}
+                  >
+                    <div className="text-xs font-bold">{era.label}</div>
+                    <div
+                      className={`text-[10px] omnis-mono ${
+                        active ? "text-white/80" : "text-[var(--text-muted)]"
+                      }`}
+                    >
+                      {era.range}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Search, Category & Milestone Filters */}
+            <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex-1 min-w-[220px] flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)]">
+                <Search className="w-3.5 h-3.5 tone-blue shrink-0" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search historical events, participants, or locations..."
+                  className="w-full bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <OmnisSelect
+                  value={selectedCategory}
+                  onChange={setSelectedCategory}
+                  ariaLabel="Filter by Event Category"
+                  options={categories.map((cat) => ({
+                    value: cat,
+                    label: `Category: ${cat}`,
+                  }))}
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setMilestonesOnly((m) => !m)}
+                  className={`px-3 py-1.5 rounded-xl border font-semibold transition-colors cursor-pointer ${
+                    milestonesOnly
+                      ? "badge-tone-warning"
+                      : "bg-[var(--bg-slate)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                   }`}
                 >
-                  {era.range}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Search, Category & Milestone Filters */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-xs">
-          <div className="flex-1 min-w-[220px] flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)]">
-            <Search className="w-3.5 h-3.5 tone-blue shrink-0" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search historical events, participants, or locations..."
-              className="w-full bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
-            />
+                  ★ Major Milestones Only
+                </button>
+              </div>
+            </div>
           </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              aria-label="Filter by Event Category"
-              className="px-3 py-1.5 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-primary)] font-medium cursor-pointer"
-            >
-              {categories.map((cat) => (
-                <option key={cat} value={cat} className="bg-[var(--bg-graphite)]">
-                  Category: {cat}
-                </option>
-              ))}
-            </select>
-
-            <button
-              type="button"
-              onClick={() => setMilestonesOnly((m) => !m)}
-              className={`px-3 py-1.5 rounded-xl border font-semibold transition-colors cursor-pointer ${
-                milestonesOnly
-                  ? "badge-tone-warning"
-                  : "bg-[var(--bg-slate)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-              }`}
-            >
-              ★ Major Milestones Only
-            </button>
-          </div>
-        </div>
-      </OmnisModuleHeader>
+        }
+      />
 
       {/* Horizontal Scrollable View (when selected) */}
       {viewOrientation === "horizontal" && (

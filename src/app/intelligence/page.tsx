@@ -12,11 +12,82 @@ import {
   Check,
   TrendingUp,
 } from "lucide-react";
-import { COMPARABLE_ENTITIES, COUNTRIES_DATA } from "@/lib/data/global-intelligence";
+import {
+  COMPARABLE_ENTITIES,
+  COUNTRIES_DATA,
+  TIMELINE_EVENTS,
+} from "@/lib/data/global-intelligence";
+import { buildSovereignComparisonMatrix } from "@/lib/research/compare";
+import { fetchOpenAlexSources } from "@/lib/providers/live-data";
 import { ComparisonRadarChart } from "@/components/charts/OmnisCharts";
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
 import { OmnisButton, OmnisModuleHeader } from "@/components/ui/OmnisPrimitives";
+import { OmnisSelect } from "@/components/ui/OmnisSelect";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
+import type { ResearchSourceItem } from "@/types/omnis";
+
+interface FollowedTopicBriefing {
+  status: "live" | "cached";
+  dateLabel: string;
+  headline: string;
+  summary: string;
+  sourceLabel: string;
+  sourceUrl: string;
+}
+
+function resolveCachedTopicBriefing(topic: string): FollowedTopicBriefing {
+  const lower = topic.toLowerCase();
+  const matchedEvent =
+    TIMELINE_EVENTS.find(
+      (evt) =>
+        evt.title.toLowerCase().includes(lower.split(" ")[0] ?? "") ||
+        evt.connectedGraphTopics.some((t) =>
+          lower.includes(t.toLowerCase().split(" ")[0] ?? "")
+        )
+    ) ?? null;
+
+  if (matchedEvent) {
+    return {
+      status: "cached",
+      dateLabel: `Event Record • ${matchedEvent.dateDisplay}`,
+      headline: matchedEvent.title,
+      summary: matchedEvent.description,
+      sourceLabel: matchedEvent.sources[0]?.publisher ?? "OMNIS Verified Event Archive",
+      sourceUrl: matchedEvent.sources[0]?.url ?? "/timeline",
+    };
+  }
+
+  const matchedEntity =
+    COMPARABLE_ENTITIES.find(
+      (ent) =>
+        ent.name.toLowerCase().includes(lower.split(" ")[0] ?? "") ||
+        ent.subtitle.toLowerCase().includes(lower.split(" ")[0] ?? "")
+    ) ?? null;
+
+  if (matchedEntity) {
+    const firstAttr = Object.entries(matchedEntity.keyAttributes)[0];
+    return {
+      status: "cached",
+      dateLabel: `Curated Benchmark (${COUNTRIES_DATA.IND.provenance.lastUpdated} Edition)`,
+      headline: matchedEntity.name,
+      summary: `${matchedEntity.subtitle}. ${
+        firstAttr ? `${firstAttr[0]}: ${firstAttr[1]}.` : ""
+      }`,
+      sourceLabel: matchedEntity.source,
+      sourceUrl: `/research?q=${encodeURIComponent(topic)}`,
+    };
+  }
+
+  const ind = COUNTRIES_DATA.IND;
+  return {
+    status: "cached",
+    dateLabel: `WDI Edition • ${ind.provenance.lastUpdated}`,
+    headline: `${topic} — Sovereign & Historical Archive`,
+    summary: `Grounded against World Bank WDI (${ind.provenance.lastUpdated}) & curated historical records.`,
+    sourceLabel: ind.provenance.source,
+    sourceUrl: ind.provenance.url,
+  };
+}
 
 const ALL_TOPICS = [
   "Artificial Intelligence",
@@ -37,6 +108,7 @@ function IntelligenceCompareContent() {
   const [leftIso, setLeftIso] = useState(COUNTRIES_DATA[initialLeft] ? initialLeft : "IND");
   const [rightIso, setRightIso] = useState(COUNTRIES_DATA[initialRight] ? initialRight : "CHN");
   const [savedNotice, setSavedNotice] = useState(false);
+  const [liveBriefings, setLiveBriefings] = useState<Record<string, ResearchSourceItem | null>>({});
 
   const { followedTopics, toggleFollowedTopic, addWorkspaceItem, setActiveContext } =
     useOmnisStore();
@@ -52,56 +124,33 @@ function IntelligenceCompareContent() {
     );
   }, [leftCountry.name, rightCountry.name, setActiveContext]);
 
-  const metricsComparison = [
-    {
-      label: "Nominal GDP ($B)",
-      leftVal: leftCountry.gdpUsdBn,
-      rightVal: rightCountry.gdpUsdBn,
-      unit: "$B",
-    },
-    {
-      label: "GDP Per Capita ($)",
-      leftVal: leftCountry.gdpPerCapitaUsd,
-      rightVal: rightCountry.gdpPerCapitaUsd,
-      unit: "$",
-    },
-    {
-      label: "Real GDP Growth (%)",
-      leftVal: leftCountry.gdpGrowthPct,
-      rightVal: rightCountry.gdpGrowthPct,
-      unit: "%",
-    },
-    {
-      label: "Renewable Electricity (%)",
-      leftVal: leftCountry.energyProfile.renewableSharePct,
-      rightVal: leftCountry.energyProfile.renewableSharePct,
-      unit: "%",
-    },
-    {
-      label: "AI Readiness Index",
-      leftVal: leftCountry.technologyProfile.aiReadinessIndex,
-      rightVal: rightCountry.technologyProfile.aiReadinessIndex,
-      unit: "/100",
-    },
-    {
-      label: "R&D Intensity (% GDP)",
-      leftVal: leftCountry.technologyProfile.rdSpendPctGdp,
-      rightVal: rightCountry.technologyProfile.rdSpendPctGdp,
-      unit: "%",
-    },
-    {
-      label: "Internet Penetration (%)",
-      leftVal: leftCountry.technologyProfile.internetPenetrationPct,
-      rightVal: rightCountry.technologyProfile.internetPenetrationPct,
-      unit: "%",
-    },
-    {
-      label: "Life Expectancy (Years)",
-      leftVal: leftCountry.lifeExpectancyYears,
-      rightVal: rightCountry.lifeExpectancyYears,
-      unit: "yrs",
-    },
-  ];
+  useEffect(() => {
+    let active = true;
+    const missing = followedTopics.filter((t) => !(t in liveBriefings));
+    if (missing.length === 0) return;
+
+    Promise.all(
+      missing.slice(0, 6).map(async (topic) => {
+        const works = await fetchOpenAlexSources(topic, 1).catch(() => []);
+        return [topic, works[0] ?? null] as const;
+      })
+    ).then((entries) => {
+      if (!active) return;
+      setLiveBriefings((prev) => {
+        const next = { ...prev };
+        for (const [topic, work] of entries) {
+          next[topic] = work;
+        }
+        return next;
+      });
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [followedTopics, liveBriefings]);
+
+  const metricsComparison = buildSovereignComparisonMatrix(leftCountry, rightCountry);
 
   const handleSaveComparison = () => {
     addWorkspaceItem({
@@ -133,21 +182,19 @@ function IntelligenceCompareContent() {
       >
         {/* Entity Pair Selectors */}
         <div className="flex flex-wrap items-center gap-3 pt-1">
-          <div className="flex items-center gap-2 bg-[var(--bg-slate)] px-3 py-2 rounded-xl border border-[var(--accent-blue)]">
-            <span className="text-xs font-bold tone-blue">Entity A:</span>
-            <select
-              value={leftIso}
-              onChange={(e) => setLeftIso(e.target.value)}
-              aria-label="Select Primary Comparison Country"
-              className="bg-transparent text-xs font-bold text-[var(--text-primary)] focus:outline-none cursor-pointer"
-            >
-              {countries.map((c) => (
-                <option key={c.iso3} value={c.iso3} className="bg-[var(--bg-graphite)]">
-                  {c.flagEmoji} {c.name} ({c.iso3})
-                </option>
-              ))}
-            </select>
-          </div>
+          <OmnisSelect
+            value={leftIso}
+            onChange={setLeftIso}
+            ariaLabel="Select Primary Comparison Country"
+            prefixLabel="Entity A:"
+            tone="blue"
+            size="md"
+            options={countries.map((c) => ({
+              value: c.iso3,
+              label: `${c.flagEmoji} ${c.name} (${c.iso3})`,
+              hint: c.region,
+            }))}
+          />
 
           <button
             type="button"
@@ -157,27 +204,25 @@ function IntelligenceCompareContent() {
               setRightIso(temp);
             }}
             aria-label="Swap Entities"
-            className="p-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] transition-colors cursor-pointer"
+            className="p-2 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] transition-colors cursor-pointer"
             title="Swap Entities"
           >
             <ArrowLeftRight className="w-4 h-4 tone-blue" />
           </button>
 
-          <div className="flex items-center gap-2 bg-[var(--bg-slate)] px-3 py-2 rounded-xl border border-[var(--accent-violet)]">
-            <span className="text-xs font-bold tone-violet">Entity B:</span>
-            <select
-              value={rightIso}
-              onChange={(e) => setRightIso(e.target.value)}
-              aria-label="Select Secondary Comparison Country"
-              className="bg-transparent text-xs font-bold text-[var(--text-primary)] focus:outline-none cursor-pointer"
-            >
-              {countries.map((c) => (
-                <option key={c.iso3} value={c.iso3} className="bg-[var(--bg-graphite)]">
-                  {c.flagEmoji} {c.name} ({c.iso3})
-                </option>
-              ))}
-            </select>
-          </div>
+          <OmnisSelect
+            value={rightIso}
+            onChange={setRightIso}
+            ariaLabel="Select Secondary Comparison Country"
+            prefixLabel="Entity B:"
+            tone="violet"
+            size="md"
+            options={countries.map((c) => ({
+              value: c.iso3,
+              label: `${c.flagEmoji} ${c.name} (${c.iso3})`,
+              hint: c.region,
+            }))}
+          />
 
           {/* Preset Quick Comparisons */}
           <div className="flex flex-wrap gap-1.5 lg:ml-auto text-xs">
@@ -348,32 +393,54 @@ function IntelligenceCompareContent() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-          {followedTopics.map((topic) => (
-            <div key={topic} className="omnis-surface-slate p-4 space-y-2 text-xs">
-              <div className="flex items-center justify-between text-[10px] omnis-mono tone-blue font-semibold">
-                <span>FOLLOWED TOPIC</span>
-                <span>2026-11-15</span>
+          {followedTopics.map((topic) => {
+            const liveWork = liveBriefings[topic];
+            const cached = resolveCachedTopicBriefing(topic);
+            const isLive = Boolean(liveWork);
+            const title = liveWork ? liveWork.title : cached.headline;
+            const summary = liveWork ? liveWork.excerpt : cached.summary;
+            const dateBadge = liveWork
+              ? `Published ${liveWork.publishedDate}`
+              : cached.dateLabel;
+            const sourceText = liveWork ? liveWork.publisher : cached.sourceLabel;
+
+            return (
+              <div key={topic} className="omnis-surface-slate p-4 flex flex-col justify-between gap-2.5 text-xs">
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-1.5 text-[10px] omnis-mono font-semibold">
+                    <span
+                      className={`px-1.5 py-0.5 rounded uppercase ${
+                        isLive ? "badge-tone-verified" : "badge-tone-cyan"
+                      }`}
+                    >
+                      {isLive ? "Live OpenAlex" : "Cached Archive"}
+                    </span>
+                    <span className="text-[var(--text-muted)]">{dateBadge}</span>
+                  </div>
+                  <div className="text-[10.5px] font-semibold uppercase tracking-wider tone-blue omnis-mono">
+                    {topic}
+                  </div>
+                  <h3 className="font-bold text-sm text-[var(--text-primary)] leading-snug line-clamp-2">
+                    {title}
+                  </h3>
+                  <p className="text-[var(--text-secondary)] leading-relaxed line-clamp-3">
+                    {summary}
+                  </p>
+                </div>
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-[var(--border-subtle)]">
+                  <span className="text-[10px] text-[var(--text-muted)] truncate">
+                    Source: {sourceText}
+                  </span>
+                  <Link
+                    href={`/research?q=${encodeURIComponent(topic)}`}
+                    className="tone-blue hover:underline font-semibold shrink-0"
+                  >
+                    Investigate →
+                  </Link>
+                </div>
               </div>
-              <h3 className="font-bold text-sm text-[var(--text-primary)]">
-                {topic} — Institutional Synthesis
-              </h3>
-              <p className="text-[var(--text-secondary)] leading-relaxed">
-                Latest peer-reviewed OpenAlex publications and World Bank structural indicators
-                updated for {topic}.
-              </p>
-              <div className="flex items-center justify-between pt-2 border-t border-[var(--border-subtle)]">
-                <span className="text-[10px] text-[var(--text-muted)]">
-                  Source: OpenAlex / World Bank WDI
-                </span>
-                <Link
-                  href={`/research?q=${encodeURIComponent(topic)}`}
-                  className="tone-blue hover:underline font-semibold"
-                >
-                  Investigate →
-                </Link>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

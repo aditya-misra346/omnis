@@ -1,6 +1,26 @@
 import { buildInfiniteKnowledgeGraph } from "@/lib/graph/engine";
+import { fetchOpenAlexSources, fetchWikimediaSummary } from "@/lib/providers/live-data";
 import { checkApiRateLimit, validateAndSanitizeInput } from "@/lib/security/guardrails";
 import { GraphRequestSchema } from "@/types/omnis";
+
+async function generateHydratedGraph(params: {
+  topic: string;
+  maxNodes: number;
+  expandFromNodeId?: string;
+}) {
+  const [openAlexWorks, wikiSummary] = await Promise.all([
+    fetchOpenAlexSources(params.topic, 5),
+    fetchWikimediaSummary(params.topic),
+  ]);
+
+  return buildInfiniteKnowledgeGraph({
+    topic: params.topic,
+    maxNodes: params.maxNodes,
+    expandFromNodeId: params.expandFromNodeId,
+    openAlexWorks,
+    wikiSummary,
+  });
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -9,7 +29,7 @@ export async function GET(request: Request) {
   if (!check.allowed) {
     return Response.json({ error: check.reason }, { status: 400 });
   }
-  const graph = buildInfiniteKnowledgeGraph({
+  const graph = await generateHydratedGraph({
     topic: check.sanitizedText,
     maxNodes: Number(searchParams.get("maxNodes") ?? 32),
   });
@@ -37,7 +57,7 @@ export async function POST(request: Request) {
       return Response.json({ error: check.reason }, { status: 400 });
     }
 
-    const graph = buildInfiniteKnowledgeGraph({
+    const graph = await generateHydratedGraph({
       topic: check.sanitizedText,
       maxNodes: parsed.data.maxNodes,
       expandFromNodeId: parsed.data.expandFromNodeId,

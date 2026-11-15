@@ -148,9 +148,15 @@ export function ScrollFocusNarrative({ text, className = "" }: ScrollFocusNarrat
       if (!node) return;
       const rect = node.getBoundingClientRect();
       const vh = window.innerHeight || 900;
-      const raw = (vh * 0.94 - rect.top) / (vh * 0.44);
-      const clamped = Math.max(0.28, Math.min(1, raw));
+      const raw = (vh * 0.96 - rect.top) / (vh * 0.48);
+      const clamped = Math.max(0, Math.min(1, raw));
       setScrollProgress(clamped);
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setActiveTermPhrase(null);
+      }
     };
 
     const scheduleMeasure = () => {
@@ -175,11 +181,13 @@ export function ScrollFocusNarrative({ text, className = "" }: ScrollFocusNarrat
     measureScroll();
     window.addEventListener("scroll", scheduleMeasure, { passive: true });
     window.addEventListener("resize", scheduleMeasure, { passive: true });
+    window.addEventListener("keydown", handleKeyDown);
 
     return () => {
       io.disconnect();
       window.removeEventListener("scroll", scheduleMeasure);
       window.removeEventListener("resize", scheduleMeasure);
+      window.removeEventListener("keydown", handleKeyDown);
       mq?.removeEventListener?.("change", onChange);
     };
   }, [motionPaused]);
@@ -197,9 +205,9 @@ export function ScrollFocusNarrative({ text, className = "" }: ScrollFocusNarrat
             0,
             Math.min(1, (effectiveProgress - tokenStart) / tokenSpan)
           );
-          const opacity = Number((0.22 + localA * 0.78).toFixed(3));
-          const translateY = Number(((1 - localA) * 7).toFixed(2));
-          const blurPx = Number(((1 - localA) * 3.5).toFixed(2));
+          const opacity = Number((0.62 + localA * 0.38).toFixed(3));
+          const translateY = Number(((1 - localA) * 5).toFixed(2));
+          const blurPx = Number(((1 - localA) * 1.2).toFixed(2));
 
           if (seg.type === "term" && seg.term) {
             const term = seg.term;
@@ -227,22 +235,25 @@ export function ScrollFocusNarrative({ text, className = "" }: ScrollFocusNarrat
                     onBlur={() =>
                       setActiveTermPhrase((prev) => (prev === term.phrase ? null : prev))
                     }
-                    className={`relative inline-block px-0.5 omnis-editorial text-[1.15em] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-blue)] rounded ${
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") {
+                        setActiveTermPhrase(null);
+                        (e.currentTarget as HTMLElement).blur();
+                      }
+                    }}
+                    className={`relative inline-flex items-baseline gap-0.5 px-0.5 omnis-editorial text-[1.15em] transition-colors border-b border-dashed focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-blue)] rounded-sm ${
                       unlocked
-                        ? "omnis-gradient-text font-normal"
-                        : "text-[var(--text-primary)]"
+                        ? "omnis-gradient-text font-normal border-[var(--ink-underline-active)]"
+                        : "text-[var(--text-primary)] border-[var(--ink-underline)]"
                     }`}
                   >
                     <span>{term.phrase}</span>
-                    <span
+                    <sup
                       aria-hidden="true"
-                      className="pointer-events-none absolute left-0 right-0 -bottom-0.5 h-[1.5px] origin-left transition-transform duration-500 ease-out"
-                      style={{
-                        backgroundImage:
-                          "linear-gradient(90deg, var(--ink-underline), var(--ink-underline-active))",
-                        transform: unlocked ? "scaleX(1)" : "scaleX(0)",
-                      }}
-                    />
+                      className="text-[0.58em] font-sans not-italic opacity-75 leading-none select-none"
+                    >
+                      ↗
+                    </sup>
                   </Link>
 
                   {isOpen && (

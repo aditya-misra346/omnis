@@ -24,7 +24,7 @@ const SPECIMEN_ROWS: SpecimenRow[] = [
     items: [
       {
         label: "World Bank v2",
-        summary: "Official WDI macroeconomic & energy series mapped directly to 200+ country dossiers.",
+        summary: "Official WDI macroeconomic & energy series mapped across sovereign country dossiers.",
         moduleLabel: "Explore in Global Atlas",
         href: "/atlas",
       },
@@ -157,7 +157,7 @@ export function IntelligenceSpecimenTicker() {
   const [activeItem, setActiveItem] = useState<SpecimenItem>(defaultItem);
 
   return (
-    <div className="omnis-card p-5 sm:p-6 space-y-4 overflow-hidden">
+    <div className="bg-[var(--bg-obsidian)] px-4 sm:px-6 py-5 border-y border-[var(--border-subtle)] space-y-4 overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
         <span className="inline-flex items-center gap-2 font-bold uppercase tracking-widest tone-blue omnis-mono text-[11px]">
           <Radio className="w-3.5 h-3.5" />
@@ -174,7 +174,7 @@ export function IntelligenceSpecimenTicker() {
             key={row.rowLabel}
             className="omnis-ticker-row relative flex items-center gap-3 overflow-hidden py-1 border-b border-[var(--border-subtle)]/70 last:border-b-0"
           >
-            <div className="shrink-0 w-36 sm:w-44 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono z-10 bg-[var(--bg-graphite)] pr-2">
+            <div className="shrink-0 w-36 sm:w-44 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono z-10 bg-[var(--bg-obsidian)] pr-2">
               {row.rowLabel}
             </div>
 

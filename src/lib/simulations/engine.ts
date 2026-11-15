@@ -369,6 +369,87 @@ function sampleNormal(rand: () => number): number {
   return Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
 }
 
+function computeScenarioDynamics(
+  category: SimulationCategory,
+  values: Record<string, number>
+): {
+  initialVal: number;
+  baseDrift: number;
+  modDrift: number;
+  sigma: number;
+  additiveMode: boolean;
+} {
+  let initialVal = 100.0;
+  let baseDrift = 0.032;
+  let modDrift = 0.032;
+  let sigma = 0.014;
+  let additiveMode = false;
+
+  if (category === "economics") {
+    const oil = (values.oilPriceShockPct ?? 30) / 100;
+    const rate = (values.interestRateDeltaBps ?? 125) / 10000;
+    const fiscal = (values.fiscalStimulusPctGdp ?? 2.0) / 100;
+    const tariff = (values.tariffRatePct ?? 12) / 100;
+    baseDrift = 0.032;
+    modDrift = baseDrift - 0.042 * oil - 0.36 * rate + 0.44 * fiscal - 0.12 * tariff;
+    sigma = 0.012 + 0.015 * Math.abs(oil) + 0.01 * Math.abs(tariff);
+  } else if (category === "demographics") {
+    const tfr = values.fertilityDelta ?? -0.3;
+    const mig = (values.netMigrationPer1000 ?? 4.0) / 1000;
+    const part = (values.urbanFemaleParticipationDeltaPct ?? 6) / 100;
+    baseDrift = 0.004;
+    modDrift = baseDrift + 0.007 * tfr + 1.2 * mig + 0.14 * part;
+    sigma = 0.005;
+  } else if (category === "energy") {
+    initialVal = 41.2;
+    additiveMode = true;
+    const capex = values.renewableCapexDeclinePct ?? 8;
+    const nuc = values.nuclearAdditionGw ?? 25;
+    const stor = values.storageExpansionPct ?? 30;
+    baseDrift = 1.15;
+    modDrift = 0.14 * capex + 0.035 * nuc + 0.028 * stor;
+    sigma = 0.45;
+  } else if (category === "technology") {
+    const ai = (values.aiEnterpriseAdoptionPct ?? 65) / 100;
+    const fab = (values.semiconductorCapexGrowthPct ?? 18) / 100;
+    const pwr = (values.datacenterPowerConstraintPct ?? 10) / 100;
+    baseDrift = 0.018;
+    modDrift = baseDrift + 0.028 * (ai - 0.3) + 0.055 * (fab - 0.1) - 0.032 * (pwr - 0.15);
+    sigma = 0.011;
+  } else {
+    initialVal = 1.32;
+    additiveMode = true;
+    const cut = values.annualEmissionsReductionPct ?? 5.5;
+    const ch4 = values.methaneAbatementPct ?? 35;
+    const sink = values.reforestationSinkGt ?? 4.5;
+    baseDrift = 0.024;
+    modDrift = Math.max(0.003, 0.026 - 0.0024 * cut - 0.00018 * ch4 - 0.0012 * sink);
+    sigma = 0.006;
+  }
+
+  return { initialVal, baseDrift, modDrift, sigma, additiveMode };
+}
+
+function computeExpectedTerminalValue(
+  initialVal: number,
+  drift: number,
+  horizon: number,
+  additiveMode: boolean,
+  category: SimulationCategory
+): number {
+  if (!additiveMode) {
+    return initialVal * Math.pow(1 + drift, horizon);
+  }
+  if (category === "energy") {
+    let val = initialVal;
+    for (let t = 1; t <= horizon; t++) {
+      val = Math.min(99.2, Math.max(10, val + drift));
+    }
+    return val;
+  }
+  return initialVal + drift * horizon;
+}
+
 export function executeWhatIfSimulation(params: {
   scenarioId?: string;
   category: SimulationCategory;
@@ -388,6 +469,7 @@ export function executeWhatIfSimulation(params: {
   const baseYear = 2026;
 
   const parametersUsed: Record<string, { baseline: number; modified: number; unit: string }> = {};
+  const currentValues: Record<string, number> = {};
   for (const p of spec.parameters) {
     const modVal =
       params.overrides && typeof params.overrides[p.key] === "number"
@@ -398,56 +480,13 @@ export function executeWhatIfSimulation(params: {
       modified: modVal,
       unit: p.unit,
     };
+    currentValues[p.key] = modVal;
   }
 
-  let initialVal = 100.0;
-  let baseDrift = 0.032;
-  let modDrift = 0.032;
-  let sigma = 0.014;
-  let additiveMode = false;
-
-  if (spec.category === "economics") {
-    const oil = (parametersUsed.oilPriceShockPct?.modified ?? 30) / 100;
-    const rate = (parametersUsed.interestRateDeltaBps?.modified ?? 125) / 10000;
-    const fiscal = (parametersUsed.fiscalStimulusPctGdp?.modified ?? 2.0) / 100;
-    const tariff = (parametersUsed.tariffRatePct?.modified ?? 12) / 100;
-    baseDrift = 0.032;
-    modDrift = baseDrift - 0.042 * oil - 0.36 * rate + 0.44 * fiscal - 0.12 * tariff;
-    sigma = 0.012 + 0.015 * Math.abs(oil) + 0.01 * Math.abs(tariff);
-  } else if (spec.category === "demographics") {
-    const tfr = parametersUsed.fertilityDelta?.modified ?? -0.3;
-    const mig = (parametersUsed.netMigrationPer1000?.modified ?? 4.0) / 1000;
-    const part = (parametersUsed.urbanFemaleParticipationDeltaPct?.modified ?? 6) / 100;
-    baseDrift = 0.004;
-    modDrift = baseDrift + 0.007 * tfr + 1.2 * mig + 0.14 * part;
-    sigma = 0.005;
-  } else if (spec.category === "energy") {
-    initialVal = 41.2;
-    additiveMode = true;
-    const capex = parametersUsed.renewableCapexDeclinePct?.modified ?? 8;
-    const nuc = parametersUsed.nuclearAdditionGw?.modified ?? 25;
-    const stor = parametersUsed.storageExpansionPct?.modified ?? 30;
-    baseDrift = 1.15; // percentage points per year
-    modDrift = 0.14 * capex + 0.035 * nuc + 0.028 * stor;
-    sigma = 0.45;
-  } else if (spec.category === "technology") {
-    const ai = (parametersUsed.aiEnterpriseAdoptionPct?.modified ?? 65) / 100;
-    const fab = (parametersUsed.semiconductorCapexGrowthPct?.modified ?? 18) / 100;
-    const pwr = (parametersUsed.datacenterPowerConstraintPct?.modified ?? 10) / 100;
-    baseDrift = 0.018;
-    modDrift = baseDrift + 0.028 * (ai - 0.3) + 0.055 * (fab - 0.1) - 0.032 * (pwr - 0.15);
-    sigma = 0.011;
-  } else {
-    // environment
-    initialVal = 1.32;
-    additiveMode = true;
-    const cut = parametersUsed.annualEmissionsReductionPct?.modified ?? 5.5;
-    const ch4 = parametersUsed.methaneAbatementPct?.modified ?? 35;
-    const sink = parametersUsed.reforestationSinkGt?.modified ?? 4.5;
-    baseDrift = 0.024; // +0.024°C/yr under baseline
-    modDrift = Math.max(0.003, 0.026 - 0.0024 * cut - 0.00018 * ch4 - 0.0012 * sink);
-    sigma = 0.006;
-  }
+  const { initialVal, baseDrift, modDrift, sigma, additiveMode } = computeScenarioDynamics(
+    spec.category,
+    currentValues
+  );
 
   const trajectory: SimulationTrajectoryPoint[] = [];
 
@@ -512,19 +551,45 @@ export function executeWhatIfSimulation(params: {
     });
   }
 
-  const sensitivity: SimulationSensitivityItem[] = spec.parameters.map((p, idx) => {
-    const span = p.max - p.min;
-    const weight = 1.4 - idx * 0.25;
-    const lowDelta = Number((-(span * 0.08 * weight)).toFixed(2));
-    const highDelta = Number((span * 0.095 * weight).toFixed(2));
-    return {
-      parameterKey: p.key,
-      label: p.label,
-      lowOutcomeDelta: lowDelta,
-      highOutcomeDelta: highDelta,
-      elasticityScore: Number(((Math.abs(lowDelta) + Math.abs(highDelta)) / 2).toFixed(2)),
-    };
-  });
+  // True One-at-a-Time deterministic counterfactual tornado sensitivity across each parameter's [min, max]
+  const nominalDeterministicTerminal = computeExpectedTerminalValue(
+    initialVal,
+    modDrift,
+    horizon,
+    additiveMode,
+    spec.category
+  );
+
+  const sensitivity: SimulationSensitivityItem[] = spec.parameters
+    .map((p) => {
+      const lowRun = computeScenarioDynamics(spec.category, { ...currentValues, [p.key]: p.min });
+      const lowTerminal = computeExpectedTerminalValue(
+        lowRun.initialVal,
+        lowRun.modDrift,
+        horizon,
+        lowRun.additiveMode,
+        spec.category
+      );
+      const highRun = computeScenarioDynamics(spec.category, { ...currentValues, [p.key]: p.max });
+      const highTerminal = computeExpectedTerminalValue(
+        highRun.initialVal,
+        highRun.modDrift,
+        horizon,
+        highRun.additiveMode,
+        spec.category
+      );
+
+      const lowDelta = Number((lowTerminal - nominalDeterministicTerminal).toFixed(2));
+      const highDelta = Number((highTerminal - nominalDeterministicTerminal).toFixed(2));
+      return {
+        parameterKey: p.key,
+        label: p.label,
+        lowOutcomeDelta: lowDelta,
+        highOutcomeDelta: highDelta,
+        elasticityScore: Number(((Math.abs(lowDelta) + Math.abs(highDelta)) / 2).toFixed(2)),
+      };
+    })
+    .sort((a, b) => b.elasticityScore - a.elasticityScore);
 
   const terminal = trajectory[trajectory.length - 1];
   const pctDelta = Number(

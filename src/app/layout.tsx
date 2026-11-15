@@ -5,6 +5,7 @@ import {
   JetBrains_Mono,
   Instrument_Serif,
 } from "next/font/google";
+import "katex/dist/katex.min.css";
 import "./globals.css";
 import { AppShell } from "@/components/layout/AppShell";
 
@@ -40,6 +41,8 @@ export const metadata: Metadata = {
     "Next-generation AI-powered global intelligence, scientific research, interactive knowledge graphs, 3D Earth atlas, and scenario simulation platform.",
 };
 
+const THEME_INIT_SCRIPT = `(function(){try{var raw=localStorage.getItem("omnis-intelligence-workspace-v1");if(!raw)return;var parsed=JSON.parse(raw);var t=parsed&&parsed.state&&parsed.state.theme;if(t==="light"||t==="dark"){document.documentElement.dataset.theme=t;}}catch(e){}})();`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -52,6 +55,9 @@ export default function RootLayout({
       className={`${inter.variable} ${plusJakarta.variable} ${jetbrainsMono.variable} ${editorial.variable}`}
       suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="antialiased selection:bg-blue-600 selection:text-white">
         <AppShell>{children}</AppShell>
       </body>

@@ -28,6 +28,7 @@ import {
 import { COUNTRIES_DATA } from "@/lib/data/global-intelligence";
 import { InteractiveGlobe3D } from "@/components/globe/InteractiveGlobe3D";
 import { ProvenancePanel } from "@/components/ui/ProvenancePanel";
+import { OmnisParameterSlider } from "@/components/ui/OmnisParameterSlider";
 import { OmnisWordmark } from "@/components/brand/OmnisLogo";
 import { OmnisStatTile } from "@/components/ui/OmnisPrimitives";
 import { ElasticMagneticText } from "@/components/typography/ElasticMagneticText";
@@ -48,7 +49,7 @@ const FLAGSHIP_MODULES = [
     accentText: "tone-blue",
     description:
       "Interactive 3D Earth with Natural Earth 110m vector projection, Fresnel atmospheric scatter, day/night city illumination, and 7 toggleable overlays.",
-    metrics: "200+ Sovereign Profiles • World Bank & REST Countries",
+    metrics: "Curated Dossiers + Live World Bank & REST Countries",
   },
   {
     number: "MODULE 02",
@@ -235,12 +236,7 @@ export default function LandingPage() {
         />
 
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-            className="lg:col-span-6 space-y-6"
-          >
+          <div className="lg:col-span-6 space-y-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full badge-tone-blue text-[11px] font-semibold uppercase tracking-wider omnis-mono">
               <Sparkles className="w-3.5 h-3.5" />
               <span>OMNIS Global Intelligence Platform • v2.0</span>
@@ -326,15 +322,10 @@ export default function LandingPage() {
                 <div className="text-[var(--text-secondary)]">Stochastic Scenario Engine</div>
               </div>
             </div>
-          </motion.div>
+          </div>
 
           {/* SECTION 2: LIVE 3D PLANETARY STAGE */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.55, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
-            className="lg:col-span-6 space-y-3"
-          >
+          <div className="lg:col-span-6 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
               <span className="font-semibold uppercase tracking-wider text-[var(--text-secondary)] flex items-center gap-1.5 omnis-mono">
                 <Layers className="w-3.5 h-3.5 tone-blue" />
@@ -372,48 +363,51 @@ export default function LandingPage() {
               onSelectCountry={setSelectedIso3}
               activeLayer={activeLayer}
               heightClass="h-[440px]"
+              wheelZoomMode="engaged"
             />
-          </motion.div>
+          </div>
         </div>
       </section>
 
       {/* SECTION 3: PRODUCT INTRODUCTION — SIX DISCIPLINES UNIFIED */}
       <section className="py-16 px-4 sm:px-8 border-b border-[var(--border-subtle)] bg-[var(--bg-graphite)]">
-        <div className="max-w-7xl mx-auto space-y-8">
-          <div className="max-w-3xl space-y-3">
-            <div className="text-xs font-bold uppercase tracking-widest tone-blue omnis-mono">
-              01 / Architectural Vision
+        <div className="max-w-7xl mx-auto space-y-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
+            <div className="lg:col-span-4 lg:sticky lg:top-24 space-y-3">
+              <div className="text-xs font-bold uppercase tracking-widest tone-blue omnis-mono">
+                01 / Architectural Vision
+              </div>
+              <ClipMaskHeading className="omnis-display text-2xl sm:text-3xl font-bold text-[var(--text-primary)]">
+                Six Major Disciplines Integrated Into{" "}
+                <span className="omnis-editorial font-normal text-[1.12em]">
+                  One Cohesive System
+                </span>
+              </ClipMaskHeading>
+              <ScrollFocusNarrative text={ARCHITECTURAL_NARRATIVE} />
             </div>
-            <ClipMaskHeading className="omnis-display text-2xl sm:text-3xl font-bold text-[var(--text-primary)]">
-              Six Major Disciplines Integrated Into{" "}
-              <span className="omnis-editorial font-normal text-[1.12em]">
-                One Cohesive System
-              </span>
-            </ClipMaskHeading>
-            <ScrollFocusNarrative text={ARCHITECTURAL_NARRATIVE} />
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {DISCIPLINES.map((item) => {
-              const Icon = item.icon;
-              return (
-                <div
-                  key={item.title}
-                  className="omnis-card p-5 space-y-2.5 hover:border-[var(--border-strong)] transition-all"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="p-2 rounded-lg badge-tone-blue">
-                      <Icon className="w-4 h-4" />
+            <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 border-t border-l border-[var(--border-subtle)]">
+              {DISCIPLINES.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div
+                    key={item.title}
+                    className="p-5 border-r border-b border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:bg-[var(--bg-slate)]/50 transition-colors space-y-2.5"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="p-1.5 rounded-md badge-tone-blue">
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
+                        {item.badge}
+                      </span>
                     </div>
-                    <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-muted)] omnis-mono">
-                      {item.badge}
-                    </span>
+                    <h3 className="font-bold text-sm text-[var(--text-primary)]">{item.title}</h3>
+                    <p className="text-xs text-[var(--text-secondary)] leading-relaxed">{item.desc}</p>
                   </div>
-                  <h3 className="font-bold text-sm text-[var(--text-primary)]">{item.title}</h3>
-                  <p className="text-xs text-[var(--text-secondary)] leading-relaxed">{item.desc}</p>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
 
           <IntelligenceSpecimenTicker />
@@ -443,25 +437,62 @@ export default function LandingPage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {FLAGSHIP_MODULES.map((mod) => {
+          {/* Primary Showcase Tier: Modules 01 & 02 */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {FLAGSHIP_MODULES.slice(0, 2).map((mod) => {
               const Icon = mod.icon;
               return (
                 <Link
                   key={mod.number}
                   href={mod.href}
-                  className="omnis-card omnis-card-interactive p-6 flex flex-col justify-between gap-5 group"
+                  className="omnis-card omnis-card-interactive p-6 sm:p-7 flex flex-col justify-between gap-5 group"
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <span className={`text-[11px] font-bold tracking-widest omnis-mono ${mod.accentText}`}>
                         {mod.number}
                       </span>
-                      <div className={`p-2 rounded-xl transition-transform group-hover:scale-105 ${mod.tone}`}>
+                      <div className={`p-2 rounded-lg transition-transform group-hover:scale-105 ${mod.tone}`}>
                         <Icon className="w-4 h-4" />
                       </div>
                     </div>
-                    <h3 className="text-lg font-bold text-[var(--text-primary)] group-hover:text-[var(--accent-blue)] transition-colors">
+                    <h3 className="text-xl font-bold text-[var(--text-primary)] group-hover:text-[var(--accent-blue)] transition-colors">
+                      {mod.title}
+                    </h3>
+                    <p className="text-xs sm:text-[13px] text-[var(--text-secondary)] leading-relaxed">
+                      {mod.description}
+                    </p>
+                  </div>
+
+                  <div className="pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between gap-3 text-[11px] text-[var(--text-muted)] omnis-mono">
+                    <span className="line-clamp-2">{mod.metrics}</span>
+                    <ArrowRight className={`w-3.5 h-3.5 shrink-0 ${mod.accentText} group-hover:translate-x-1 transition-transform`} />
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Secondary Hairline Ledger: Modules 03–06 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 border-t border-l border-[var(--border-subtle)] bg-[var(--bg-graphite)]">
+            {FLAGSHIP_MODULES.slice(2).map((mod) => {
+              const Icon = mod.icon;
+              return (
+                <Link
+                  key={mod.number}
+                  href={mod.href}
+                  className="p-5 border-r border-b border-[var(--border-subtle)] hover:bg-[var(--bg-slate)]/55 flex flex-col justify-between gap-4 group transition-colors"
+                >
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className={`text-[10.5px] font-bold tracking-widest omnis-mono ${mod.accentText}`}>
+                        {mod.number}
+                      </span>
+                      <div className={`p-1.5 rounded-md ${mod.tone}`}>
+                        <Icon className="w-3.5 h-3.5" />
+                      </div>
+                    </div>
+                    <h3 className="text-base font-bold text-[var(--text-primary)] group-hover:text-[var(--accent-blue)] transition-colors">
                       {mod.title}
                     </h3>
                     <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
@@ -469,9 +500,9 @@ export default function LandingPage() {
                     </p>
                   </div>
 
-                  <div className="pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between text-[11px] text-[var(--text-muted)] omnis-mono">
-                    <span className="truncate pr-2">{mod.metrics}</span>
-                    <ArrowRight className={`w-3.5 h-3.5 shrink-0 ${mod.accentText} group-hover:translate-x-1 transition-transform`} />
+                  <div className="pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between gap-2 text-[10.5px] text-[var(--text-muted)] omnis-mono">
+                    <span className="line-clamp-2">{mod.metrics}</span>
+                    <ArrowRight className={`w-3.5 h-3.5 shrink-0 ${mod.accentText} group-hover:translate-x-0.5 transition-transform`} />
                   </div>
                 </Link>
               );
@@ -634,39 +665,35 @@ export default function LandingPage() {
                   </svg>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-[var(--text-secondary)]">Oil Price Impulse:</span>
-                    <span className="font-bold omnis-mono tone-blue">
-                      {simOilShock >= 0 ? `+${simOilShock}%` : `${simOilShock}%`}
-                    </span>
-                  </div>
-                  <input
-                    type="range"
+                <div className="space-y-3">
+                  <OmnisParameterSlider
+                    label="Oil Price Impulse"
+                    unit="%"
                     min={-30}
                     max={80}
                     step={5}
+                    baselineValue={0}
                     value={simOilShock}
-                    onChange={(e) => setSimOilShock(Number(e.target.value))}
-                    aria-label="Oil Price Impulse Percentage"
-                    className="w-full accent-[var(--accent-blue)] cursor-pointer"
+                    accent="blue"
+                    onChange={setSimOilShock}
+                    onReset={() => setSimOilShock(0)}
                   />
-                  <div className="grid grid-cols-3 gap-2 pt-1 text-center">
+                  <div className="grid grid-cols-3 gap-2 text-center">
                     <div className="omnis-surface-slate p-2.5">
                       <div className="text-[10px] text-[var(--text-muted)]">Baseline 2040</div>
-                      <div className="text-sm font-bold omnis-mono text-[var(--text-primary)]">
+                      <div className="text-sm font-bold omnis-mono omnis-tabular text-[var(--text-primary)]">
                         {oilShockPreviewSvg.endBaseline.toFixed(1)}
                       </div>
                     </div>
                     <div className="omnis-surface-slate p-2.5">
                       <div className="text-[10px] text-[var(--text-muted)]">Modified P50</div>
-                      <div className="text-sm font-bold omnis-mono tone-blue">
+                      <div className="text-sm font-bold omnis-mono omnis-tabular tone-blue">
                         {oilShockPreviewSvg.endShocked.toFixed(1)}
                       </div>
                     </div>
                     <div className="omnis-surface-slate p-2.5">
                       <div className="text-[10px] text-[var(--text-muted)]">P10–P90 Band</div>
-                      <div className="text-sm font-bold omnis-mono tone-violet">
+                      <div className="text-sm font-bold omnis-mono omnis-tabular tone-violet">
                         ±{oilShockPreviewSvg.bandPct}%
                       </div>
                     </div>
@@ -713,9 +740,9 @@ export default function LandingPage() {
       </section>
 
       {/* SECTION 9 & 10: TECHNOLOGY PHILOSOPHY, TRUST & EPISTEMIC TRANSPARENCY */}
-      <section className="py-16 px-4 sm:px-8 border-b border-[var(--border-subtle)]">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="omnis-card p-6 space-y-4">
+      <section className="py-12 px-4 sm:px-8 border-b border-[var(--border-subtle)]">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 border-y border-[var(--border-subtle)]">
+          <div className="py-8 lg:pr-10 border-b lg:border-b-0 lg:border-r border-[var(--border-subtle)] space-y-4">
             <div className="flex items-center gap-2 tone-blue text-xs font-bold uppercase tracking-wider omnis-mono">
               <Terminal className="w-4 h-4" />
               <span>04 / Technology & Polyglot Architecture</span>
@@ -755,7 +782,7 @@ export default function LandingPage() {
             </ul>
           </div>
 
-          <div className="omnis-card p-6 space-y-4">
+          <div className="py-8 lg:pl-10 space-y-4">
             <div className="flex items-center gap-2 tone-verified text-xs font-bold uppercase tracking-wider omnis-mono">
               <ShieldCheck className="w-4 h-4" />
               <span>05 / Trust, Provenance & Epistemic Integrity</span>

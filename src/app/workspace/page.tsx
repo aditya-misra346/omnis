@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useOmnisStore, type WorkspaceSavedItem } from "@/lib/store/use-omnis-store";
 import { OmnisButton, OmnisModuleHeader } from "@/components/ui/OmnisPrimitives";
+import { OmnisSelect } from "@/components/ui/OmnisSelect";
 
 export default function WorkspacePage() {
   const {
@@ -171,21 +172,21 @@ export default function WorkspacePage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <select
+            <OmnisSelect
               value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value)}
-              aria-label="Filter by Item Type"
-              className="px-2.5 py-1.5 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-primary)] font-medium cursor-pointer"
-            >
-              <option value="ALL">All Item Types</option>
-              <option value="country">Countries</option>
-              <option value="report">Research Reports</option>
-              <option value="graph">Knowledge Graphs</option>
-              <option value="simulation">Simulations</option>
-              <option value="timeline">Timeline Events</option>
-              <option value="lab">Lab Experiments</option>
-              <option value="note">Research Notes</option>
-            </select>
+              onChange={setSelectedType}
+              ariaLabel="Filter by Item Type"
+              options={[
+                { value: "ALL", label: "All Item Types" },
+                { value: "country", label: "Countries" },
+                { value: "report", label: "Research Reports" },
+                { value: "graph", label: "Knowledge Graphs" },
+                { value: "simulation", label: "Simulations" },
+                { value: "timeline", label: "Timeline Events" },
+                { value: "lab", label: "Lab Experiments" },
+                { value: "note", label: "Research Notes" },
+              ]}
+            />
 
             <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)]">
               <Search className="w-3.5 h-3.5 tone-blue" />
@@ -284,18 +285,17 @@ export default function WorkspacePage() {
               placeholder="Observations, citations, or follow-up questions..."
               className="w-full px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-blue)]"
             />
-            <select
+            <OmnisSelect
               value={noteFolder}
-              onChange={(e) => setNoteFolder(e.target.value)}
-              aria-label="Select Note Folder"
-              className="w-full px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[var(--text-primary)]"
-            >
-              {folders.map((f) => (
-                <option key={f} value={f} className="bg-[var(--bg-graphite)]">
-                  Folder: {f}
-                </option>
-              ))}
-            </select>
+              onChange={setNoteFolder}
+              ariaLabel="Select Note Folder"
+              fullWidth
+              size="md"
+              options={folders.map((f) => ({
+                value: f,
+                label: `Folder: ${f}`,
+              }))}
+            />
             <OmnisButton type="submit" className="w-full">
               <Plus className="w-3.5 h-3.5" />
               <span>Save Note to Workspace</span>

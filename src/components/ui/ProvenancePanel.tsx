@@ -25,7 +25,7 @@ export function VerificationBadge({ status }: { status: VerificationStatus }) {
     },
     single_source: {
       label: "Single Primary Source",
-      className: "badge-tone-blue",
+      className: "badge-tone-cyan",
       icon: <Database className="w-3.5 h-3.5 shrink-0" />,
     },
     conflicting: {
@@ -45,7 +45,7 @@ export function VerificationBadge({ status }: { status: VerificationStatus }) {
     },
     ai_hypothesis: {
       label: "AI-Generated Hypothesis",
-      className: "badge-tone-violet",
+      className: "badge-tone-hypothesis",
       icon: <Sparkles className="w-3.5 h-3.5 shrink-0" />,
     },
   };

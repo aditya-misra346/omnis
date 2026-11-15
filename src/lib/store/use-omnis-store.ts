@@ -43,7 +43,11 @@ export interface OmnisUser {
   id: string;
   email: string;
   displayName: string;
-  role: "Principal Researcher" | "Policy Analyst" | "Student Explorer";
+  role:
+    | "Local Workspace (Browser Storage)"
+    | "Principal Researcher"
+    | "Policy Analyst"
+    | "Student Explorer";
   verified: boolean;
   createdAt: string;
 }
@@ -209,11 +213,11 @@ export const useOmnisStore = create<OmnisState>()(
         }),
 
       user: {
-        id: "usr-omnis-01",
-        email: "researcher@omnis-intelligence.org",
-        displayName: "Dr. Aditya Misra",
-        role: "Principal Researcher",
-        verified: true,
+        id: "usr-local-session",
+        email: "local-session@omnis.local",
+        displayName: "Local Analyst Session",
+        role: "Local Workspace (Browser Storage)",
+        verified: false,
         createdAt: "2026-11-15T00:00:00Z",
       },
       login: (email, displayName) =>

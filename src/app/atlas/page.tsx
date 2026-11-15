@@ -24,6 +24,7 @@ import { HistoricalTrajectoryChart } from "@/components/charts/OmnisCharts";
 import { ProvenancePanel } from "@/components/ui/ProvenancePanel";
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
 import { OmnisButton, OmnisModuleHeader } from "@/components/ui/OmnisPrimitives";
+import { OmnisSelect } from "@/components/ui/OmnisSelect";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 import type { CountryIntelligenceProfile, IntelligenceLayerId } from "@/types/omnis";
 
@@ -39,23 +40,31 @@ const LAYERS: { id: IntelligenceLayerId; label: string; desc: string }[] = [
 
 function GlobalAtlasContent() {
   const searchParams = useSearchParams();
-  const initialCountry = searchParams.get("country")?.toUpperCase() || "IND";
+  const urlCountryParam = searchParams.get("country")?.trim().toUpperCase() || "";
 
   const [selectedIso3, setSelectedIso3] = useState(
-    COUNTRIES_DATA[initialCountry] ? initialCountry : "IND"
+    /^[A-Z]{3}$/.test(urlCountryParam) ? urlCountryParam : "IND"
   );
   const [compareIso3, setCompareIso3] = useState("CHN");
+
+  useEffect(() => {
+    if (/^[A-Z]{3}$/.test(urlCountryParam)) {
+      setSelectedIso3(urlCountryParam);
+    }
+  }, [urlCountryParam]);
   const [activeLayer, setActiveLayer] = useState<IntelligenceLayerId>("economics");
   const [liveProfile, setLiveProfile] = useState<CountryIntelligenceProfile | null>(null);
+  const [countryLookupStatus, setCountryLookupStatus] = useState<"idle" | "loading" | "missing">("idle");
   const [savedNotice, setSavedNotice] = useState(false);
 
   const { addWorkspaceItem, setActiveContext } = useOmnisStore();
 
   const countriesList = Object.values(COUNTRIES_DATA);
-  const country =
+  const resolvedCountry =
     liveProfile && liveProfile.iso3 === selectedIso3
       ? liveProfile
-      : COUNTRIES_DATA[selectedIso3] ?? COUNTRIES_DATA.IND;
+      : COUNTRIES_DATA[selectedIso3] ?? null;
+  const country = resolvedCountry ?? COUNTRIES_DATA.IND;
   const compareCountry = COUNTRIES_DATA[compareIso3] ?? COUNTRIES_DATA.CHN;
 
   useEffect(() => {
@@ -64,15 +73,25 @@ function GlobalAtlasContent() {
 
   useEffect(() => {
     let cancelled = false;
+    setCountryLookupStatus(COUNTRIES_DATA[selectedIso3] ? "idle" : "loading");
     fetch(`/api/v1/countries/${selectedIso3}`)
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => {
+        if (r.status === 404) {
+          if (!cancelled) setCountryLookupStatus("missing");
+          return null;
+        }
+        return r.ok ? r.json() : null;
+      })
       .then((data) => {
         if (!cancelled && data && data.iso3 === selectedIso3) {
           setLiveProfile(data);
+          setCountryLookupStatus("idle");
         }
       })
       .catch(() => {
-        // Keep verified baseline profile
+        if (!cancelled && !COUNTRIES_DATA[selectedIso3]) {
+          setCountryLookupStatus("missing");
+        }
       });
     return () => {
       cancelled = true;
@@ -105,6 +124,7 @@ function GlobalAtlasContent() {
         title="Interactive 3D Earth & Country Intelligence Experience"
         subtitle="Explore Natural Earth country geometry, day/night illumination, and deep sovereign indicators across 7 calibrated analytical lenses."
         icon={<Globe2 className="w-3.5 h-3.5" />}
+        mobileFilterLabel={`Layer: ${LAYERS.find((l) => l.id === activeLayer)?.label ?? "Layers"}`}
         actions={
           <>
             <OmnisButton onClick={handleSaveCountry}>
@@ -129,38 +149,30 @@ function GlobalAtlasContent() {
             </Link>
           </>
         }
-      >
-        {/* 7 Intelligence Layers Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 pt-2">
-          {LAYERS.map((layer) => {
-            const active = activeLayer === layer.id;
-            return (
-              <button
-                key={layer.id}
-                type="button"
-                onClick={() => setActiveLayer(layer.id)}
-                className={`text-left p-2.5 rounded-xl border transition-all cursor-pointer ${
-                  active
-                    ? "bg-[var(--accent-blue-solid)] text-white border-transparent shadow-sm"
-                    : "bg-[var(--bg-slate)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]"
-                }`}
-              >
-                <div className="text-xs font-bold flex items-center gap-1.5">
-                  <Layers className={`w-3 h-3 shrink-0 ${active ? "text-white" : "tone-blue"}`} />
-                  <span className="truncate">{layer.label}</span>
-                </div>
-                <div
-                  className={`text-[10px] line-clamp-1 mt-0.5 ${
-                    active ? "text-white/80" : "text-[var(--text-muted)]"
+        secondaryControls={
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {LAYERS.map((layer) => {
+              const active = activeLayer === layer.id;
+              return (
+                <button
+                  key={layer.id}
+                  type="button"
+                  title={layer.desc}
+                  onClick={() => setActiveLayer(layer.id)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
+                    active
+                      ? "bg-[var(--accent-blue-solid)] text-white border-transparent shadow-sm"
+                      : "bg-[var(--bg-slate)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]"
                   }`}
                 >
-                  {layer.desc}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </OmnisModuleHeader>
+                  <Layers className={`w-3 h-3 shrink-0 ${active ? "text-white" : "tone-blue"}`} />
+                  <span>{layer.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        }
+      />
 
       {/* 3D Interactive Globe */}
       <InteractiveGlobe3D
@@ -175,6 +187,18 @@ function GlobalAtlasContent() {
         activeLayer={activeLayer}
         heightClass="h-[480px]"
       />
+
+      {countryLookupStatus === "loading" && (
+        <div className="px-4 py-2.5 rounded-xl badge-tone-cyan text-xs omnis-mono">
+          Hydrating live REST Countries &amp; World Bank telemetry for {selectedIso3}…
+        </div>
+      )}
+
+      {countryLookupStatus === "missing" && (
+        <div className="px-4 py-2.5 rounded-xl badge-tone-warning text-xs omnis-mono">
+          No federated sovereign profile resolved for &ldquo;{selectedIso3}&rdquo; (HTTP 404). Showing curated {country.name} ({country.iso3}) reference dossier below.
+        </div>
+      )}
 
       {/* Dedicated Country Intelligence Dossier */}
       <div className="omnis-card p-6 space-y-6">
@@ -477,20 +501,19 @@ function GlobalAtlasContent() {
                 <ArrowLeftRight className="w-4 h-4 tone-blue" />
                 Compare {country.name} vs {compareCountry.name}
               </h3>
-              <select
+              <OmnisSelect
                 value={compareIso3}
-                onChange={(e) => setCompareIso3(e.target.value)}
-                aria-label="Select Comparison Country"
-                className="px-2.5 py-1.5 rounded-lg bg-[var(--bg-graphite)] border border-[var(--border-subtle)] text-xs font-semibold text-[var(--text-primary)]"
-              >
-                {countriesList
+                onChange={setCompareIso3}
+                ariaLabel="Select Comparison Country"
+                menuAlign="right"
+                options={countriesList
                   .filter((c) => c.iso3 !== country.iso3)
-                  .map((c) => (
-                    <option key={c.iso3} value={c.iso3}>
-                      {c.flagEmoji} {c.name} ({c.iso3})
-                    </option>
-                  ))}
-              </select>
+                  .map((c) => ({
+                    value: c.iso3,
+                    label: `${c.flagEmoji} ${c.name} (${c.iso3})`,
+                    hint: c.region,
+                  }))}
+              />
             </div>
 
             <div className="overflow-x-auto">

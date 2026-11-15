@@ -14,10 +14,12 @@ import {
   Filter,
 } from "lucide-react";
 import { buildInfiniteKnowledgeGraph } from "@/lib/graph/engine";
+import { fetchOpenAlexSources, fetchWikimediaSummary } from "@/lib/providers/live-data";
 import { KnowledgeGraphCanvas } from "@/components/graph/KnowledgeGraphCanvas";
 import { ProvenancePanel, VerificationBadge } from "@/components/ui/ProvenancePanel";
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
 import { OmnisButton, OmnisModuleHeader } from "@/components/ui/OmnisPrimitives";
+import { OmnisSelect } from "@/components/ui/OmnisSelect";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 import type {
   GraphLayoutMode,
@@ -50,8 +52,10 @@ const RELATIONSHIP_TYPES: (RelationshipType | "ALL")[] = [
 const PRESET_TOPICS = [
   "Artificial Intelligence",
   "Semiconductors",
-  "Indian Economy",
   "Clean Energy",
+  "Climate Carbon Cycle",
+  "Digital Public Infrastructure",
+  "Indian Economy",
 ];
 
 function KnowledgeGraphContent() {
@@ -67,8 +71,33 @@ function KnowledgeGraphContent() {
   const [maxNodes, setMaxNodes] = useState(24);
   const [expandTargetId, setExpandTargetId] = useState<string | undefined>(undefined);
   const [savedToast, setSavedToast] = useState(false);
+  const [liveWorks, setLiveWorks] = useState<import("@/types/omnis").ResearchSourceItem[]>([]);
+  const [wikiSummary, setWikiSummary] = useState<{
+    title: string;
+    extract: string;
+    url: string;
+  } | null>(null);
 
   const { addWorkspaceItem, setActiveContext } = useOmnisStore();
+
+  useEffect(() => {
+    let cancelled = false;
+    setLiveWorks([]);
+    setWikiSummary(null);
+    Promise.all([
+      fetchOpenAlexSources(activeTopic, 5),
+      fetchWikimediaSummary(activeTopic),
+    ])
+      .then(([works, wiki]) => {
+        if (cancelled) return;
+        setLiveWorks(works);
+        setWikiSummary(wiki);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTopic]);
 
   const graphData: KnowledgeGraphData = useMemo(
     () =>
@@ -76,8 +105,10 @@ function KnowledgeGraphContent() {
         topic: activeTopic,
         maxNodes,
         expandFromNodeId: expandTargetId,
+        openAlexWorks: liveWorks,
+        wikiSummary,
       }),
-    [activeTopic, maxNodes, expandTargetId]
+    [activeTopic, maxNodes, expandTargetId, liveWorks, wikiSummary]
   );
 
   const [selectedNodeId, setSelectedNodeId] = useState<string>(
@@ -220,21 +251,16 @@ function KnowledgeGraphContent() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1.5 bg-[var(--bg-slate)] px-2.5 py-1 rounded-lg border border-[var(--border-subtle)]">
-              <Filter className="w-3.5 h-3.5 tone-blue" />
-              <select
-                value={relFilter}
-                onChange={(e) => setRelFilter(e.target.value as RelationshipType | "ALL")}
-                aria-label="Filter by Relationship Type"
-                className="bg-transparent text-xs font-medium text-[var(--text-primary)] focus:outline-none cursor-pointer"
-              >
-                {RELATIONSHIP_TYPES.map((r) => (
-                  <option key={r} value={r} className="bg-[var(--bg-graphite)]">
-                    Rel: {r}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <OmnisSelect
+              value={relFilter}
+              onChange={(val) => setRelFilter(val as RelationshipType | "ALL")}
+              ariaLabel="Filter by Relationship Type"
+              leadingIcon={<Filter className="w-3.5 h-3.5 tone-blue" />}
+              options={RELATIONSHIP_TYPES.map((r) => ({
+                value: r,
+                label: `Rel: ${r}`,
+              }))}
+            />
 
             <input
               type="text"
