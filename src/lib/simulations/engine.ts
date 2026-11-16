@@ -807,9 +807,9 @@ export function executeWhatIfSimulation(params: {
       baseYear + horizon
     }), the modified vector shifts the terminal median (${
       spec.dependentVariableLabel
-    }) from ${terminal.baseline} to ${terminal.modifiedP50} (${
-      pctDelta >= 0 ? "+" : ""
-    }${pctDelta}% vs baseline). The 10th–90th percentile Monte Carlo uncertainty band spans [${
+    }) from ${terminal.baseline} to ${terminal.modifiedP50} (${formatSignedPct(
+      pctDelta
+    )} vs baseline). The 10th–90th percentile Monte Carlo uncertainty band spans [${
       terminal.modifiedP10
     }, ${terminal.modifiedP90}] (${spec.units}).`,
     limitations: spec.limitations,

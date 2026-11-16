@@ -57,3 +57,22 @@ export function formatMonetaryAxisTick(
   }
   return `${sign}$${abs.toFixed(tickStep < 2 ? 1 : 0)}`;
 }
+
+const CSV_FORMULA_PREFIX_RE = /^[=+\-@\t\r]/;
+
+/**
+ * Formats a CSV cell using RFC-4180 escaping and formula-injection neutralization
+ * on string values while keeping finite negative numeric telemetry uncorrupted.
+ */
+export function escapeCsvCell(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? String(value) : "";
+  }
+  const raw = String(value);
+  const safe = CSV_FORMULA_PREFIX_RE.test(raw) ? `'${raw}` : raw;
+  if (safe !== raw || /[",\n\r]/.test(safe)) {
+    return `"${safe.replace(/"/g, '""')}"`;
+  }
+  return safe;
+}

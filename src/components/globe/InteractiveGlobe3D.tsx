@@ -24,7 +24,7 @@ import {
   buildPlaceholderCountryProfile,
 } from "@/lib/data/world-catalog";
 import { applyOfficialSurveyOfIndiaBoundaries } from "@/lib/data/india-soi-official";
-import { formatSignedValue } from "@/lib/formatters";
+import { formatSignedPct, formatSignedValue } from "@/lib/formatters";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 import { dateFromUtcMinutes, getSunVectorInEarthFrame } from "@/lib/solarTime";
 import { CountrySolarClockBadge, SolarSyncHudControl } from "@/components/solar/SolarBadges";
@@ -139,7 +139,7 @@ export function getLayerMetricForCountry(
     case "economics":
       return {
         label: "Nominal GDP",
-        value: `$${country.gdpUsdBn.toLocaleString()}B (${country.gdpGrowthPct >= 0 ? "+" : ""}${country.gdpGrowthPct}%)`,
+        value: `$${country.gdpUsdBn.toLocaleString()}B (${formatSignedPct(country.gdpGrowthPct)})`,
         numericWeight: Math.min(1.65, Math.max(0.7, Math.log10(Math.max(10, country.gdpUsdBn)) / 2.6)),
         colorHex: 0x3b82f6,
         cssColor: "#3b82f6",
@@ -1781,7 +1781,7 @@ totalEmissiveRadiance *= omnisNightMask * omnisEmissiveGain * uCityLightsEnabled
         <button
           type="button"
           onClick={() => setTouchOrbitLocked((prev) => !prev)}
-          className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.1em] backdrop-blur-md transition-all cursor-pointer ${
+          className={`min-h-[44px] inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.1em] backdrop-blur-md transition-all cursor-pointer ${
             touchOrbitLocked
               ? "badge-tone-warning"
               : "omnis-hud-pill text-[var(--text-secondary)]"

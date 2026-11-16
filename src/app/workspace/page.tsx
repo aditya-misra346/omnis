@@ -14,6 +14,7 @@ import {
   FileText,
 } from "lucide-react";
 import { useOmnisStore, type WorkspaceSavedItem } from "@/lib/store/use-omnis-store";
+import { escapeCsvCell } from "@/lib/formatters";
 import { OmnisButton, OmnisModuleHeader, OmnisSegmentedControl } from "@/components/ui/OmnisPrimitives";
 import { OmnisSelect } from "@/components/ui/OmnisSelect";
 
@@ -88,21 +89,25 @@ export default function WorkspacePage() {
         2
       );
     } else if (format === "csv") {
+      if (filteredItems.length === 0) return;
       mime = "text/csv";
-      const header = "ID,Type,Folder,Title,Subtitle,CreatedAt,Href";
+      const headers = ["ID", "Type", "Folder", "Title", "Subtitle", "CreatedAt", "Href"];
       const rows = filteredItems.map((i) =>
         [
           i.id,
           i.type,
-          `"${i.folder}"`,
-          `"${i.title.replace(/"/g, '""')}"`,
-          `"${i.subtitle.replace(/"/g, '""')}"`,
+          i.folder,
+          i.title,
+          i.subtitle,
           i.createdAt,
           i.href,
-        ].join(",")
+        ]
+          .map(escapeCsvCell)
+          .join(",")
       );
-      content = [header, ...rows].join("\n");
+      content = `\uFEFF${[headers.map(escapeCsvCell).join(","), ...rows].join("\n")}`;
     } else {
+      if (filteredItems.length === 0) return;
       mime = "text/markdown";
       const folderCounts = filteredItems.reduce<Record<string, number>>((acc, item) => {
         acc[item.folder] = (acc[item.folder] ?? 0) + 1;
@@ -143,15 +148,32 @@ export default function WorkspacePage() {
         icon={<Briefcase className="w-3.5 h-3.5" />}
         actions={
           <div className="flex flex-wrap items-center gap-2 no-print omnis-no-print">
-            <OmnisButton onClick={() => handleExportFormat("md")}>
+            <OmnisButton
+              disabled={filteredItems.length === 0}
+              aria-disabled={filteredItems.length === 0}
+              className="disabled:opacity-40 disabled:cursor-not-allowed"
+              onClick={() => handleExportFormat("md")}
+            >
               <Download className="w-3.5 h-3.5" />
               <span>Export Markdown Brief (.md)</span>
             </OmnisButton>
-            <OmnisButton variant="secondary" onClick={() => handleExportFormat("csv")}>
+            <OmnisButton
+              variant="secondary"
+              disabled={filteredItems.length === 0}
+              aria-disabled={filteredItems.length === 0}
+              className="disabled:opacity-40 disabled:cursor-not-allowed"
+              onClick={() => handleExportFormat("csv")}
+            >
               <Download className="w-3.5 h-3.5 tone-verified" />
               <span>Export CSV</span>
             </OmnisButton>
-            <OmnisButton variant="secondary" onClick={() => handleExportFormat("json")}>
+            <OmnisButton
+              variant="secondary"
+              disabled={filteredItems.length === 0}
+              aria-disabled={filteredItems.length === 0}
+              className="disabled:opacity-40 disabled:cursor-not-allowed"
+              onClick={() => handleExportFormat("json")}
+            >
               <Download className="w-3.5 h-3.5 tone-blue" />
               <span>Export JSON</span>
             </OmnisButton>
@@ -209,7 +231,7 @@ export default function WorkspacePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Saved Items Grid */}
-        <div className="lg:col-span-8 space-y-3">
+        <div className="lg:col-span-8 min-w-0 space-y-3">
           {filteredItems.length === 0 ? (
             <div className="omnis-card p-8 text-center text-sm sm:text-[15px] text-[var(--text-secondary)]">
               No saved items match your current filter. Explore any module and click Save to populate
@@ -269,7 +291,7 @@ export default function WorkspacePage() {
         </div>
 
         {/* Right Sidebar: Add Research Note & Manage Collections */}
-        <div className="lg:col-span-4 space-y-6">
+        <div className="lg:col-span-4 min-w-0 space-y-6">
           <form onSubmit={handleCreateNote} className="omnis-card p-5 space-y-3 text-[13.5px]">
             <h2 className="text-[15px] sm:text-base font-bold flex items-center gap-2 text-[var(--text-primary)]">
               <FileText className="w-4 h-4 tone-blue" />

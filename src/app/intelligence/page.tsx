@@ -25,6 +25,7 @@ import {
   buildPlaceholderCountryProfile,
 } from "@/lib/data/world-catalog";
 import { buildSovereignComparisonMatrix } from "@/lib/research/compare";
+import { formatSignedPct, formatSignedValue } from "@/lib/formatters";
 import { fetchOpenAlexSources } from "@/lib/providers/live-data";
 import { ComparisonRadarChart } from "@/components/charts/OmnisCharts";
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
@@ -122,9 +123,9 @@ function resolveCachedTopicBriefing(topic: string): FollowedTopicBriefing {
     status: "cached",
     dateLabel: `WDI Edition • ${country.provenance.lastUpdated}`,
     headline: `${country.flagEmoji} ${country.officialName} — ${topic}`,
-    summary: `GDP $${country.gdpUsdBn.toLocaleString()}B (${
-      country.gdpGrowthPct >= 0 ? "+" : ""
-    }${country.gdpGrowthPct}% real), ${country.energyProfile.renewableSharePct}% clean electricity, AI readiness ${country.technologyProfile.aiReadinessIndex}/100.`,
+    summary: `GDP $${country.gdpUsdBn.toLocaleString()}B (${formatSignedPct(
+      country.gdpGrowthPct
+    )} real), ${country.energyProfile.renewableSharePct}% clean electricity, AI readiness ${country.technologyProfile.aiReadinessIndex}/100.`,
     sourceLabel: country.provenance.source,
     sourceUrl: `/atlas?country=${country.iso3}`,
   };
@@ -503,11 +504,10 @@ function IntelligenceCompareContent() {
                   } else if (bothZero) {
                     deltaText = "0.0";
                   } else if (rightIsZero) {
-                    const sign = diffVal >= 0 ? "+" : "";
                     const unitSuffix = row.unit.includes("%") ? "pp" : row.unit ? ` ${row.unit}` : "";
-                    deltaText = `${sign}${diffVal.toFixed(1)}${unitSuffix}`;
+                    deltaText = formatSignedValue(diffVal, unitSuffix, 1);
                   } else if (relPct !== null) {
-                    deltaText = `${relPct >= 0 ? "+" : ""}${relPct.toFixed(1)}%`;
+                    deltaText = formatSignedPct(relPct, 1);
                   }
 
                   return (

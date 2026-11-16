@@ -97,7 +97,7 @@ export function OmnisModuleHeader({
                 type="button"
                 onClick={() => setMobileExpanded((prev) => !prev)}
                 aria-expanded={mobileExpanded}
-                className="sm:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[13px] font-semibold text-[var(--text-primary)] cursor-pointer"
+                className="sm:hidden min-h-[44px] min-w-[44px] inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[13px] font-semibold text-[var(--text-primary)] cursor-pointer"
               >
                 <span>{mobileFilterLabel}</span>
                 {mobileExpanded ? (
@@ -273,7 +273,7 @@ export function OmnisSegmentedControl<T extends string = string>({
             role="tab"
             aria-selected={active}
             onClick={() => onChange(opt.value)}
-            className={`relative inline-flex items-center gap-1.5 rounded-lg font-medium transition-colors cursor-pointer whitespace-nowrap min-h-[36px] sm:min-h-0 ${padClass} ${
+            className={`relative inline-flex items-center gap-1.5 rounded-lg font-medium transition-colors cursor-pointer whitespace-nowrap min-h-[44px] sm:min-h-0 ${padClass} ${
               active
                 ? "text-white"
                 : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"

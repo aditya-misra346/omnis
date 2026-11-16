@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { COUNTRIES_DATA } from "@/lib/data/global-intelligence";
 import { buildPlaceholderCountryProfile } from "@/lib/data/world-catalog";
+import { formatSignedPct, formatSignedValue } from "@/lib/formatters";
 import { InteractiveGlobe3D } from "@/components/globe/InteractiveGlobe3D";
 import { CountrySolarClockBadge } from "@/components/solar/SolarBadges";
 import { ProvenancePanel } from "@/components/ui/ProvenancePanel";
@@ -684,7 +685,7 @@ export default function LandingPage() {
                   subValue={
                     isHydratingSelected && activeCountry.gdpUsdBn === 0
                       ? "World Bank WDI"
-                      : `${activeCountry.gdpGrowthPct >= 0 ? "+" : ""}${activeCountry.gdpGrowthPct}% real/yr`
+                      : `${formatSignedPct(activeCountry.gdpGrowthPct)} real/yr`
                   }
                   tone="blue"
                 />
@@ -882,11 +883,11 @@ export default function LandingPage() {
                       x: 190,
                       y: 54,
                       rectW: 132,
-                      short: `${activeCountry.iso3} GDP (+${activeCountry.gdpGrowthPct}%)`,
+                      short: `${activeCountry.iso3} GDP (${formatSignedPct(activeCountry.gdpGrowthPct)})`,
                       title: `${activeCountry.officialName} Real Output Core`,
-                      claim: `Nominal GDP of $${activeCountry.gdpUsdBn.toLocaleString()}B anchored by ${
-                        activeCountry.gdpGrowthPct >= 0 ? "+" : ""
-                      }${activeCountry.gdpGrowthPct}% baseline real annual growth.`,
+                      claim: `Nominal GDP of $${activeCountry.gdpUsdBn.toLocaleString()}B anchored by ${formatSignedPct(
+                        activeCountry.gdpGrowthPct
+                      )} baseline real annual growth.`,
                       source: activeCountry.provenance.source,
                       tone: "var(--chart-blue)",
                     },
@@ -897,9 +898,9 @@ export default function LandingPage() {
                       rectW: 114,
                       short: `Fossil (${fossilPct}%)`,
                       title: "Hydrocarbon Import & Baseload Exposure",
-                      claim: `${fossilPct}% non-renewable electricity share creates direct current-account sensitivity to a ${
-                        simOilShock >= 0 ? "+" : ""
-                      }${simOilShock}% crude shock.`,
+                      claim: `${fossilPct}% non-renewable electricity share creates direct current-account sensitivity to a ${formatSignedPct(
+                        simOilShock
+                      )} crude shock.`,
                       source: "IEA / World Bank WDI Energy Profile",
                       tone: "var(--chart-amber)",
                     },
@@ -908,11 +909,13 @@ export default function LandingPage() {
                       x: 314,
                       y: 24,
                       rectW: 114,
-                      short: `CPI (${inflationImpulse >= 0 ? "+" : ""}${inflationImpulse}%)`,
+                      short: `CPI (${formatSignedPct(inflationImpulse)})`,
                       title: "Pass-Through Inflationary Channel",
-                      claim: `Simulated energy impulse shifts headline CPI expectations by ${
-                        inflationImpulse >= 0 ? "+" : ""
-                      }${inflationImpulse} pp over baseline (${activeCountry.inflationPct}% current).`,
+                      claim: `Simulated energy impulse shifts headline CPI expectations by ${formatSignedValue(
+                        inflationImpulse,
+                        " pp",
+                        2
+                      )} over baseline (${activeCountry.inflationPct}% current).`,
                       source: "OMNIS Solow-Swan MDSE-v2.4 Elasticities",
                       tone: "var(--chart-violet)",
                     },

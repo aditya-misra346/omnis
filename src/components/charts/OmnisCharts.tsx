@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import { OmnisSegmentedControl } from "@/components/ui/OmnisPrimitives";
-import { formatMonetaryAxisTick, formatSignedPct } from "@/lib/formatters";
+import { formatMonetaryAxisTick, formatSignedPct, formatSignedValue } from "@/lib/formatters";
 
 /** Maps a pointer clientX coordinate inside an SVG viewBox plot area to the nearest data index. */
 function resolveSvgPlotIndex(
@@ -713,11 +713,9 @@ export function ComparisonRadarChart({
       maxLabel: "-2..+10%",
       l: Math.max(0, Math.min(1, (leftCountry.gdpGrowthPct - -2) / 12)),
       r: Math.max(0, Math.min(1, (rightCountry.gdpGrowthPct - -2) / 12)),
-      rawL: `${leftCountry.gdpGrowthPct >= 0 ? "+" : ""}${leftCountry.gdpGrowthPct}%`,
-      rawR: `${rightCountry.gdpGrowthPct >= 0 ? "+" : ""}${rightCountry.gdpGrowthPct}%`,
-      deltaLabel: `${leftCountry.gdpGrowthPct - rightCountry.gdpGrowthPct >= 0 ? "+" : ""}${(
-        leftCountry.gdpGrowthPct - rightCountry.gdpGrowthPct
-      ).toFixed(1)} pp`,
+      rawL: formatSignedPct(leftCountry.gdpGrowthPct),
+      rawR: formatSignedPct(rightCountry.gdpGrowthPct),
+      deltaLabel: formatSignedValue(leftCountry.gdpGrowthPct - rightCountry.gdpGrowthPct, " pp", 1),
     },
     {
       label: "Clean Energy",
@@ -726,9 +724,11 @@ export function ComparisonRadarChart({
       r: Math.max(0, Math.min(1, rightCountry.energyProfile.renewableSharePct / 100)),
       rawL: `${leftCountry.energyProfile.renewableSharePct}%`,
       rawR: `${rightCountry.energyProfile.renewableSharePct}%`,
-      deltaLabel: `${leftCountry.energyProfile.renewableSharePct - rightCountry.energyProfile.renewableSharePct >= 0 ? "+" : ""}${(
-        leftCountry.energyProfile.renewableSharePct - rightCountry.energyProfile.renewableSharePct
-      ).toFixed(1)} pp`,
+      deltaLabel: formatSignedValue(
+        leftCountry.energyProfile.renewableSharePct - rightCountry.energyProfile.renewableSharePct,
+        " pp",
+        1
+      ),
     },
     {
       label: "AI Index",
@@ -737,9 +737,12 @@ export function ComparisonRadarChart({
       r: Math.max(0, Math.min(1, rightCountry.technologyProfile.aiReadinessIndex / 100)),
       rawL: `${leftCountry.technologyProfile.aiReadinessIndex}/100`,
       rawR: `${rightCountry.technologyProfile.aiReadinessIndex}/100`,
-      deltaLabel: `${leftCountry.technologyProfile.aiReadinessIndex - rightCountry.technologyProfile.aiReadinessIndex >= 0 ? "+" : ""}${
-        leftCountry.technologyProfile.aiReadinessIndex - rightCountry.technologyProfile.aiReadinessIndex
-      } pts`,
+      deltaLabel: formatSignedValue(
+        leftCountry.technologyProfile.aiReadinessIndex -
+          rightCountry.technologyProfile.aiReadinessIndex,
+        " pts",
+        0
+      ),
     },
     {
       label: "R&D Spend",
@@ -748,9 +751,11 @@ export function ComparisonRadarChart({
       r: Math.max(0, Math.min(1, rightCountry.technologyProfile.rdSpendPctGdp / 4.5)),
       rawL: `${leftCountry.technologyProfile.rdSpendPctGdp}%`,
       rawR: `${rightCountry.technologyProfile.rdSpendPctGdp}%`,
-      deltaLabel: `${leftCountry.technologyProfile.rdSpendPctGdp - rightCountry.technologyProfile.rdSpendPctGdp >= 0 ? "+" : ""}${(
-        leftCountry.technologyProfile.rdSpendPctGdp - rightCountry.technologyProfile.rdSpendPctGdp
-      ).toFixed(2)}% GDP`,
+      deltaLabel: formatSignedValue(
+        leftCountry.technologyProfile.rdSpendPctGdp - rightCountry.technologyProfile.rdSpendPctGdp,
+        "% GDP",
+        2
+      ),
     },
     {
       label: "Internet",
@@ -759,10 +764,12 @@ export function ComparisonRadarChart({
       r: Math.max(0, Math.min(1, rightCountry.technologyProfile.internetPenetrationPct / 100)),
       rawL: `${leftCountry.technologyProfile.internetPenetrationPct}%`,
       rawR: `${rightCountry.technologyProfile.internetPenetrationPct}%`,
-      deltaLabel: `${leftCountry.technologyProfile.internetPenetrationPct - rightCountry.technologyProfile.internetPenetrationPct >= 0 ? "+" : ""}${(
+      deltaLabel: formatSignedValue(
         leftCountry.technologyProfile.internetPenetrationPct -
-        rightCountry.technologyProfile.internetPenetrationPct
-      ).toFixed(1)} pp`,
+          rightCountry.technologyProfile.internetPenetrationPct,
+        " pp",
+        1
+      ),
     },
     {
       label: "Longevity",
@@ -771,9 +778,11 @@ export function ComparisonRadarChart({
       r: Math.max(0, Math.min(1, (rightCountry.lifeExpectancyYears - 50) / 40)),
       rawL: `${leftCountry.lifeExpectancyYears} yrs`,
       rawR: `${rightCountry.lifeExpectancyYears} yrs`,
-      deltaLabel: `${leftCountry.lifeExpectancyYears - rightCountry.lifeExpectancyYears >= 0 ? "+" : ""}${(
-        leftCountry.lifeExpectancyYears - rightCountry.lifeExpectancyYears
-      ).toFixed(1)} yrs`,
+      deltaLabel: formatSignedValue(
+        leftCountry.lifeExpectancyYears - rightCountry.lifeExpectancyYears,
+        " yrs",
+        1
+      ),
     },
   ];
 

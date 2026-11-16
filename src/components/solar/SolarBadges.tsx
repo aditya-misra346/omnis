@@ -61,7 +61,7 @@ export const SolarSyncHudControl = React.memo(function SolarSyncHudControl({
             : "Live astronomical UTC solar terminator sync (Click to scrub 24h orbit)"
         }
         aria-label="Orbital UTC Solar Terminator Scrubber"
-        className="min-h-[38px] sm:min-h-[30px] inline-flex items-center gap-1.5 px-1 rounded-md hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+        className="min-h-[44px] sm:min-h-[30px] inline-flex items-center gap-1.5 px-1 rounded-md hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
       >
         <span
           aria-hidden="true"
@@ -90,7 +90,9 @@ export const SolarSyncHudControl = React.memo(function SolarSyncHudControl({
           .toString()
           .padStart(2, "0")}:${(sliderValue % 60).toString().padStart(2, "0")} UTC)`}
         className={`${
-          utcScrubberOpen || isScrubbing ? "block w-16 sm:w-20" : "hidden md:block w-14 @[780px]:w-20"
+          utcScrubberOpen || isScrubbing
+            ? "block w-16 sm:w-20 min-h-[44px] sm:min-h-0 py-3 sm:py-0"
+            : "hidden md:block w-14 @[780px]:w-20"
         } h-1.5 cursor-pointer accent-amber-400`}
       />
 
@@ -100,7 +102,7 @@ export const SolarSyncHudControl = React.memo(function SolarSyncHudControl({
           onClick={onResetToLive}
           aria-label="Reset solar terminator to live UTC"
           title="Reset to Live UTC"
-          className="min-h-[32px] sm:min-h-[26px] inline-flex items-center gap-1 px-2 py-0.5 rounded-md badge-tone-warning hover:opacity-90 text-[11px] font-bold cursor-pointer transition-opacity whitespace-nowrap"
+          className="min-h-[44px] min-w-[44px] sm:min-h-[26px] sm:min-w-0 inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md badge-tone-warning hover:opacity-90 text-[11px] font-bold cursor-pointer transition-opacity whitespace-nowrap"
         >
           <RotateCcw className="w-3 h-3" />
           <span>Live UTC</span>

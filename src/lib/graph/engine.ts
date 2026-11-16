@@ -3,6 +3,7 @@ import {
   COUNTRIES_DATA,
   TIMELINE_EVENTS,
 } from "@/lib/data/global-intelligence";
+import { formatSignedPct } from "@/lib/formatters";
 import type {
   KnowledgeGraphData,
   KnowledgeGraphEdge,
@@ -1542,7 +1543,9 @@ export function buildInfiniteKnowledgeGraph(params: {
               id: cid,
               label: `${country.name} (${country.iso3})`,
               category: "Geopolitics",
-              summary: `Nominal GDP $${country.gdpUsdBn.toLocaleString()}B (${country.gdpGrowthPct >= 0 ? "+" : ""}${country.gdpGrowthPct}% real growth), AI index ${country.technologyProfile.aiReadinessIndex}/100.`,
+              summary: `Nominal GDP $${country.gdpUsdBn.toLocaleString()}B (${formatSignedPct(
+                country.gdpGrowthPct
+              )} real growth), AI index ${country.technologyProfile.aiReadinessIndex}/100.`,
               importance: 85,
               verificationStatus: "verified",
               sources: [

@@ -632,7 +632,7 @@ function GlobalAtlasContent() {
 
         {/* Open Interactive Historical Chart & Peer Comparison Matrix (De-boxed with Horizontal Rule) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-6 border-t border-[var(--border-subtle)]">
-          <div className="lg:col-span-6 space-y-4">
+          <div className="lg:col-span-6 min-w-0 space-y-4">
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-base font-bold text-[var(--text-primary)]">
                 {country.name} vs {compareCountry.name} Historical Trajectory (1991–2026)
@@ -644,7 +644,7 @@ function GlobalAtlasContent() {
             <HistoricalTrajectoryChart country={country} compareCountry={compareCountry} />
           </div>
 
-          <div className="lg:col-span-6 space-y-4 lg:border-l lg:border-[var(--border-subtle)] lg:pl-8">
+          <div className="lg:col-span-6 min-w-0 space-y-4 lg:border-l lg:border-[var(--border-subtle)] lg:pl-8">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-base font-bold flex items-center gap-2 text-[var(--text-primary)]">
                 <ArrowLeftRight className="w-4 h-4 tone-blue" />

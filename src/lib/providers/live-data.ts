@@ -420,6 +420,12 @@ interface WorldBankCountryMetaRecord {
       units: "Multi-unit (USD, %, People, km²)",
       coverage:
         "Live federated subset (REST Countries v3.1 + World Bank API v2). Unfetched sectoral fields are reported as 0 and flagged missing rather than synthesized.",
+      methodology:
+        validRc && wbHasAnyData
+          ? "Live World Bank WDI API v2 & REST Countries v3.1 federated retrieval"
+          : wbHasAnyData
+            ? "Live World Bank WDI API v2 partial macroeconomic telemetry"
+            : "Static catalog & REST Countries fallback metadata (missing live World Bank series)",
       missingData: true,
       verificationStatus: validRc && wbHasAnyData ? "single_source" : "unverified",
     },

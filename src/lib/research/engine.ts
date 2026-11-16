@@ -411,7 +411,7 @@ export async function orchestrateDeepResearch(
         },
         {
           metric: `${leadCountry.name} Real GDP Growth`,
-          value: `${leadCountry.gdpGrowthPct >= 0 ? "+" : ""}${leadCountry.gdpGrowthPct}%`,
+          value: formatSignedPct(leadCountry.gdpGrowthPct),
           unit: "Annual %",
           period: "2026 Verified Baseline",
           sourceId: "src-wb-wdi",

@@ -9,7 +9,21 @@ export interface FocusedSignal {
   iso3?: string;
   topic: string;
   label?: string;
+  source?: string;
+  updatedAt?: number;
 }
+
+const SORTED_COUNTRY_ALIAS_CANDIDATES: { entry: WorldCountryCatalogEntry; alias: string }[] = (() => {
+  const list: { entry: WorldCountryCatalogEntry; alias: string }[] = [];
+  for (const entry of WORLD_COUNTRIES_CATALOG) {
+    list.push({ entry, alias: entry.name });
+    const curated = COUNTRIES_DATA[entry.iso3];
+    if (curated && curated.officialName && curated.officialName !== entry.name) {
+      list.push({ entry, alias: curated.officialName });
+    }
+  }
+  return list.sort((a, b) => b.alias.length - a.alias.length);
+})();
 
 const STOPWORDS = new Set([
   "the",
@@ -39,45 +53,38 @@ function hasWordBoundaryMatch(haystack: string, needle: string, caseInsensitive 
   return pattern.test(haystack);
 }
 
-/**
- * Matches all 130 sovereign nations in `WORLD_COUNTRIES_CATALOG` against natural-language
- * user messages and active context strings using word boundaries for names and exact uppercase
- * token checks for ISO3 codes (avoiding false positives like lowercase "can" or "are").
- */
-export function matchCountryCatalogFromText(
-  message: string,
-  contextTopic = ""
-): WorldCountryCatalogEntry | null {
-  const combinedText = `${contextTopic} ${message}`.trim();
-  if (!combinedText) return null;
+function matchSingleTextPass(text: string): WorldCountryCatalogEntry | null {
+  const clean = text.trim();
+  if (!clean) return null;
 
-  // 1. Highest priority: exact ISO3 standalone uppercase token in contextTopic or message
-  const isoTokens = Array.from(combinedText.matchAll(/\b([A-Z]{3})\b/g)).map((m) => m[1]);
+  // 1. Exact standalone uppercase ISO3 token inside this single text input
+  const isoTokens = Array.from(clean.matchAll(/\b([A-Z]{3})\b/g)).map((m) => m[1]);
   for (const token of isoTokens) {
     if (WORLD_CATALOG_BY_ISO3[token]) {
       return WORLD_CATALOG_BY_ISO3[token];
     }
   }
 
-  // 2. Match country common or official names sorted longest-first so multi-word names win
-  const candidates: { entry: WorldCountryCatalogEntry; alias: string }[] = [];
-  for (const entry of WORLD_COUNTRIES_CATALOG) {
-    candidates.push({ entry, alias: entry.name });
-    const curated = COUNTRIES_DATA[entry.iso3];
-    if (curated && curated.officialName && curated.officialName !== entry.name) {
-      candidates.push({ entry, alias: curated.officialName });
-    }
-  }
-  candidates.sort((a, b) => b.alias.length - a.alias.length);
-
-  for (const { entry, alias } of candidates) {
+  // 2. Country common/official names sorted longest-first
+  for (const { entry, alias } of SORTED_COUNTRY_ALIAS_CANDIDATES) {
     if (alias.length < 3) continue;
-    if (hasWordBoundaryMatch(message, alias, true) || hasWordBoundaryMatch(contextTopic, alias, true)) {
+    if (hasWordBoundaryMatch(clean, alias, true)) {
       return entry;
     }
   }
 
   return null;
+}
+
+/**
+ * Matches all 130 sovereign nations in `WORLD_COUNTRIES_CATALOG` against natural-language
+ * user messages first, falling back to `contextTopic` only when `message` names no sovereign nation.
+ */
+export function matchCountryCatalogFromText(
+  message: string,
+  contextTopic = ""
+): WorldCountryCatalogEntry | null {
+  return matchSingleTextPass(message) ?? matchSingleTextPass(contextTopic);
 }
 
 /**

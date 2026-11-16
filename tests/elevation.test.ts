@@ -31,6 +31,7 @@ import {
   orchestrateDeepResearch,
 } from "@/lib/research/engine";
 import {
+  escapeCsvCell,
   formatMonetaryAxisTick,
   formatSignedPct,
   formatSignedValue,
@@ -909,5 +910,127 @@ describe("OMNIS Elevation & Credibility Regression Suite", () => {
         title: "North Sea Hydroelectric Treaty",
       })
     ).toBe(false);
+  });
+
+  it("prioritizes explicit country mentions in assistant queries over fallback contextTopic", () => {
+    expect(matchCountryCatalogFromText("Compare Canada renewable share", "IND")?.iso3).toBe("CAN");
+    expect(matchCountryCatalogFromText("What is CAN nuclear share?", "IND")?.iso3).toBe("CAN");
+    expect(matchCountryCatalogFromText("Summarize CPI inflation trajectory", "NOR")?.iso3).toBe("NOR");
+  });
+
+  it("escapes CSV cells against RFC-4180 delimiters and spreadsheet formula injection while preserving signed numbers", () => {
+    expect(escapeCsvCell("=SUM(A1:A2)")).toBe("\"'=SUM(A1:A2)\"");
+    expect(escapeCsvCell("+1+1")).toBe("\"'+1+1\"");
+    expect(escapeCsvCell("-CMD|' /C calc'!A0")).toBe("\"'-CMD|' /C calc'!A0\"");
+    expect(escapeCsvCell("@HYPERLINK(\"http://x\")")).toBe("\"'@HYPERLINK(\"\"http://x\"\")\"");
+    expect(escapeCsvCell("\t2+2")).toBe("\"'\t2+2\"");
+    expect(escapeCsvCell("\r1+1")).toBe("\"'\r1+1\"");
+    expect(escapeCsvCell("line1\nline\"2\"")).toBe("\"line1\nline\"\"2\"\"\"");
+    expect(escapeCsvCell(-1.45)).toBe("-1.45");
+    expect(escapeCsvCell(-420)).toBe("-420");
+    expect(escapeCsvCell(null)).toBe("");
+  });
+
+  it("returns structured provenanceMeta without '(undefined)' methodology in assistant responses", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string | URL | Request) => {
+        const href = String(url);
+        if (href.includes("restcountries.com")) {
+          return new Response(
+            JSON.stringify([
+              {
+                name: { common: "Canada", official: "Canada" },
+                capital: ["Ottawa"],
+                region: "Americas",
+                subregion: "Northern America",
+                population: 40_100_000,
+                area: 9_984_670,
+                latlng: [60, -95],
+                currencies: { CAD: { name: "Canadian dollar" } },
+                languages: { eng: "English", fra: "French" },
+                flag: "🇨🇦",
+              },
+            ]),
+            { status: 200 }
+          );
+        }
+        if (href.includes("api.worldbank.org")) {
+          const val = href.includes("NY.GDP.MKTP.CD")
+            ? 2_140_000_000_000
+            : href.includes("NY.GDP.MKTP.KD.ZG")
+              ? 1.8
+              : 14.5;
+          return new Response(
+            JSON.stringify([{ page: 1 }, [{ date: "2024", value: val, country: { value: "Canada" } }]]),
+            { status: 200 }
+          );
+        }
+        return new Response(JSON.stringify({ results: [] }), { status: 200 });
+      })
+    );
+    clearLiveCountryCacheForTests();
+
+    const { POST } = await import("@/app/api/v1/assistant/route");
+    const res = await POST(
+      new Request("http://localhost/api/v1/assistant", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-forwarded-for": "198.51.100.77" },
+        body: JSON.stringify({
+          message: "Compare Canada renewable share",
+          contextLabel: "Global Atlas",
+          contextTopic: "IND",
+        }),
+      })
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      reply?: string;
+      provenanceMeta?: {
+        iso3: string;
+        countryName: string;
+        verificationStatus: string;
+        source: string;
+        methodology?: string;
+      } | null;
+    };
+    expect(body.reply).toContain("Canada (CAN)");
+    expect(body.reply).not.toContain("undefined");
+    expect(body.provenanceMeta).not.toBeNull();
+    expect(body.provenanceMeta?.iso3).toBe("CAN");
+    expect(body.provenanceMeta?.countryName).toBe("Canada");
+    expect(body.provenanceMeta?.source.length).toBeGreaterThan(0);
+
+    // Also verify assistant fallback guard if a live provider payload omits methodology
+    const liveDataMod = await import("@/lib/providers/live-data");
+    const spy = vi.spyOn(liveDataMod, "fetchLiveCountryIntelligence").mockResolvedValueOnce({
+      ...COUNTRIES_DATA.IND,
+      iso3: "NOR",
+      name: "Norway",
+      provenance: {
+        source: "World Bank + REST Countries",
+        verificationStatus: "verified",
+      } as (typeof COUNTRIES_DATA.IND)["provenance"],
+    });
+    const norRes = await POST(
+      new Request("http://localhost/api/v1/assistant", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-forwarded-for": "198.51.100.78" },
+        body: JSON.stringify({
+          message: "Analyze Norway clean energy baseline",
+          contextLabel: "Global Atlas",
+          contextTopic: "IND",
+        }),
+      })
+    );
+    expect(norRes.status).toBe(200);
+    const norBody = (await norRes.json()) as {
+      reply?: string;
+      provenanceMeta?: { methodology?: string; verificationStatus: string } | null;
+    };
+    expect(norBody.reply).toContain("Norway (NOR)");
+    expect(norBody.reply).not.toContain("undefined");
+    expect(norBody.provenanceMeta?.methodology).toBe("verified");
+    spy.mockRestore();
   });
 });

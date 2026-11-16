@@ -293,6 +293,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           content: data.reply,
           timestamp: data.timestamp ?? new Date().toISOString(),
           citations: data.citations,
+          provenanceMeta: data.provenanceMeta ?? null,
           suggestedActions: data.suggestedActions,
         });
       } else {
@@ -530,7 +531,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
 
             {/* Universal Command & Search Trigger */}
-            <div className="flex-1 min-w-[100px] max-w-md lg:max-w-[180px] xl:max-w-lg mx-0.5 sm:mx-2">
+            <div
+              className={`flex-1 min-w-[100px] max-w-md ${
+                isLandingPage ? "lg:max-w-[240px]" : "lg:max-w-md"
+              } xl:max-w-lg mx-0.5 sm:mx-2`}
+            >
               <button
                 type="button"
                 onClick={() => setCommandPaletteOpen(true)}
@@ -582,10 +587,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 type="button"
                 onClick={() => setAssistantOpen(!assistantOpen)}
                 aria-label="Toggle OMNIS AI Assistant"
+                title="AI Assistant (⌘J)"
                 className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-2 sm:py-1.5 rounded-lg badge-tone-blue hover:brightness-105 text-[13px] font-semibold transition-all cursor-pointer shrink-0"
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">AI Assistant</span>
+                <span
+                  className={
+                    isLandingPage ? "hidden sm:inline lg:hidden xl:inline" : "hidden sm:inline"
+                  }
+                >
+                  AI Assistant
+                </span>
                 <kbd className="hidden xl:inline text-[11px] opacity-80 omnis-mono">⌘J</kbd>
               </button>
 
@@ -1098,15 +1110,42 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
                 <div className="flex-1 p-3.5 overflow-y-auto space-y-3 text-[13px] sm:text-sm bg-[var(--bg-obsidian)]">
                   {assistantMessages.map((m) => (
-                    <div
-                      key={m.id}
-                      className={`p-3 rounded-xl ${
-                        m.role === "user"
-                          ? "bg-[var(--accent-blue-solid)] text-white ml-6 shadow-xs"
-                          : "bg-[var(--bg-slate)] text-[var(--text-primary)] mr-4 border border-[var(--border-subtle)]"
-                      }`}
-                    >
-                      <div className="whitespace-pre-line leading-relaxed">{m.content}</div>
+                      <div
+                        key={m.id}
+                        className={`p-3 rounded-xl ${
+                          m.role === "user"
+                            ? "bg-[var(--accent-blue-solid)] text-white ml-6 shadow-xs"
+                            : "bg-[var(--bg-slate)] text-[var(--text-primary)] mr-4 border border-[var(--border-subtle)]"
+                        }`}
+                      >
+                        {m.role === "assistant" && m.provenanceMeta ? (
+                          <div className="mb-2 pb-1.5 border-b border-[var(--border-subtle)] flex flex-wrap items-center justify-between gap-1.5 text-[11px] omnis-mono">
+                            <span className="font-semibold text-[var(--text-secondary)] truncate">
+                              {m.provenanceMeta.countryName} ({m.provenanceMeta.iso3})
+                            </span>
+                            <span
+                              title={`${m.provenanceMeta.source} — ${m.provenanceMeta.methodology}`}
+                              className={`px-1.5 py-0.5 rounded font-bold shrink-0 ${
+                                m.provenanceMeta.verificationStatus === "verified"
+                                  ? "badge-tone-verified"
+                                  : m.provenanceMeta.verificationStatus === "single_source"
+                                    ? "badge-tone-warning"
+                                    : m.provenanceMeta.verificationStatus === "unverified"
+                                      ? "badge-tone-danger"
+                                      : "badge-tone-blue"
+                              }`}
+                            >
+                              {m.provenanceMeta.verificationStatus === "verified"
+                                ? "Verified"
+                                : m.provenanceMeta.verificationStatus === "single_source"
+                                  ? "Proxy Derived"
+                                  : m.provenanceMeta.verificationStatus === "unverified"
+                                    ? "Missing Live Telemetry"
+                                    : "Model / Analytical"}
+                            </span>
+                          </div>
+                        ) : null}
+                        <div className="whitespace-pre-line leading-relaxed">{m.content}</div>
                       {m.citations && m.citations.length > 0 && (
                         <div className="mt-2 pt-2 border-t border-[var(--border-subtle)] space-y-1">
                           <div className="text-[11.5px] font-semibold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">

@@ -41,6 +41,11 @@ export async function POST(request: Request) {
     ]);
 
     let reply = "";
+    const provenanceMethodology = matchedCountry
+      ? matchedCountry.provenance.methodology?.trim() ||
+        matchedCountry.provenance.verificationStatus
+      : null;
+
     if (matchedCountry) {
       const growthLabel = formatSignedPct(matchedCountry.gdpGrowthPct);
       reply =
@@ -49,7 +54,7 @@ export async function POST(request: Request) {
         }]:\n\n` +
         `• **Macroeconomic Baseline**: Nominal GDP $${matchedCountry.gdpUsdBn.toLocaleString()}B ($${matchedCountry.gdpPerCapitaUsd.toLocaleString()}/capita), ${growthLabel} real annual growth, ${matchedCountry.inflationPct}% CPI inflation.\n` +
         `• **Energy & R&D**: Renewable electricity ${matchedCountry.energyProfile.renewableSharePct}% (Nuclear ${matchedCountry.energyProfile.nuclearSharePct}%), R&D spend ${matchedCountry.technologyProfile.rdSpendPctGdp}% of GDP.\n` +
-        `• **Source Provenance**: ${matchedCountry.provenance.source} (${matchedCountry.provenance.methodology}).`;
+        `• **Source Provenance**: ${matchedCountry.provenance.source} (${provenanceMethodology}).`;
     } else if (openAlexWorks.length > 0 || wikiSummary) {
       const topWork = openAlexWorks[0];
       const wikiSnippet = wikiSummary ? `\n\n• **Reference Context (${wikiSummary.title})**: ${wikiSummary.extract.slice(0, 260)}${wikiSummary.extract.length > 260 ? "..." : ""}` : "";
@@ -109,6 +114,16 @@ export async function POST(request: Request) {
       reply,
       timestamp: new Date().toISOString(),
       citations,
+      provenanceMeta:
+        matchedCountry && provenanceMethodology
+          ? {
+              iso3: matchedCountry.iso3,
+              countryName: matchedCountry.name,
+              verificationStatus: matchedCountry.provenance.verificationStatus,
+              source: matchedCountry.provenance.source,
+              methodology: provenanceMethodology,
+            }
+          : null,
       suggestedActions: [
         {
           label: `Explore Knowledge Graph: ${matchedCountry?.name ?? msg.slice(0, 24)}`,

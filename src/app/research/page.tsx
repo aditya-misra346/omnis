@@ -26,6 +26,7 @@ import {
   OmnisSkeleton,
 } from "@/components/ui/OmnisPrimitives";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
+import { matchCountryCatalogFromText } from "@/lib/intelligence/spatial-sync";
 import type {
   ResearchMode,
   ResearchReportData,
@@ -400,7 +401,7 @@ ${report.sources
 
           {/* Executive Summary & Key Findings */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-8 omnis-card p-6 sm:p-7 space-y-6">
+            <div className="lg:col-span-8 min-w-0 omnis-card p-6 sm:p-7 space-y-6">
               <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-[var(--border-subtle)]">
                 <div>
                   <span className="text-xs font-bold uppercase tracking-widest tone-blue omnis-mono">
@@ -665,7 +666,7 @@ ${report.sources
             </div>
 
             {/* Right Column: Visualisation, Statistics & Source Credibility Registry */}
-            <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-20 lg:self-start">
+            <div className="lg:col-span-4 min-w-0 space-y-6 lg:sticky lg:top-20 lg:self-start">
               {/* Relevant Statistics & Comparative Bar Visualisation */}
               <div className="omnis-card p-5 space-y-3">
                 <h3 className="text-base font-bold text-[var(--text-primary)]">
@@ -938,30 +939,53 @@ ${report.sources
               </div>
 
               {/* Bridge to Knowledge Graph & Timeline */}
-              <div className="omnis-card p-5 space-y-2.5 no-print">
-                <div className="text-[13px] font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
-                  Continue Investigation Across Modules
-                </div>
-                <OmnisButton
-                  onClick={() =>
+              {(() => {
+                const navigateWithSpatialFocus = (target: "knowledge-graph" | "timeline") => {
+                  const matchedCountry = matchCountryCatalogFromText(
+                    `${report.query} ${report.researchObjective} ${queryInput}`,
+                    report.relatedGraphTopic
+                  );
+                  const focusLabel = matchedCountry?.name ?? report.relatedGraphTopic;
+                  useOmnisStore.getState().setFocusedSignal({
+                    iso3: matchedCountry?.iso3,
+                    topic: focusLabel,
+                    label: focusLabel,
+                    source: "research",
+                    updatedAt: Date.now(),
+                  });
+                  if (target === "knowledge-graph") {
                     router.push(
-                      `/knowledge-graph?topic=${encodeURIComponent(report.relatedGraphTopic)}`
-                    )
+                      `/knowledge-graph?topic=${encodeURIComponent(
+                        report.relatedGraphTopic
+                      )}&focus=${encodeURIComponent(focusLabel)}`
+                    );
+                  } else {
+                    router.push(`/timeline?focus=${encodeURIComponent(focusLabel)}`);
                   }
-                  className="w-full"
-                >
-                  <Network className="w-4 h-4" />
-                  <span>Generate Knowledge Graph from Report</span>
-                </OmnisButton>
-                <OmnisButton
-                  variant="secondary"
-                  onClick={() => router.push("/timeline")}
-                  className="w-full"
-                >
-                  <Clock className="w-4 h-4 tone-violet" />
-                  <span>Inspect Connected Historical Timeline</span>
-                </OmnisButton>
-              </div>
+                };
+                return (
+                  <div className="omnis-card p-5 space-y-2.5 no-print">
+                    <div className="text-[13px] font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
+                      Continue Investigation Across Modules
+                    </div>
+                    <OmnisButton
+                      onClick={() => navigateWithSpatialFocus("knowledge-graph")}
+                      className="w-full"
+                    >
+                      <Network className="w-4 h-4" />
+                      <span>Generate Knowledge Graph (Spatial Sync)</span>
+                    </OmnisButton>
+                    <OmnisButton
+                      variant="secondary"
+                      onClick={() => navigateWithSpatialFocus("timeline")}
+                      className="w-full"
+                    >
+                      <Clock className="w-4 h-4 tone-violet" />
+                      <span>Inspect Historical Timeline (Spatial Sync)</span>
+                    </OmnisButton>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>

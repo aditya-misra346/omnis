@@ -25,7 +25,7 @@ import {
   parseSimulationQueryPrompt,
   SIMULATION_SCENARIOS,
 } from "@/lib/simulations/engine";
-import { formatSignedPct } from "@/lib/formatters";
+import { formatSignedPct, formatSignedValue, escapeCsvCell } from "@/lib/formatters";
 import { ProvenancePanel } from "@/components/ui/ProvenancePanel";
 import { MonteCarloFanChart, TornadoSensitivityChart } from "@/components/charts/OmnisCharts";
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
@@ -423,9 +423,9 @@ function SimulationsContent() {
     addWorkspaceItem({
       type: "simulation",
       title: `Simulation: ${activeSpec.title}`,
-      subtitle: `Horizon ${horizonYears}y (${countryBaselineIso3}) • Delta ${
-        simulationOutput.summaryMetrics.percentageDelta >= 0 ? "+" : ""
-      }${simulationOutput.summaryMetrics.percentageDelta}% (${simulationOutput.units})`,
+      subtitle: `Horizon ${horizonYears}y (${countryBaselineIso3}) • Delta ${formatSignedPct(
+        simulationOutput.summaryMetrics.percentageDelta
+      )} (${simulationOutput.units})`,
       folder: "Scenario Simulations",
       tags: [category, countryBaselineIso3, "Monte Carlo", activeSpec.modelVersion],
       href: `/simulations?${params.toString()}`,
@@ -451,9 +451,11 @@ function SimulationsContent() {
         pt.modifiedP10,
         pt.modifiedP50,
         pt.modifiedP90,
-      ].join(",")
+      ]
+        .map(escapeCsvCell)
+        .join(",")
     );
-    const csv = [headers.join(","), ...rows].join("\n");
+    const csv = `\uFEFF${[headers.map(escapeCsvCell).join(","), ...rows].join("\n")}`;
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -522,8 +524,7 @@ function SimulationsContent() {
                   {" "}
                   • Oil Impulse:{" "}
                   <strong className="omnis-mono omnis-tabular">
-                    {parsedOilShock >= 0 ? "+" : ""}
-                    {parsedOilShock}%
+                    {formatSignedPct(parsedOilShock)}
                   </strong>
                 </>
               ) : null}
@@ -543,7 +544,7 @@ function SimulationsContent() {
       {/* Main Simulation Workspace */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Parameter Controls */}
-        <div className="lg:col-span-4 omnis-card p-5 space-y-5">
+        <div className="lg:col-span-4 min-w-0 omnis-card p-5 space-y-5">
           <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
             <h2 className="text-base font-bold text-[var(--text-primary)]">
               Scenario Variables &amp; Baseline
@@ -709,9 +710,8 @@ function SimulationsContent() {
                         </span>
                         <div className="flex items-center gap-2 omnis-mono omnis-tabular text-xs">
                           <span className="text-[var(--text-muted)]">
-                            Low {item.lowOutcomeDelta >= 0 ? "+" : ""}
-                            {item.lowOutcomeDelta} / High {item.highOutcomeDelta >= 0 ? "+" : ""}
-                            {item.highOutcomeDelta}
+                            Low {formatSignedValue(item.lowOutcomeDelta)} / High{" "}
+                            {formatSignedValue(item.highOutcomeDelta)}
                           </span>
                           {specParam ? (
                             <button

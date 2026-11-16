@@ -119,8 +119,10 @@
   box-sizing: border-box;
 }
 
-html {
-  scrollbar-gutter: stable;
+@media (min-width: 1024px) and (pointer: fine) {
+  html {
+    scrollbar-gutter: stable;
+  }
 }
 
 :focus-visible {

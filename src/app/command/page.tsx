@@ -24,6 +24,7 @@ import {
   LayoutGrid,
 } from "lucide-react";
 import { COUNTRIES_DATA, TIMELINE_EVENTS } from "@/lib/data/global-intelligence";
+import { formatSignedPct } from "@/lib/formatters";
 import { OmnisButton, OmnisModuleHeader } from "@/components/ui/OmnisPrimitives";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 
@@ -230,7 +231,7 @@ export default function CommandCenterPage() {
       {/* Asymmetric Analytical Cockpit Grid: 8-col Analytical Matrix + 4-col Telemetry & Workspace Ledger */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Primary Analytical Pane (8 Cols) */}
-        <div className="lg:col-span-8 space-y-6">
+        <div className="lg:col-span-8 min-w-0 space-y-6">
           {(() => {
             const widgetMap: Record<string, React.ReactNode> = {
               "trending-global": (
@@ -288,7 +289,7 @@ export default function CommandCenterPage() {
                                 c.gdpGrowthPct >= 0 ? "tone-verified" : "tone-danger"
                               }`}
                             >
-                              {c.gdpGrowthPct >= 0 ? `+${c.gdpGrowthPct}%` : `${c.gdpGrowthPct}%`}
+                              {formatSignedPct(c.gdpGrowthPct)}
                             </div>
                           </div>
                         </div>
@@ -602,7 +603,7 @@ export default function CommandCenterPage() {
         </div>
 
         {/* Right Epistemic Provider Telemetry & Timeline Rail (4 Cols) */}
-        <aside className="lg:col-span-4 border border-[var(--border-subtle)] rounded-lg bg-[var(--bg-graphite)] divide-y divide-[var(--border-subtle)]">
+        <aside className="lg:col-span-4 min-w-0 border border-[var(--border-subtle)] rounded-lg bg-[var(--bg-graphite)] divide-y divide-[var(--border-subtle)]">
           {/* Live Epistemic Provider Telemetry */}
           <div className="p-4 space-y-3">
             <div className="flex items-center justify-between gap-2">

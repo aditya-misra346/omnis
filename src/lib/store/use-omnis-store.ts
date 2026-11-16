@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
 import type { FocusedSignal } from "@/lib/intelligence/spatial-sync";
+import type { VerificationStatus } from "@/types/omnis";
 
 const memoryFallbackStorage = new Map<string, string>();
 
@@ -68,6 +69,13 @@ export interface AssistantMessage {
   content: string;
   timestamp: string;
   citations?: { label: string; url: string }[];
+  provenanceMeta?: {
+    iso3: string;
+    countryName: string;
+    verificationStatus: VerificationStatus;
+    source: string;
+    methodology: string;
+  } | null;
   suggestedActions?: { label: string; href: string }[];
 }
 

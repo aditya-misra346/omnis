@@ -199,7 +199,9 @@ function KnowledgeGraphContent() {
     setTopicInput(clean);
     setExpandTargetId(undefined);
     setActiveTopic(clean);
-    router.replace(`/knowledge-graph?topic=${encodeURIComponent(clean)}`, {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("topic", clean);
+    router.replace(`/knowledge-graph?${params.toString()}`, {
       scroll: false,
     });
   };
@@ -337,55 +339,53 @@ function KnowledgeGraphContent() {
       </OmnisModuleHeader>
 
       {/* Live Epistemic Ingestion Status Banner */}
-      <div className="flex flex-wrap items-center justify-between gap-2 text-[13px]">
+      <div className="flex flex-wrap items-center gap-2 text-[13px]">
         {liveFetchState === "loading" ? (
-          <div className="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-graphite)]">
+          <div className="flex-1 min-w-[240px] flex items-center gap-3 px-3.5 py-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-graphite)]">
             <OmnisSkeleton className="h-3.5 w-36 rounded-md" />
             <span className="text-[var(--text-muted)] omnis-mono text-xs">
               Hydrating OpenAlex Scholarly Works &amp; Wikimedia entities for &ldquo;{activeTopic}&rdquo;…
             </span>
           </div>
         ) : (
-          <div className="flex flex-wrap items-center gap-2">
-            <span
-              className={`px-2.5 py-1 rounded-full text-xs font-semibold omnis-mono ${
-                liveFetchState === "verified" ? "badge-tone-verified" : "badge-tone-warning"
-              }`}
-            >
-              {liveFetchState === "verified"
-                ? `Live OpenAlex + Ontology Verified (${liveWorks.length} works ingested)`
-                : "Curated Offline Ontology Active"}
-            </span>
-            {activeFocusedSignal ? (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold omnis-mono badge-tone-warning">
-                <span>Synced Focus: {activeFocusedSignal.label ?? activeFocusedSignal.topic}</span>
-                <button
-                  type="button"
-                  aria-label="Clear synced spatial focus"
-                  onClick={() => {
-                    clearFocusedSignal();
-                    if (urlFocusParam) {
-                      const nextParams = new URLSearchParams(searchParams.toString());
-                      nextParams.delete("focus");
-                      const qs = nextParams.toString();
-                      router.replace(qs ? `/knowledge-graph?${qs}` : "/knowledge-graph", {
-                        scroll: false,
-                      });
-                    }
-                  }}
-                  className="hover:opacity-75 cursor-pointer"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            ) : null}
-          </div>
+          <span
+            className={`px-2.5 py-1 rounded-full text-xs font-semibold omnis-mono ${
+              liveFetchState === "verified" ? "badge-tone-verified" : "badge-tone-warning"
+            }`}
+          >
+            {liveFetchState === "verified"
+              ? `Live OpenAlex + Ontology Verified (${liveWorks.length} works ingested)`
+              : "Curated Offline Ontology Active"}
+          </span>
         )}
+        {activeFocusedSignal ? (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold omnis-mono badge-tone-warning">
+            <span>Synced Focus: {activeFocusedSignal.label ?? activeFocusedSignal.topic}</span>
+            <button
+              type="button"
+              aria-label="Clear synced spatial focus"
+              onClick={() => {
+                clearFocusedSignal();
+                const nextParams = new URLSearchParams(searchParams.toString());
+                if (nextParams.has("focus")) {
+                  nextParams.delete("focus");
+                  const qs = nextParams.toString();
+                  router.replace(qs ? `/knowledge-graph?${qs}` : "/knowledge-graph", {
+                    scroll: false,
+                  });
+                }
+              }}
+              className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] sm:min-h-[24px] sm:min-w-[24px] -my-2 -mr-2 sm:my-0 sm:mr-0 rounded-full hover:opacity-75 cursor-pointer"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </span>
+        ) : null}
       </div>
 
       {/* Main Graph Viewport + Interactive Node Inspector Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pb-16 lg:pb-0">
-        <div className="lg:col-span-8">
+        <div className="lg:col-span-8 min-w-0">
           <KnowledgeGraphCanvas
             nodes={graphData.nodes}
             edges={graphData.edges}
@@ -419,7 +419,7 @@ function KnowledgeGraphContent() {
         {/* Desktop Node Intelligence Inspector Panel */}
         <div
           id="inspector-panel"
-          className="lg:col-span-4 omnis-card p-5 space-y-4 flex flex-col justify-between"
+          className="lg:col-span-4 min-w-0 omnis-card p-5 space-y-4 flex flex-col justify-between"
         >
           {selectedNode ? (
             <div className="space-y-4">

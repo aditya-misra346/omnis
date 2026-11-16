@@ -270,7 +270,7 @@ function ExploreContent() {
 
       {/* Categorised Search Results + History Sidebar */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-8 space-y-6">
+        <div className="lg:col-span-8 min-w-0 space-y-6">
           {searchResults.countries.length === 0 &&
             liveFetchState !== "loading" &&
             openAlexWorks.length === 0 &&
@@ -550,7 +550,7 @@ function ExploreContent() {
         </div>
 
         {/* Right Column: Search History, Saved Searches & Related Concept Graph Bridges */}
-        <div className="lg:col-span-4 space-y-6">
+        <div className="lg:col-span-4 min-w-0 space-y-6">
           <div className="omnis-card p-5 space-y-3">
             <h3 className="text-[15px] sm:text-base font-bold text-[var(--text-primary)]">Related Exploration Paths</h3>
             <div className="divide-y divide-[var(--border-subtle)] border-t border-[var(--border-subtle)]">
