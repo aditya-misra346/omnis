@@ -26,14 +26,31 @@ import {
   fetchLiveCountryIntelligence,
 } from "@/lib/providers/live-data";
 import {
+  classifyQueryIntent,
   executeUniversalSearch,
   orchestrateDeepResearch,
 } from "@/lib/research/engine";
 import {
+  formatMonetaryAxisTick,
+  formatSignedPct,
+  formatSignedValue,
+  formatUsdBnCompact,
+} from "@/lib/formatters";
+import { SimulationRequestSchema } from "@/types/omnis";
+import {
   clearHealthCacheForTests,
   probeUpstreamProviders,
 } from "@/lib/providers/health";
-import { OmnisModuleHeader } from "@/components/ui/OmnisPrimitives";
+import {
+  OmnisMobileBottomSheet,
+  OmnisModuleErrorFallback,
+  OmnisModuleHeader,
+} from "@/components/ui/OmnisPrimitives";
+import { enforceRequestRateLimit, clampIntParam } from "@/lib/security/guardrails";
+import {
+  doesSignalMatchCandidate,
+  matchCountryCatalogFromText,
+} from "@/lib/intelligence/spatial-sync";
 import { VerificationBadge } from "@/components/ui/ProvenancePanel";
 import { OmnisMathBlock } from "@/components/ui/OmnisMathBlock";
 
@@ -659,5 +676,227 @@ describe("OMNIS Elevation & Credibility Regression Suite", () => {
     const usaWinter = getCountrySolarState(38.9, -77.03, "America/New_York", winterUtc);
     expect(usaWinter.formattedTime).toBe("13:30");
     expect(usaWinter.utcOffsetLabel).toBe("UTC-5");
+  });
+
+  it("formats signed percentages and monetary axes cleanly without double-sign or trillion k-suffix confusion", () => {
+    expect(formatSignedPct(6.8)).toBe("+6.8%");
+    expect(formatSignedPct(-1.5)).toBe("-1.5%");
+    expect(formatSignedPct(-0)).toBe("+0%");
+    expect(formatSignedValue(-0.32, "°C")).toBe("-0.32°C");
+    expect(formatUsdBnCompact(28781)).toBe("$28.8T");
+    expect(formatUsdBnCompact(420)).toBe("$420B");
+    expect(formatMonetaryAxisTick(28781, "gdpUsdBn", 5000)).toBe("$28.8T");
+    expect(formatMonetaryAxisTick(65400, "gdpPerCapitaUsd", 10000)).toBe("$65.4k");
+  });
+
+  it("prevents false ISO3 substring matches, searches all 130 nations, and labels comparison charts accurately", async () => {
+    const windIntent = classifyQueryIntent("global wind energy transition");
+    expect(windIntent.detectedEntities).not.toContain("India");
+    expect(windIntent.suggestedModule).toBe("/research");
+
+    const frameworkIntent = classifyQueryIntent("AI infrastructure framework governance");
+    expect(frameworkIntent.detectedEntities).not.toContain("France");
+
+    const canadaIntent = classifyQueryIntent("CAN");
+    expect(canadaIntent.detectedEntities).toContain("Canada");
+    expect(canadaIntent.suggestedModule).toBe("/atlas?country=CAN");
+
+    const universal = executeUniversalSearch("Canada");
+    expect(universal.countries.some((c) => c.iso3 === "CAN")).toBe(true);
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("{}", { status: 503 }))
+    );
+    clearLiveCountryCacheForTests();
+    const cmpReport = await orchestrateDeepResearch("Compare India and China", "comparative");
+    expect(cmpReport.visualisationSeries.title).toContain("Nominal GDP Trajectory ($B)");
+    expect(cmpReport.visualisationSeries.title).not.toContain("Real Growth (%)");
+
+    const parsedSim = SimulationRequestSchema.safeParse({
+      scenarioId: "econ-macro-shock",
+      category: "economics",
+      horizonYears: 15,
+      seed: 42,
+      countryIso3: "CAN",
+      parameters: { oilPriceShockPct: 25 },
+    });
+    expect(parsedSim.success).toBe(true);
+  });
+
+  it("hydrates non-curated nations (CAN/NOR) in Assistant API without false lowercase ISO3 matches", async () => {
+    // Word-boundary check: lowercase "can" must not match Canada, while uppercase CAN / "Norway" match cleanly
+    expect(matchCountryCatalogFromText("How can we improve nuclear grids?")).toBeNull();
+    expect(matchCountryCatalogFromText("Compare renewable power in Norway")?.iso3).toBe("NOR");
+    expect(matchCountryCatalogFromText("What is GDP growth?", "Canada (CAN)")?.iso3).toBe("CAN");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string | URL | Request) => {
+        const href = String(url);
+        if (href.includes("restcountries.com")) {
+          return new Response(
+            JSON.stringify([
+              {
+                name: { common: "Canada", official: "Canada" },
+                capital: ["Ottawa"],
+                region: "Americas",
+                subregion: "Northern America",
+                population: 40_100_000,
+                area: 9_984_670,
+                latlng: [60, -95],
+                currencies: { CAD: { name: "Canadian dollar" } },
+                languages: { eng: "English", fra: "French" },
+                flag: "🇨🇦",
+              },
+            ]),
+            { status: 200 }
+          );
+        }
+        if (href.includes("api.worldbank.org")) {
+          const val = href.includes("NY.GDP.MKTP.CD")
+            ? 2_140_000_000_000
+            : href.includes("NY.GDP.MKTP.KD.ZG")
+              ? 1.8
+              : 14.5;
+          return new Response(
+            JSON.stringify([{ page: 1 }, [{ date: "2024", value: val, country: { value: "Canada" } }]]),
+            { status: 200 }
+          );
+        }
+        return new Response(JSON.stringify({ results: [] }), { status: 200 });
+      })
+    );
+    clearLiveCountryCacheForTests();
+
+    const { POST } = await import("@/app/api/v1/assistant/route");
+    const res = await POST(
+      new Request("http://localhost/api/v1/assistant", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-forwarded-for": "198.51.100.10" },
+        body: JSON.stringify({
+          message: "Summarize macro baseline and clean grid share",
+          contextLabel: "Global Atlas",
+          contextTopic: "Canada (CAN)",
+        }),
+      })
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      reply?: string;
+      citations?: { label: string; url: string }[];
+    };
+    expect(body.reply).toContain("Canada (CAN)");
+    expect(body.reply).not.toContain("No pre-cached sovereign dossier directly matched");
+    expect(body.reply).toContain("+1.8%");
+    expect(body.citations?.some((c) => c.label.includes("Canada"))).toBe(true);
+  });
+
+  it("clamps GET graph/simulate parameters within strict bounds and enforces shared API rate limits", async () => {
+    expect(clampIntParam("50000", 32, 5, 60)).toBe(60);
+    expect(clampIntParam("-4", 32, 5, 60)).toBe(5);
+    expect(clampIntParam("not-a-number", 32, 5, 60)).toBe(32);
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({ results: [] }), { status: 200 }))
+    );
+
+    const { GET: graphGet } = await import("@/app/api/v1/graph/route");
+    const gRes = await graphGet(
+      new Request("http://localhost/api/v1/graph?topic=Semiconductors&maxNodes=50000", {
+        headers: { "x-forwarded-for": "198.51.100.42" },
+      })
+    );
+    expect(gRes.status).toBe(200);
+    const graphBody = (await gRes.json()) as { nodes?: unknown[] };
+    expect((graphBody.nodes ?? []).length).toBeLessThanOrEqual(60);
+
+    const { GET: simGet } = await import("@/app/api/v1/simulate/route");
+    const sRes = await simGet(
+      new Request("http://localhost/api/v1/simulate?horizonYears=9999", {
+        headers: { "x-forwarded-for": "198.51.100.43" },
+      })
+    );
+    expect(sRes.status).toBe(200);
+    const simBody = (await sRes.json()) as {
+      activeSimulation?: { trajectory?: { year: number }[] };
+    };
+    const yearsCount = simBody.activeSimulation?.trajectory?.length ?? 0;
+    expect(yearsCount).toBe(54); // 3 historical + (clamped horizon 50 + base year)
+
+    // Verify shared rate limiter trips cleanly on maxRequests + 1
+    const r1 = enforceRequestRateLimit(
+      new Request("http://localhost/api/v1/test", { headers: { "x-forwarded-for": "203.0.113.99" } }),
+      "unit-test-rl",
+      2,
+      60_000
+    );
+    const r2 = enforceRequestRateLimit(
+      new Request("http://localhost/api/v1/test", { headers: { "x-forwarded-for": "203.0.113.99" } }),
+      "unit-test-rl",
+      2,
+      60_000
+    );
+    const r3 = enforceRequestRateLimit(
+      new Request("http://localhost/api/v1/test", { headers: { "x-forwarded-for": "203.0.113.99" } }),
+      "unit-test-rl",
+      2,
+      60_000
+    );
+    expect(r1).toBeNull();
+    expect(r2).toBeNull();
+    expect(r3?.status).toBe(429);
+  });
+
+  it("renders accessible Bottom Sheet & Isolated Error Fallback markup and matches Spatial Cross-Filter signals", () => {
+    const errHtml = renderToStaticMarkup(
+      React.createElement(OmnisModuleErrorFallback, {
+        moduleName: "Knowledge Graph",
+        error: new Error("Synthetic boundary check"),
+        reset: () => {},
+      })
+    );
+    expect(errHtml).toContain("Knowledge Graph • Isolated Recovery Boundary");
+    expect(errHtml).toContain("Retry Knowledge Graph");
+
+    const sheetHtml = renderToStaticMarkup(
+      React.createElement(
+        OmnisMobileBottomSheet,
+        {
+          open: true,
+          onClose: () => {},
+          eyebrow: "Geopolitics",
+          title: "Semiconductor Fab Chokepoints",
+          closeAriaLabel: "Close Node Inspector",
+          children: React.createElement("p", null, "Inspector body"),
+        }
+      )
+    );
+    expect(sheetHtml).toContain('role="dialog"');
+    expect(sheetHtml).toContain('aria-modal="true"');
+    expect(sheetHtml).toContain("safe-area-inset-bottom");
+    expect(sheetHtml).toContain("min-h-[44px] min-w-[44px]");
+
+    // Spatial Cross-Filter Sync matching across Globe -> Graph/Timeline
+    const indiaSignal = { iso3: "IND", topic: "India" };
+    expect(
+      doesSignalMatchCandidate(indiaSignal, {
+        countryIso3: "IND",
+        title: "1991 Economic Liberalisation",
+      })
+    ).toBe(true);
+    expect(
+      doesSignalMatchCandidate(indiaSignal, {
+        label: "Indian Renewable Grid Expansion",
+        summary: "Solar corridors across Gujarat and Rajasthan",
+      })
+    ).toBe(true);
+    expect(
+      doesSignalMatchCandidate(indiaSignal, {
+        countryIso3: "NOR",
+        title: "North Sea Hydroelectric Treaty",
+      })
+    ).toBe(false);
   });
 });

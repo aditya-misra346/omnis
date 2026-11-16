@@ -516,25 +516,42 @@ function IntelligenceCompareContent() {
                         </div>
                       </td>
                       <td className="py-2.5 pr-3 font-bold">
-                        {isHydratingRow && row.leftVal === 0
-                          ? "Syncing…"
-                          : `${row.leftVal.toLocaleString()} ${row.unit}`}
+                        {isHydratingRow && row.leftVal === 0 ? (
+                          <span
+                            aria-label="Syncing left sovereign indicator"
+                            className="inline-block h-4 w-20 rounded bg-[var(--bg-slate)] border border-[var(--border-subtle)] animate-pulse align-middle"
+                          />
+                        ) : (
+                          `${row.leftVal.toLocaleString()} ${row.unit}`
+                        )}
                       </td>
                       <td className="py-2.5 pr-3 font-bold">
-                        {isHydratingRow && row.rightVal === 0
-                          ? "Syncing…"
-                          : `${row.rightVal.toLocaleString()} ${row.unit}`}
+                        {isHydratingRow && row.rightVal === 0 ? (
+                          <span
+                            aria-label="Syncing right sovereign indicator"
+                            className="inline-block h-4 w-20 rounded bg-[var(--bg-slate)] border border-[var(--border-subtle)] animate-pulse align-middle"
+                          />
+                        ) : (
+                          `${row.rightVal.toLocaleString()} ${row.unit}`
+                        )}
                       </td>
                       <td
                         className={`py-2.5 font-semibold ${
                           isHydratingRow
-                            ? "text-[var(--text-muted)] animate-pulse"
+                            ? "text-[var(--text-muted)]"
                             : diffVal >= 0
                               ? "tone-verified"
                               : "tone-warning"
                         }`}
                       >
-                        {deltaText}
+                        {isHydratingRow ? (
+                          <span
+                            aria-label="Syncing comparative delta"
+                            className="inline-block h-4 w-14 rounded bg-[var(--bg-slate)] border border-[var(--border-subtle)] animate-pulse align-middle"
+                          />
+                        ) : (
+                          deltaText
+                        )}
                       </td>
                     </tr>
                   );

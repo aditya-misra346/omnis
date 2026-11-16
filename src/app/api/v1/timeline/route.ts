@@ -1,6 +1,9 @@
 import { TIMELINE_EVENTS } from "@/lib/data/global-intelligence";
+import { enforceRequestRateLimit } from "@/lib/security/guardrails";
 
 export async function GET(request: Request) {
+  const rateLimited = enforceRequestRateLimit(request, "timeline", 120, 60_000);
+  if (rateLimited) return rateLimited;
   const { searchParams } = new URL(request.url);
   const era = searchParams.get("era") ?? "all";
   const category = searchParams.get("category") ?? "all";

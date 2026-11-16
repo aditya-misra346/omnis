@@ -16,7 +16,6 @@ import {
   ChevronUp,
   X,
 } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
 import {
   buildInfiniteKnowledgeGraph,
   findShortestCausalPath,
@@ -27,6 +26,7 @@ import { ProvenancePanel, VerificationBadge } from "@/components/ui/ProvenancePa
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
 import {
   OmnisButton,
+  OmnisMobileBottomSheet,
   OmnisModuleHeader,
   OmnisSegmentedControl,
   OmnisSkeleton,
@@ -74,6 +74,7 @@ function KnowledgeGraphContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const urlTopicParam = searchParams.get("topic")?.trim() || "";
+  const urlFocusParam = searchParams.get("focus")?.trim() || "";
   const initialTopic = urlTopicParam || "Artificial Intelligence";
 
   const [topicInput, setTopicInput] = useState(initialTopic);
@@ -105,7 +106,12 @@ function KnowledgeGraphContent() {
   const [mobileInspectorOpen, setMobileInspectorOpen] = useState(false);
   const filterInputRef = useRef<HTMLInputElement | null>(null);
 
-  const { addWorkspaceItem, setActiveContext } = useOmnisStore();
+  const { addWorkspaceItem, setActiveContext, focusedSignal, setFocusedSignal } =
+    useOmnisStore();
+  const activeFocusedSignal = useMemo(
+    () => (urlFocusParam ? { topic: urlFocusParam } : focusedSignal),
+    [urlFocusParam, focusedSignal]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -224,7 +230,7 @@ function KnowledgeGraphContent() {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 pb-24 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* Header & Topic Generator */}
       <OmnisModuleHeader
         moduleTag="MODULE 02 • INFINITE SEMANTIC KNOWLEDGE GRAPH"
@@ -257,7 +263,7 @@ function KnowledgeGraphContent() {
                 value={topicInput}
                 onChange={(e) => setTopicInput(e.target.value)}
                 placeholder="Enter any concept, technology, country, or phenomenon..."
-                className="w-full bg-transparent text-base sm:text-[15px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
+                className="w-full bg-transparent text-base md:text-[15px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
               />
             </div>
             <OmnisButton type="submit">Generate Network</OmnisButton>
@@ -319,7 +325,7 @@ function KnowledgeGraphContent() {
               value={nodeSearch}
               onChange={(e) => setNodeSearch(e.target.value)}
               placeholder="Filter nodes... (/)"
-              className="px-2.5 py-1.5 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-base sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] w-44 sm:w-40 focus:outline-none focus:border-[var(--accent-blue)]"
+              className="px-2.5 py-1.5 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-base md:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] w-44 sm:w-40 focus:outline-none focus:border-[var(--accent-blue)]"
             />
           </div>
         </div>
@@ -345,6 +351,29 @@ function KnowledgeGraphContent() {
                 ? `Live OpenAlex + Ontology Verified (${liveWorks.length} works ingested)`
                 : "Curated Offline Ontology Active"}
             </span>
+            {activeFocusedSignal ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold omnis-mono badge-tone-warning">
+                <span>Synced Focus: {activeFocusedSignal.topic}</span>
+                <button
+                  type="button"
+                  aria-label="Clear synced spatial focus"
+                  onClick={() => {
+                    setFocusedSignal(null);
+                    if (urlFocusParam) {
+                      const nextParams = new URLSearchParams(searchParams.toString());
+                      nextParams.delete("focus");
+                      const qs = nextParams.toString();
+                      router.replace(qs ? `/knowledge-graph?${qs}` : "/knowledge-graph", {
+                        scroll: false,
+                      });
+                    }
+                  }}
+                  className="hover:opacity-75 cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ) : null}
           </div>
         )}
       </div>
@@ -360,6 +389,13 @@ function KnowledgeGraphContent() {
             onSelectNode={(id) => {
               setSelectedNodeId(id);
               if (pathTargetId === id) setPathTargetId("");
+              const clickedNode = graphData.nodes.find((n) => n.id === id);
+              if (clickedNode) {
+                setFocusedSignal({
+                  iso3: activeFocusedSignal?.iso3,
+                  topic: clickedNode.label,
+                });
+              }
             }}
             onExpandNode={(id) => {
               setMaxNodes((n) => Math.min(60, n + 4));
@@ -370,6 +406,7 @@ function KnowledgeGraphContent() {
             searchFilter={nodeSearch}
             highlightedPathNodeIds={highlightedPathNodeIds}
             highlightedPathEdgeIds={highlightedPathEdgeIds}
+            focusedSignal={activeFocusedSignal}
           />
         </div>
 
@@ -549,7 +586,7 @@ function KnowledgeGraphContent() {
 
       {/* Mobile Bottom Inspector Pill (< 1024px) */}
       {selectedNode ? (
-        <div className="lg:hidden fixed bottom-3 left-3 right-3 z-40">
+        <div className="lg:hidden fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-3 right-3 z-30">
           <button
             type="button"
             onClick={() => setMobileInspectorOpen(true)}
@@ -572,116 +609,89 @@ function KnowledgeGraphContent() {
       ) : null}
 
       {/* Mobile Inspector Slide-Up Sheet */}
-      <AnimatePresence>
-        {mobileInspectorOpen && selectedNode ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="lg:hidden fixed inset-0 z-50 omnis-modal-scrim backdrop-blur-sm flex items-end"
-            onClick={() => setMobileInspectorOpen(false)}
-          >
-            <motion.div
-              initial={{ y: 40, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 40, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 380, damping: 34 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-h-[75vh] overflow-y-auto rounded-t-2xl bg-[var(--bg-graphite)] border-t border-[var(--border-strong)] p-5 space-y-4"
-            >
-              <div className="flex items-center justify-between gap-2 pb-2 border-b border-[var(--border-subtle)]">
-                <div>
-                  <div className="text-xs omnis-mono uppercase tone-blue font-bold">
-                    {selectedNode.category}
-                  </div>
-                  <div className="font-bold text-[17px] text-[var(--text-primary)]">
-                    {selectedNode.label}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  aria-label="Close Node Inspector"
-                  onClick={() => setMobileInspectorOpen(false)}
-                  className="p-2 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+      <OmnisMobileBottomSheet
+        open={Boolean(mobileInspectorOpen && selectedNode)}
+        onClose={() => setMobileInspectorOpen(false)}
+        eyebrow={selectedNode?.category}
+        title={selectedNode?.label ?? "Node Inspector"}
+        closeAriaLabel="Close Node Inspector"
+      >
+        {selectedNode ? (
+          <>
+            <p className="text-[14.5px] text-[var(--text-secondary)] leading-relaxed">
+              {selectedNode.summary}
+            </p>
+            <div className="space-y-1.5">
+              <div className="text-xs font-bold uppercase tracking-wider tone-cyan omnis-mono">
+                Trace Causal Path {causalPath?.reachable ? `(${causalPath.hops} hops)` : ""}
               </div>
-              <p className="text-[14.5px] text-[var(--text-secondary)] leading-relaxed">
-                {selectedNode.summary}
-              </p>
-              <div className="space-y-1.5">
-                <div className="text-xs font-bold uppercase tracking-wider tone-cyan omnis-mono">
-                  Trace Causal Path {causalPath?.reachable ? `(${causalPath.hops} hops)` : ""}
-                </div>
-                <OmnisSelect
-                  value={pathTargetId}
-                  onChange={setPathTargetId}
-                  ariaLabel="Mobile Trace Causal Path Target"
-                  options={[
-                    { value: "", label: "Select target concept…" },
-                    ...graphData.nodes
-                      .filter((n) => n.id !== selectedNode.id)
-                      .map((n) => ({ value: n.id, label: n.label, hint: n.category })),
-                  ]}
-                />
+              <OmnisSelect
+                value={pathTargetId}
+                onChange={setPathTargetId}
+                ariaLabel="Mobile Trace Causal Path Target"
+                options={[
+                  { value: "", label: "Select target concept…" },
+                  ...graphData.nodes
+                    .filter((n) => n.id !== selectedNode.id)
+                    .map((n) => ({ value: n.id, label: n.label, hint: n.category })),
+                ]}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <div className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
+                Edges ({connectedEdges.length})
               </div>
-              <div className="space-y-1.5">
-                <div className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
-                  Edges ({connectedEdges.length})
-                </div>
-                <div className="divide-y divide-[var(--border-subtle)]">
-                  {connectedEdges.map((edge) => {
-                    const otherId = edge.source === selectedNode.id ? edge.target : edge.source;
-                    const otherNode = graphData.nodes.find((n) => n.id === otherId);
-                    return (
-                      <button
-                        key={edge.id}
-                        type="button"
-                        onClick={() => setSelectedNodeId(otherId)}
-                        className="w-full text-left py-2 text-[13.5px] space-y-0.5 cursor-pointer"
-                      >
-                        <div className="font-semibold text-[var(--text-primary)]">
-                          <span className="omnis-mono tone-blue mr-1.5">[{edge.relationshipType}]</span>
-                          → {otherNode?.label ?? otherId}
-                        </div>
-                        <div className="text-[13px] text-[var(--text-secondary)]">{edge.evidence}</div>
-                      </button>
-                    );
-                  })}
-                </div>
+              <div className="divide-y divide-[var(--border-subtle)]">
+                {connectedEdges.map((edge) => {
+                  const otherId = edge.source === selectedNode.id ? edge.target : edge.source;
+                  const otherNode = graphData.nodes.find((n) => n.id === otherId);
+                  return (
+                    <button
+                      key={edge.id}
+                      type="button"
+                      onClick={() => setSelectedNodeId(otherId)}
+                      className="w-full text-left py-2 text-[13.5px] space-y-0.5 cursor-pointer"
+                    >
+                      <div className="font-semibold text-[var(--text-primary)]">
+                        <span className="omnis-mono tone-blue mr-1.5">[{edge.relationshipType}]</span>
+                        → {otherNode?.label ?? otherId}
+                      </div>
+                      <div className="text-[13px] text-[var(--text-secondary)]">{edge.evidence}</div>
+                    </button>
+                  );
+                })}
               </div>
-              <div className="flex gap-2 pt-2">
-                <OmnisButton
-                  onClick={() => {
-                    setMaxNodes((n) => Math.min(60, n + 4));
-                    setExpandTargetId(selectedNode.id);
-                    setMobileInspectorOpen(false);
-                  }}
-                  className="flex-1"
-                >
-                  <PlusCircle className="w-3.5 h-3.5" />
-                  <span>Expand (+4)</span>
-                </OmnisButton>
-                <OmnisButton
-                  variant="secondary"
-                  onClick={() =>
-                    router.push(
-                      `/research?q=${encodeURIComponent(
-                        `Deep analysis of ${selectedNode.label}`
-                      )}`
-                    )
-                  }
-                  className="flex-1"
-                >
-                  <FileSearch className="w-3.5 h-3.5 tone-blue" />
-                  <span>Research</span>
-                </OmnisButton>
-              </div>
-            </motion.div>
-          </motion.div>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <OmnisButton
+                onClick={() => {
+                  setMaxNodes((n) => Math.min(60, n + 4));
+                  setExpandTargetId(selectedNode.id);
+                  setMobileInspectorOpen(false);
+                }}
+                className="flex-1"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>Expand (+4)</span>
+              </OmnisButton>
+              <OmnisButton
+                variant="secondary"
+                onClick={() =>
+                  router.push(
+                    `/research?q=${encodeURIComponent(
+                      `Deep analysis of ${selectedNode.label}`
+                    )}`
+                  )
+                }
+                className="flex-1"
+              >
+                <FileSearch className="w-3.5 h-3.5 tone-blue" />
+                <span>Research</span>
+              </OmnisButton>
+            </div>
+          </>
         ) : null}
-      </AnimatePresence>
+      </OmnisMobileBottomSheet>
 
       <ProvenancePanel provenance={graphData.provenance} compact />
     </div>

@@ -39,6 +39,7 @@ export function OmnisSelect({
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [resolvedAlign, setResolvedAlign] = useState<"left" | "right">(menuAlign);
+  const [openUpward, setOpenUpward] = useState(false);
   const [activeIndex, setActiveIndex] = useState(() =>
     Math.max(0, options.findIndex((opt) => opt.value === value))
   );
@@ -71,7 +72,7 @@ export function OmnisSelect({
       setSearchQuery("");
       return;
     }
-    if (isSearchable) {
+    if (isSearchable && !window.matchMedia?.("(pointer: coarse)").matches) {
       requestAnimationFrame(() => searchInputRef.current?.focus());
     }
     const handleOutside = (event: PointerEvent) => {
@@ -85,11 +86,19 @@ export function OmnisSelect({
         triggerRef.current?.focus();
       }
     };
+    const initialScrollY = window.scrollY;
+    const handleScroll = () => {
+      if (Math.abs(window.scrollY - initialScrollY) > 24) {
+        setOpen(false);
+      }
+    };
     document.addEventListener("pointerdown", handleOutside);
     document.addEventListener("keydown", handleEscape);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => {
       document.removeEventListener("pointerdown", handleOutside);
       document.removeEventListener("keydown", handleEscape);
+      window.removeEventListener("scroll", handleScroll);
     };
   }, [open, isSearchable]);
 
@@ -126,6 +135,8 @@ export function OmnisSelect({
           } else {
             setResolvedAlign(menuAlign);
           }
+          const spaceBelow = window.innerHeight - rect.bottom;
+          setOpenUpward(spaceBelow < 268 && rect.top > 268);
         }
       }
       return nextOpen;
@@ -222,9 +233,9 @@ export function OmnisSelect({
           role="listbox"
           aria-label={ariaLabel}
           onKeyDown={handleKeyDown}
-          className={`absolute z-50 mt-1.5 min-w-full w-max max-w-[min(320px,85vw)] max-h-64 overflow-y-auto rounded-lg bg-[var(--bg-graphite)] border border-[var(--border-subtle)] p-1 shadow-[var(--surface-shadow-hover)] ${
-            resolvedAlign === "right" ? "right-0" : "left-0"
-          }`}
+          className={`absolute z-40 min-w-full w-max max-w-[min(320px,85vw)] max-h-64 overflow-y-auto rounded-lg bg-[var(--bg-graphite)] border border-[var(--border-subtle)] p-1 shadow-[var(--surface-shadow-hover)] ${
+            openUpward ? "bottom-full mb-1.5" : "top-full mt-1.5"
+          } ${resolvedAlign === "right" ? "right-0" : "left-0"}`}
         >
           {isSearchable ? (
             <div className="sticky top-0 z-10 bg-[var(--bg-graphite)] pb-1 mb-1 border-b border-[var(--border-subtle)]">
@@ -240,7 +251,7 @@ export function OmnisSelect({
                   }}
                   placeholder="Filter options…"
                   aria-label="Filter dropdown options"
-                  className="w-full pl-7 pr-2 py-1.5 rounded-md bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-base sm:text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-blue)]"
+                  className="w-full pl-7 pr-2 py-1.5 rounded-md bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-base md:text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-blue)]"
                 />
               </div>
             </div>
@@ -263,7 +274,7 @@ export function OmnisSelect({
                   aria-selected={isSelected}
                   onMouseEnter={() => setActiveIndex(idx)}
                   onClick={() => handleSelect(opt.value)}
-                  className={`w-full flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-md text-left text-sm transition-colors cursor-pointer ${
+                  className={`w-full min-h-[42px] sm:min-h-[34px] flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-md text-left text-sm transition-colors cursor-pointer ${
                     isSelected
                       ? "bg-[var(--badge-blue-bg)] text-[var(--text-primary)] font-semibold"
                       : isHighlighted

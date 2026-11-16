@@ -83,8 +83,8 @@ const SPECIMEN_ROWS: SpecimenRow[] = [
         href: "/laboratory",
       },
       {
-        label: "Natural Earth 110m",
-        summary: "Topologically accurate coastline vectors rendered into GPU textures with Fresnel atmospheric limb.",
+        label: "SOI + World Atlas 110m",
+        summary: "Official Survey of India borders and geodesic vectors rendered into GPU textures with Fresnel atmospheric limb.",
         moduleLabel: "Open 3D Global Atlas",
         href: "/atlas",
       },

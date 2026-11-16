@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import { OmnisSegmentedControl } from "@/components/ui/OmnisPrimitives";
+import { formatMonetaryAxisTick, formatSignedPct } from "@/lib/formatters";
 
 /** Maps a pointer clientX coordinate inside an SVG viewBox plot area to the nearest data index. */
 function resolveSvgPlotIndex(
@@ -198,8 +199,7 @@ export function HistoricalTrajectoryChart({
                 </span>
               )}
               <span className={activePoint.growth >= 0 ? "tone-verified" : "tone-danger"}>
-                ({activePoint.growth >= 0 ? "+" : ""}
-                {activePoint.growth}% GDP/yr)
+                ({formatSignedPct(activePoint.growth)} GDP/yr)
               </span>
             </div>
           )}
@@ -231,6 +231,7 @@ export function HistoricalTrajectoryChart({
           {[0, 0.25, 0.5, 0.75, 1].map((frac) => {
             const val = minVal + frac * (maxVal - minVal);
             const y = toY(val);
+            const tickStep = (maxVal - minVal) / 4;
             return (
               <g key={frac}>
                 <line
@@ -250,10 +251,8 @@ export function HistoricalTrajectoryChart({
                   className="omnis-mono"
                 >
                   {metric === "gdpUsdBn" || metric === "gdpPerCapitaUsd"
-                    ? val >= 1000
-                      ? `${(val / 1000).toFixed(1)}k`
-                      : val.toFixed(0)
-                    : `${val.toFixed(0)}%`}
+                    ? formatMonetaryAxisTick(val, metric, tickStep)
+                    : `${tickStep <= 1.25 ? val.toFixed(1) : val.toFixed(0)}%`}
                 </text>
               </g>
             );
@@ -343,16 +342,21 @@ export function HistoricalTrajectoryChart({
                   stroke={meta.colorVar}
                   strokeWidth={hovered ? 3 : 2.2}
                 />
-                <text
-                  x={p.x}
-                  y={h - 9}
-                  textAnchor="middle"
-                  fontSize="11.5"
-                  fill="var(--chart-axis)"
-                  className="omnis-mono"
-                >
-                  {p.year}
-                </text>
+                {(points.length <= 6 ||
+                  idx === 0 ||
+                  idx === points.length - 1 ||
+                  idx % Math.ceil(points.length / 5) === 0) && (
+                  <text
+                    x={p.x}
+                    y={h - 9}
+                    textAnchor="middle"
+                    fontSize="11.5"
+                    fill="var(--chart-axis)"
+                    className="omnis-mono"
+                  >
+                    {p.year}
+                  </text>
+                )}
                 <rect
                   x={p.x - 24}
                   y={padT}
@@ -476,10 +480,10 @@ export function MonteCarloFanChart({
         )}
       </div>
 
-      <div className="w-full overflow-x-auto">
+      <div className="w-full">
         <svg
           viewBox={`0 0 ${w} ${h}`}
-          className="w-full h-72 min-w-[460px] touch-pan-y select-none"
+          className="w-full h-60 sm:h-72 touch-pan-y select-none"
           onPointerDown={(e) => {
             const idx = resolveSvgPlotIndex(e.clientX, e.currentTarget, w, padL, padR, trajectory.length);
             if (idx !== null) setHoverIndex(idx);
@@ -817,8 +821,9 @@ export function ComparisonRadarChart({
           strokeDasharray="2,2"
         />
         <text
-          x={cx + 3}
-          y={cy - zeroRingRadius + 9}
+          x={cx + zeroRingRadius * Math.cos(-Math.PI / 2 + Math.PI / radarAxes.length)}
+          y={cy + zeroRingRadius * Math.sin(-Math.PI / 2 + Math.PI / radarAxes.length) + 3}
+          textAnchor="middle"
           fontSize="9.5"
           fill="var(--text-muted)"
           className="omnis-mono"
@@ -827,6 +832,7 @@ export function ComparisonRadarChart({
         </text>
         {[0.25, 0.5, 0.75, 1.0].map((ring) => {
           const r = zeroRingRadius + (radius - zeroRingRadius) * ring;
+          const labelAngle = -Math.PI / 2 + Math.PI / radarAxes.length;
           return (
             <g key={ring}>
               <circle
@@ -838,8 +844,9 @@ export function ComparisonRadarChart({
                 strokeDasharray="3,3"
               />
               <text
-                x={cx + 4}
-                y={cy - r + 9}
+                x={cx + r * Math.cos(labelAngle)}
+                y={cy + r * Math.sin(labelAngle) + 3}
+                textAnchor="middle"
                 fontSize="9"
                 fill="var(--text-muted)"
                 className="omnis-mono"

@@ -134,7 +134,7 @@ export default function CommandCenterPage() {
               value={commandInput}
               onChange={(e) => setCommandInput(e.target.value)}
               placeholder="Natural language command: 'Explain India's economic development since 1991', 'Compare India and China', 'Graph Semiconductors'..."
-              className="w-full bg-transparent text-base sm:text-[15px] focus:outline-none text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+              className="w-full bg-transparent text-base md:text-[15px] focus:outline-none text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
             />
           </div>
           <OmnisButton type="submit" size="md" className="omnis-magnetic-arrow">
@@ -451,7 +451,7 @@ export default function CommandCenterPage() {
                       MULTI-MODULE WORKFLOWS
                     </span>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-px rounded-lg overflow-hidden border border-[var(--border-subtle)] bg-[var(--border-subtle)]">
+                  <div className="-mx-5 -mb-5 grid grid-cols-1 md:grid-cols-2 gap-px border-t border-[var(--border-subtle)] bg-[var(--border-subtle)] rounded-b-2xl overflow-hidden">
                     {[
                       {
                         title: "Submarine Cable & Sovereign AI Compute",
@@ -528,7 +528,7 @@ export default function CommandCenterPage() {
                       Open Workspace ({workspaceItems.length}) →
                     </Link>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-px rounded-lg overflow-hidden border border-[var(--border-subtle)] bg-[var(--border-subtle)]">
+                  <div className="-mx-5 -mb-5 grid grid-cols-1 md:grid-cols-2 gap-px border-t border-[var(--border-subtle)] bg-[var(--border-subtle)] rounded-b-2xl overflow-hidden">
                     <div className="bg-[var(--bg-graphite)] p-4 space-y-2.5">
                       <div className="flex items-center justify-between">
                         <h3 className="text-[13px] font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono flex items-center gap-1.5">

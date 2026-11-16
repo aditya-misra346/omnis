@@ -3,11 +3,14 @@ import {
   WORLD_CATALOG_BY_ISO3,
 } from "@/lib/data/world-catalog";
 import { fetchLiveCountryIntelligence } from "@/lib/providers/live-data";
+import { enforceRequestRateLimit } from "@/lib/security/guardrails";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ iso3: string }> }
 ) {
+  const rateLimited = enforceRequestRateLimit(request, "country-profile", 120, 60_000);
+  if (rateLimited) return rateLimited;
   const { iso3 } = await context.params;
   if (!iso3 || !/^[A-Za-z]{3}$/.test(iso3.trim())) {
     return Response.json(

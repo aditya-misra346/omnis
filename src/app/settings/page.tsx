@@ -210,7 +210,7 @@ export default function SettingsPage() {
                   value={nameInput}
                   onChange={(e) => setNameInput(e.target.value)}
                   placeholder="Display Name"
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-base sm:text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]"
+                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-base md:text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]"
                 />
                 <input
                   type="email"
@@ -218,7 +218,7 @@ export default function SettingsPage() {
                   value={emailInput}
                   onChange={(e) => setEmailInput(e.target.value)}
                   placeholder="Institutional Email"
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-base sm:text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]"
+                  className="w-full px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-base md:text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-blue)]"
                 />
                 <div className="flex flex-wrap items-center gap-2">
                   <OmnisButton type="submit" className="flex-1">

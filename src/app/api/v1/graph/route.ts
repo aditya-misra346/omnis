@@ -1,6 +1,10 @@
 import { buildInfiniteKnowledgeGraph } from "@/lib/graph/engine";
 import { fetchOpenAlexSources, fetchWikimediaSummary } from "@/lib/providers/live-data";
-import { checkApiRateLimit, validateAndSanitizeInput } from "@/lib/security/guardrails";
+import {
+  clampIntParam,
+  enforceRequestRateLimit,
+  validateAndSanitizeInput,
+} from "@/lib/security/guardrails";
 import { GraphRequestSchema } from "@/types/omnis";
 
 async function generateHydratedGraph(params: {
@@ -23,6 +27,9 @@ async function generateHydratedGraph(params: {
 }
 
 export async function GET(request: Request) {
+  const rateLimited = enforceRequestRateLimit(request, "graph", 90, 60_000);
+  if (rateLimited) return rateLimited;
+
   const { searchParams } = new URL(request.url);
   const topic = searchParams.get("topic") ?? "Semiconductors";
   const check = validateAndSanitizeInput(topic, 200);
@@ -31,17 +38,15 @@ export async function GET(request: Request) {
   }
   const graph = await generateHydratedGraph({
     topic: check.sanitizedText,
-    maxNodes: Number(searchParams.get("maxNodes") ?? 32),
+    maxNodes: clampIntParam(searchParams.get("maxNodes"), 32, 5, 60),
   });
   return Response.json(graph);
 }
 
 export async function POST(request: Request) {
   try {
-    const ip = request.headers.get("x-forwarded-for") ?? "local";
-    if (!checkApiRateLimit(`graph:${ip}`, 90, 60_000).allowed) {
-      return Response.json({ error: "Rate limit exceeded." }, { status: 429 });
-    }
+    const rateLimited = enforceRequestRateLimit(request, "graph", 90, 60_000);
+    if (rateLimited) return rateLimited;
 
     const body = await request.json();
     const parsed = GraphRequestSchema.safeParse(body);

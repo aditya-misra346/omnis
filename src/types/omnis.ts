@@ -407,6 +407,7 @@ export const SimulationRequestSchema = z.object({
   category: z.enum(["economics", "demographics", "energy", "technology", "environment"]),
   horizonYears: z.number().int().min(5).max(50).default(15),
   seed: z.number().int().default(42),
+  countryIso3: z.string().regex(/^(GLOBAL|[A-Z]{3})$/i).optional(),
   parameters: z.record(z.string(), z.number()),
 });
 

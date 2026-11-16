@@ -3,14 +3,20 @@ import {
   fetchOpenAlexSources,
   fetchWikimediaSummary,
 } from "@/lib/providers/live-data";
-import { validateAndSanitizeInput } from "@/lib/security/guardrails";
+import {
+  clampIntParam,
+  enforceRequestRateLimit,
+  validateAndSanitizeInput,
+} from "@/lib/security/guardrails";
 
 export async function GET(request: Request) {
+  const rateLimited = enforceRequestRateLimit(request, "sources", 120, 60_000);
+  if (rateLimited) return rateLimited;
+
   const { searchParams } = new URL(request.url);
   const provider = searchParams.get("provider") ?? "openalex-sources";
   const rawQuery = searchParams.get("q") ?? searchParams.get("topic") ?? "";
-  const limitRaw = Number(searchParams.get("limit") ?? 4);
-  const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(10, Math.round(limitRaw))) : 4;
+  const limit = clampIntParam(searchParams.get("limit"), 4, 1, 10);
 
   const check = validateAndSanitizeInput(rawQuery, 200);
   if (!check.allowed || !check.sanitizedText.trim()) {

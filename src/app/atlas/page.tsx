@@ -21,6 +21,11 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import { COUNTRIES_DATA } from "@/lib/data/global-intelligence";
+import {
+  WORLD_COUNTRIES_CATALOG,
+  buildPlaceholderCountryProfile,
+} from "@/lib/data/world-catalog";
+import { formatSignedPct, formatSignedValue } from "@/lib/formatters";
 import { InteractiveGlobe3D } from "@/components/globe/InteractiveGlobe3D";
 import { CountrySolarClockBadge } from "@/components/solar/SolarBadges";
 import { HistoricalTrajectoryChart } from "@/components/charts/OmnisCharts";
@@ -49,44 +54,84 @@ function GlobalAtlasContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlCountryParam = searchParams.get("country")?.trim().toUpperCase() || "";
+  const urlCompareParam = searchParams.get("compare")?.trim().toUpperCase() || "";
+  const urlLayerParam = searchParams.get("layer")?.trim().toLowerCase() || "";
+  const isValidLayer = (val: string): val is IntelligenceLayerId =>
+    LAYERS.some((layer) => layer.id === val);
 
   const [selectedIso3, setSelectedIso3] = useState(
     /^[A-Z]{3}$/.test(urlCountryParam) ? urlCountryParam : "IND"
   );
-  const [compareIso3, setCompareIso3] = useState("CHN");
+  const [compareIso3, setCompareIso3] = useState(
+    /^[A-Z]{3}$/.test(urlCompareParam) && urlCompareParam !== urlCountryParam
+      ? urlCompareParam
+      : "CHN"
+  );
+  const [activeLayer, setActiveLayer] = useState<IntelligenceLayerId>(
+    isValidLayer(urlLayerParam) ? urlLayerParam : "economics"
+  );
 
   useEffect(() => {
     if (/^[A-Z]{3}$/.test(urlCountryParam)) {
       setSelectedIso3(urlCountryParam);
     }
-  }, [urlCountryParam]);
-  const [activeLayer, setActiveLayer] = useState<IntelligenceLayerId>("economics");
+    if (/^[A-Z]{3}$/.test(urlCompareParam) && urlCompareParam !== urlCountryParam) {
+      setCompareIso3(urlCompareParam);
+    }
+    if (isValidLayer(urlLayerParam)) {
+      setActiveLayer(urlLayerParam);
+    }
+  }, [urlCountryParam, urlCompareParam, urlLayerParam]);
+
   const [hydratedCountries, setHydratedCountries] = useState<
     Record<string, CountryIntelligenceProfile>
   >({});
   const hydratedRef = useRef<Record<string, CountryIntelligenceProfile>>({});
   const [liveProfile, setLiveProfile] = useState<CountryIntelligenceProfile | null>(null);
-  const [countryLookupStatus, setCountryLookupStatus] = useState<"idle" | "loading" | "missing">("idle");
+  const [countryLookupStatus, setCountryLookupStatus] = useState<
+    "idle" | "loading" | "missing" | "error"
+  >("idle");
   const [savedNotice, setSavedNotice] = useState(false);
 
-  const { addWorkspaceItem, setActiveContext } = useOmnisStore();
+  const { addWorkspaceItem, setActiveContext, setFocusedSignal } = useOmnisStore();
 
-  const countriesList = useMemo(
-    () => Object.values({ ...COUNTRIES_DATA, ...hydratedCountries }),
-    [hydratedCountries]
+  const resolvedCountry = useMemo(
+    () =>
+      (liveProfile && liveProfile.iso3 === selectedIso3 ? liveProfile : null) ??
+      COUNTRIES_DATA[selectedIso3] ??
+      hydratedCountries[selectedIso3] ??
+      buildPlaceholderCountryProfile(selectedIso3) ??
+      null,
+    [liveProfile, selectedIso3, hydratedCountries]
   );
-  const resolvedCountry =
-    (liveProfile && liveProfile.iso3 === selectedIso3 ? liveProfile : null) ??
-    COUNTRIES_DATA[selectedIso3] ??
-    hydratedCountries[selectedIso3] ??
-    null;
   const country = resolvedCountry ?? COUNTRIES_DATA.IND;
-  const compareCountry =
-    COUNTRIES_DATA[compareIso3] ?? hydratedCountries[compareIso3] ?? COUNTRIES_DATA.CHN;
+  const compareCountry = useMemo(
+    () =>
+      COUNTRIES_DATA[compareIso3] ??
+      hydratedCountries[compareIso3] ??
+      buildPlaceholderCountryProfile(compareIso3) ??
+      COUNTRIES_DATA.CHN,
+    [compareIso3, hydratedCountries]
+  );
+
+  const countriesList = useMemo(() => {
+    const merged: Record<string, CountryIntelligenceProfile> = {
+      ...COUNTRIES_DATA,
+      ...hydratedCountries,
+    };
+    if (resolvedCountry && !merged[resolvedCountry.iso3]) {
+      merged[resolvedCountry.iso3] = resolvedCountry;
+    }
+    if (compareCountry && !merged[compareCountry.iso3]) {
+      merged[compareCountry.iso3] = compareCountry;
+    }
+    return Object.values(merged);
+  }, [hydratedCountries, resolvedCountry, compareCountry]);
 
   useEffect(() => {
     setActiveContext("Global Atlas & Country Intelligence", `${country.name} (${country.iso3})`);
-  }, [country.name, country.iso3, setActiveContext]);
+    setFocusedSignal({ iso3: country.iso3, topic: country.name });
+  }, [country.name, country.iso3, setActiveContext, setFocusedSignal]);
 
   useEffect(() => {
     const cached = hydratedRef.current[selectedIso3];
@@ -104,19 +149,28 @@ function GlobalAtlasContent() {
           if (!cancelled) setCountryLookupStatus("missing");
           return null;
         }
-        return r.ok ? r.json() : null;
+        if (!r.ok) {
+          if (!cancelled) {
+            setCountryLookupStatus(COUNTRIES_DATA[selectedIso3] ? "idle" : "error");
+          }
+          return null;
+        }
+        return r.json();
       })
       .then((data: CountryIntelligenceProfile | null) => {
-        if (!cancelled && data && data.iso3 === selectedIso3) {
+        if (cancelled) return;
+        if (data && data.iso3 === selectedIso3) {
           hydratedRef.current[selectedIso3] = data;
           setLiveProfile(data);
           setHydratedCountries((prev) => ({ ...prev, [selectedIso3]: data }));
           setCountryLookupStatus("idle");
+        } else {
+          setCountryLookupStatus((prev) => (prev === "loading" ? "error" : prev));
         }
       })
       .catch(() => {
         if (!cancelled && !COUNTRIES_DATA[selectedIso3] && !hydratedRef.current[selectedIso3]) {
-          setCountryLookupStatus("missing");
+          setCountryLookupStatus("error");
         }
       });
     return () => {
@@ -141,20 +195,41 @@ function GlobalAtlasContent() {
     };
   }, [compareIso3]);
 
+  const syncAtlasUrl = (nextCountry: string, nextLayer: IntelligenceLayerId, nextCompare: string) => {
+    const params = new URLSearchParams({
+      country: nextCountry,
+      layer: nextLayer,
+      compare: nextCompare,
+    });
+    router.replace(`/atlas?${params.toString()}`, { scroll: false });
+  };
+
   const selectCountry = (iso: string) => {
     const nextIso = iso.trim().toUpperCase();
+    const nextCompare = nextIso === compareIso3 ? (nextIso === "IND" ? "CHN" : "IND") : compareIso3;
     setSelectedIso3(nextIso);
-    if (nextIso === compareIso3) {
-      setCompareIso3(nextIso === "IND" ? "CHN" : "IND");
+    if (nextCompare !== compareIso3) {
+      setCompareIso3(nextCompare);
     }
-    router.replace(`/atlas?country=${encodeURIComponent(nextIso)}`, { scroll: false });
+    syncAtlasUrl(nextIso, activeLayer, nextCompare);
+  };
+
+  const handleLayerChange = (nextLayer: IntelligenceLayerId) => {
+    setActiveLayer(nextLayer);
+    syncAtlasUrl(selectedIso3, nextLayer, compareIso3);
+  };
+
+  const handleCompareChange = (nextCompareIso: string) => {
+    const nextCompare = nextCompareIso.trim().toUpperCase();
+    setCompareIso3(nextCompare);
+    syncAtlasUrl(selectedIso3, activeLayer, nextCompare);
   };
 
   const handleSaveCountry = () => {
     addWorkspaceItem({
       type: "country",
       title: `${country.name} (${country.iso3}) — Country Intelligence Dossier`,
-      subtitle: `GDP $${country.gdpUsdBn}B • Growth +${country.gdpGrowthPct}% • Clean Grid ${country.energyProfile.renewableSharePct}%`,
+      subtitle: `GDP $${country.gdpUsdBn}B • Growth ${formatSignedPct(country.gdpGrowthPct)} • Clean Grid ${country.energyProfile.renewableSharePct}%`,
       folder: "Geopolitics & Macro",
       tags: [country.name, country.iso3, country.region, "World Bank"],
       href: `/atlas?country=${country.iso3}`,
@@ -218,7 +293,7 @@ function GlobalAtlasContent() {
               ariaLabel="Analytical Intelligence Lens"
               size="sm"
               value={activeLayer}
-              onChange={(val) => setActiveLayer(val as IntelligenceLayerId)}
+              onChange={(val) => handleLayerChange(val as IntelligenceLayerId)}
               options={LAYERS.map((layer) => ({
                 value: layer.id,
                 label: layer.label,
@@ -246,7 +321,13 @@ function GlobalAtlasContent() {
 
       {countryLookupStatus === "missing" && (
         <div className="px-4 py-2.5 rounded-xl badge-tone-warning text-[13px] omnis-mono">
-          No federated sovereign profile resolved for &ldquo;{selectedIso3}&rdquo; (HTTP 404). Showing curated {country.name} ({country.iso3}) reference dossier below.
+          No federated sovereign profile resolved for &ldquo;{selectedIso3}&rdquo; (HTTP 404). Showing sovereign placeholder coordinates &amp; telemetry shell below.
+        </div>
+      )}
+
+      {countryLookupStatus === "error" && (
+        <div className="px-4 py-2.5 rounded-xl badge-tone-warning text-[13px] omnis-mono">
+          Live upstream World Bank / REST Countries fetch timed out or rate-limited for {selectedIso3}. Displaying sovereign placeholder frame without fabricated indicators.
         </div>
       )}
 
@@ -312,8 +393,12 @@ function GlobalAtlasContent() {
               </div>
               <div className="flex items-baseline justify-between py-1.5 gap-2">
                 <span className="text-[var(--text-muted)]">Real GDP Growth</span>
-                <span className="font-bold omnis-mono omnis-tabular tone-verified">
-                  +{country.gdpGrowthPct}% / yr
+                <span
+                  className={`font-bold omnis-mono omnis-tabular ${
+                    country.gdpGrowthPct >= 0 ? "tone-verified" : "tone-warning"
+                  }`}
+                >
+                  {formatSignedPct(country.gdpGrowthPct)} / yr
                 </span>
               </div>
               <div className="flex items-baseline justify-between py-1.5 gap-2">
@@ -417,7 +502,8 @@ function GlobalAtlasContent() {
               <div className="flex items-baseline justify-between py-1.5 gap-2">
                 <span className="text-[var(--text-muted)]">Forest / PM2.5 / Temp</span>
                 <span className="font-semibold omnis-mono omnis-tabular tone-warning">
-                  {country.environmentProfile.forestCoveragePct}% • +{country.environmentProfile.tempAnomalyC}°C
+                  {country.environmentProfile.forestCoveragePct}% •{" "}
+                  {formatSignedValue(country.environmentProfile.tempAnomalyC, "°C")}
                 </span>
               </div>
             </div>
@@ -570,16 +656,16 @@ function GlobalAtlasContent() {
                 </Link>
                 <OmnisSelect
                   value={compareIso3}
-                  onChange={setCompareIso3}
+                  onChange={handleCompareChange}
                   ariaLabel="Select Comparison Country"
                   menuAlign="right"
-                  options={countriesList
-                    .filter((c) => c.iso3 !== country.iso3)
-                    .map((c) => ({
+                  options={WORLD_COUNTRIES_CATALOG.filter((c) => c.iso3 !== country.iso3).map(
+                    (c) => ({
                       value: c.iso3,
                       label: `${c.flagEmoji} ${c.name} (${c.iso3})`,
-                      hint: c.region,
-                    }))}
+                      hint: c.curated ? `${c.region} • Curated` : `${c.region} • Live WDI`,
+                    })
+                  )}
                 />
               </div>
             </div>
@@ -610,8 +696,20 @@ function GlobalAtlasContent() {
                   </tr>
                   <tr>
                     <td className="py-2.5 font-sans text-[var(--text-secondary)]">Real GDP Growth</td>
-                    <td className="py-2.5 tone-verified font-semibold">+{country.gdpGrowthPct}%</td>
-                    <td className="py-2.5 tone-verified font-semibold">+{compareCountry.gdpGrowthPct}%</td>
+                    <td
+                      className={`py-2.5 font-semibold ${
+                        country.gdpGrowthPct >= 0 ? "tone-verified" : "tone-warning"
+                      }`}
+                    >
+                      {formatSignedPct(country.gdpGrowthPct)}
+                    </td>
+                    <td
+                      className={`py-2.5 font-semibold ${
+                        compareCountry.gdpGrowthPct >= 0 ? "tone-verified" : "tone-warning"
+                      }`}
+                    >
+                      {formatSignedPct(compareCountry.gdpGrowthPct)}
+                    </td>
                   </tr>
                   <tr>
                     <td className="py-2.5 font-sans text-[var(--text-secondary)]">Renewable Grid Share</td>

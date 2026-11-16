@@ -69,7 +69,7 @@ function CopyTexButton({ latex }: { latex: string }) {
       type="button"
       onClick={handleCopy}
       aria-label="Copy LaTeX expression"
-      className={`inline-flex items-center gap-1 px-2.5 py-0.5 min-h-[26px] rounded border text-xs omnis-mono font-medium transition-colors cursor-pointer shrink-0 ${
+      className={`inline-flex items-center gap-1 px-3 sm:px-2.5 py-0.5 min-h-[44px] sm:min-h-[28px] rounded border text-xs omnis-mono font-medium transition-colors cursor-pointer shrink-0 ${
         copied
           ? "badge-tone-verified"
           : "border-[var(--border-subtle)] bg-[var(--bg-graphite)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]"

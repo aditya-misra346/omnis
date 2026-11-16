@@ -4,11 +4,35 @@ import {
   TIMELINE_EVENTS,
 } from "@/lib/data/global-intelligence";
 import {
+  WORLD_COUNTRIES_CATALOG,
+  buildPlaceholderCountryProfile,
+} from "@/lib/data/world-catalog";
+import { formatSignedPct } from "@/lib/formatters";
+import {
   fetchOpenAlexPublicationTrend,
   fetchOpenAlexSources,
   fetchWikimediaSummary,
 } from "@/lib/providers/live-data";
-import type { ResearchMode, ResearchReportData, ResearchSourceItem } from "@/types/omnis";
+import type {
+  CountryIntelligenceProfile,
+  ResearchMode,
+  ResearchReportData,
+  ResearchSourceItem,
+} from "@/types/omnis";
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function matchesCountryMention(rawQuery: string, name: string, iso3: string): boolean {
+  const nameRegex = new RegExp(`\\b${escapeRegExp(name)}\\b`, "i");
+  if (nameRegex.test(rawQuery)) return true;
+  const trimmed = rawQuery.trim();
+  if (trimmed.toUpperCase() === iso3) return true;
+  // Require uppercase token for ISO3 codes so common words ("can", "are", "nor", "ind") never false-trigger
+  const isoRegex = new RegExp(`\\b${escapeRegExp(iso3)}\\b`);
+  return isoRegex.test(rawQuery);
+}
 
 export type QueryIntent =
   | "country_intelligence"
@@ -25,19 +49,20 @@ export function classifyQueryIntent(query: string): {
   suggestedModule: string;
 } {
   const q = query.toLowerCase();
-  const detected: string[] = [];
+  const detected: { name: string; iso3: string }[] = [];
 
-  for (const c of Object.values(COUNTRIES_DATA)) {
-    if (q.includes(c.name.toLowerCase()) || q.includes(c.iso3.toLowerCase())) {
-      detected.push(c.name);
+  for (const entry of WORLD_COUNTRIES_CATALOG) {
+    if (matchesCountryMention(query, entry.name, entry.iso3)) {
+      detected.push({ name: entry.name, iso3: entry.iso3 });
     }
   }
+  const detectedNames = detected.map((d) => d.name);
 
   if (q.includes("compare") || q.includes(" vs ") || q.includes("versus") || detected.length >= 2) {
     return {
       intent: "comparative_analysis",
       confidence: 0.96,
-      detectedEntities: detected.length ? detected : ["India", "China"],
+      detectedEntities: detectedNames.length ? detectedNames : ["India", "China"],
       suggestedModule: "/intelligence",
     };
   }
@@ -45,7 +70,7 @@ export function classifyQueryIntent(query: string): {
     return {
       intent: "scenario_simulation",
       confidence: 0.94,
-      detectedEntities: detected,
+      detectedEntities: detectedNames,
       suggestedModule: "/simulations",
     };
   }
@@ -53,7 +78,7 @@ export function classifyQueryIntent(query: string): {
     return {
       intent: "historical_evolution",
       confidence: 0.93,
-      detectedEntities: detected,
+      detectedEntities: detectedNames,
       suggestedModule: "/timeline",
     };
   }
@@ -61,7 +86,7 @@ export function classifyQueryIntent(query: string): {
     return {
       intent: "causal_knowledge_graph",
       confidence: 0.92,
-      detectedEntities: detected,
+      detectedEntities: detectedNames,
       suggestedModule: "/knowledge-graph",
     };
   }
@@ -69,16 +94,14 @@ export function classifyQueryIntent(query: string): {
     return {
       intent: "country_intelligence",
       confidence: 0.95,
-      detectedEntities: detected,
-      suggestedModule: `/atlas?country=${
-        Object.values(COUNTRIES_DATA).find((c) => c.name === detected[0])?.iso3 ?? "IND"
-      }`,
+      detectedEntities: detectedNames,
+      suggestedModule: `/atlas?country=${detected[0].iso3}`,
     };
   }
   return {
     intent: "scientific_economic_research",
     confidence: 0.91,
-    detectedEntities: detected,
+    detectedEntities: detectedNames,
     suggestedModule: "/research",
   };
 }
@@ -173,18 +196,26 @@ export function executeUniversalSearch(
   const cleanQuery = query.trim();
   const classification = classifyQueryIntent(cleanQuery);
 
-  const scoredCountries = Object.values(COUNTRIES_DATA)
-    .map((c) => ({
-      item: c,
-      score: scoreTypoTolerantMatch(
-        `${c.name} ${c.officialName} ${c.capital} ${c.region} ${c.majorIndustries.join(" ")} ${
-          c.historicalMilestones.map((m) => `${m.year} ${m.title}`).join(" ")
-        }`,
-        cleanQuery
-      ),
-    }))
-    .filter((x) => x.score > 0)
-    .sort((a, b) => b.score - a.score)
+  const scoredCountries = WORLD_COUNTRIES_CATALOG.map((entry) => {
+    const curated = COUNTRIES_DATA[entry.iso3];
+    const searchBlob = curated
+      ? `${curated.name} ${curated.officialName} ${curated.iso3} ${curated.capital} ${curated.region} ${curated.majorIndustries.join(" ")} ${
+          curated.historicalMilestones.map((m) => `${m.year} ${m.title}`).join(" ")
+        }`
+      : `${entry.name} ${entry.iso3} ${entry.iso2} ${entry.region}`;
+    const rawScore = scoreTypoTolerantMatch(searchBlob, cleanQuery);
+    const profile: CountryIntelligenceProfile | null =
+      curated ?? (rawScore > 0 ? buildPlaceholderCountryProfile(entry.iso3) : null);
+    return {
+      item: profile,
+      curated: Boolean(curated),
+      score: rawScore,
+    };
+  })
+    .filter((x): x is { item: CountryIntelligenceProfile; curated: boolean; score: number } =>
+      Boolean(x.item && x.score > 0)
+    )
+    .sort((a, b) => (b.score !== a.score ? b.score - a.score : Number(b.curated) - Number(a.curated)))
     .map((x) => x.item);
 
   const baseCountries =
@@ -345,10 +376,8 @@ export async function orchestrateDeepResearch(
         wikiSummary ? ` Context: ${wikiSummary.extract}` : ""
       }`;
 
-  const matchedCountries = Object.values(COUNTRIES_DATA).filter(
-    (c) =>
-      lowerQuery.includes(c.name.toLowerCase()) ||
-      lowerQuery.includes(c.iso3.toLowerCase())
+  const matchedCountries = Object.values(COUNTRIES_DATA).filter((c) =>
+    matchesCountryMention(cleanQuery, c.name, c.iso3)
   );
   const leadCountry = matchedCountries[0];
   const compareCountry = matchedCountries[1];
@@ -434,9 +463,9 @@ export async function orchestrateDeepResearch(
   const visualisationSeries: ResearchReportData["visualisationSeries"] = leadCountry
     ? {
         title: compareCountry
-          ? `${leadCountry.name} vs ${compareCountry.name} Historical Real Growth (%)`
+          ? `${leadCountry.name} vs ${compareCountry.name} Nominal GDP Trajectory ($B)`
           : `${leadCountry.name} Historical Nominal GDP ($B, 1991–2026)`,
-        unit: compareCountry ? "GDP ($B)" : "GDP ($B)",
+        unit: "GDP ($B)",
         source: "World Bank Development Indicators (Country Dossier Series)",
         data: leadCountry.historicalSeries.map((pt) => {
           const matchPeer = compareCountry?.historicalSeries.find((p) => p.year === pt.year);
@@ -502,7 +531,7 @@ export async function orchestrateDeepResearch(
         ? `Retrieved ${openAlexSources.length} peer-reviewed OpenAlex records directly matching "${cleanQuery}" (earliest/top cited: ${openAlexSources[0].publishedDate}).`
         : `No live OpenAlex works returned within timeout for "${cleanQuery}"; relying strictly on curated sovereign datasets without fabricated citations.`,
       leadCountry
-        ? `${leadCountry.name} nominal GDP stands at $${leadCountry.gdpUsdBn.toLocaleString()}B (+${leadCountry.gdpGrowthPct}% real growth), with ${leadCountry.energyProfile.renewableSharePct}% clean electricity generation.`
+        ? `${leadCountry.name} nominal GDP stands at $${leadCountry.gdpUsdBn.toLocaleString()}B (${formatSignedPct(leadCountry.gdpGrowthPct)} real growth), with ${leadCountry.energyProfile.renewableSharePct}% clean electricity generation.`
         : "Physical infrastructure capacity (grid transmission, wafer lithography, skilled cohorts) constrains aggregate productivity diffusion.",
       "Macro-econometric national accounts frequently exhibit 3–5 year structural adjustment lags between R&D investment and total factor productivity gains.",
       "Model uncertainty bands and forward-looking scenarios are isolated strictly from measured historical observations.",

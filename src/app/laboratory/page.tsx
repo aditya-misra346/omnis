@@ -194,6 +194,30 @@ function LaboratoryContent() {
   const [hoverTrussPanel, setHoverTrussPanel] = useState<number | null>(null);
   const [interactiveReadout, setInteractiveReadout] = useState<string | null>(null);
   const [manualDrawTick, setManualDrawTick] = useState(0);
+  const labLiveRef = useRef({
+    activeId,
+    p1,
+    p2,
+    p3,
+    running,
+    motionPaused,
+    theme,
+    canvasSize,
+    activeTrussPanel,
+    hoverTrussPanel,
+  });
+  labLiveRef.current = {
+    activeId,
+    p1,
+    p2,
+    p3,
+    running,
+    motionPaused,
+    theme,
+    canvasSize,
+    activeTrussPanel,
+    hoverTrussPanel,
+  };
 
   useEffect(() => {
     const el = canvasRef.current;
@@ -321,38 +345,55 @@ function LaboratoryContent() {
     link.click();
   };
 
-  // Real-time interactive High-DPI & Dual-Theme Canvas Solver Loop (Motion-Paused Safe)
+  // Dedicated backing-store HiDPI resize effect (prevents GPU texture thrashing during slider drags & hovers)
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const W = canvasSize.width;
+    const H = canvasSize.height;
+    const dpr = Math.min(window.devicePixelRatio || 1, W < 640 ? 1.5 : 2);
+    const targetW = Math.round(W * dpr);
+    const targetH = Math.round(H * dpr);
+    if (canvas.width !== targetW || canvas.height !== targetH) {
+      canvas.width = targetW;
+      canvas.height = targetH;
+    }
+  }, [canvasSize]);
+
+  // Real-time interactive High-DPI & Dual-Theme Canvas Solver Loop (reads parameters via ref to avoid rAF restart)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const isLight = theme === "light";
-    const W = canvasSize.width;
-    const H = canvasSize.height;
-    const dpr = Math.min(window.devicePixelRatio || 1, W < 640 ? 1.5 : 2);
-    canvas.width = W * dpr;
-    canvas.height = H * dpr;
-
-    const palette = {
-      bg: isLight ? "#FAF8F5" : "#05070C",
-      grid: isLight ? "rgba(15, 23, 42, 0.08)" : "rgba(148, 163, 184, 0.11)",
-      ink: isLight ? "#0F172A" : "#F8FAFC",
-      muted: isLight ? "#475569" : "#94A3B8",
-      blue: isLight ? "#1D4ED8" : "#3B82F6",
-      cyan: isLight ? "#0284C7" : "#38BDF8",
-      emerald: isLight ? "#059669" : "#10B981",
-      amber: isLight ? "#B45309" : "#F59E0B",
-      danger: isLight ? "#DC2626" : "#EF4444",
-      rod: isLight ? "#334155" : "#94A3B8",
-    };
-
-    const isAnimating = running && !motionPaused && !pendulumRef.current.dragging && !orbitDraggingRef.current;
+    const isContinuous = activeId === "physics" || activeId === "space";
     let frameId = 0;
     let lastFrameTime = performance.now();
 
     const render = (now: number = performance.now()) => {
+      const snap = labLiveRef.current;
+      const isLight = snap.theme === "light";
+      const W = snap.canvasSize.width;
+      const H = snap.canvasSize.height;
+      const dpr = Math.min(window.devicePixelRatio || 1, W < 640 ? 1.5 : 2);
+
+      const palette = {
+        bg: isLight ? "#FAF8F5" : "#05070C",
+        grid: isLight ? "rgba(15, 23, 42, 0.08)" : "rgba(148, 163, 184, 0.11)",
+        ink: isLight ? "#0F172A" : "#F8FAFC",
+        muted: isLight ? "#475569" : "#94A3B8",
+        blue: isLight ? "#1D4ED8" : "#3B82F6",
+        cyan: isLight ? "#0284C7" : "#38BDF8",
+        emerald: isLight ? "#059669" : "#10B981",
+        amber: isLight ? "#B45309" : "#F59E0B",
+        danger: isLight ? "#DC2626" : "#EF4444",
+        rod: isLight ? "#334155" : "#94A3B8",
+      };
+
+      const isAnimating =
+        snap.running && !snap.motionPaused && !pendulumRef.current.dragging && !orbitDraggingRef.current;
+      const { p1: curP1, p2: curP2, p3: curP3 } = snap;
       const dt = Math.min(0.033, Math.max(0.001, (now - lastFrameTime) / 1000)) * 60;
       lastFrameTime = now;
       if (isAnimating) simTimeRef.current += 0.025 * dt;
@@ -378,16 +419,18 @@ function LaboratoryContent() {
         ctx.stroke();
       }
 
-      if (activeId === "physics") {
+      if (snap.activeId === "physics") {
         if (isAnimating) {
-          const alpha = -(p1 / p2) * Math.sin(pendulumRef.current.theta) - p3 * pendulumRef.current.omega;
+          const alpha =
+            -(curP1 / curP2) * Math.sin(pendulumRef.current.theta) -
+            curP3 * pendulumRef.current.omega;
           pendulumRef.current.omega += alpha * (0.035 * dt);
           pendulumRef.current.theta += pendulumRef.current.omega * (0.035 * dt);
         }
         const theta = pendulumRef.current.theta;
         const pivotX = W * 0.28;
         const pivotY = 56;
-        const rodPx = Math.min(200, p2 * 52);
+        const rodPx = Math.min(200, curP2 * 52);
         const bobX = pivotX + rodPx * Math.sin(theta);
         const bobY = pivotY + rodPx * Math.cos(theta);
 
@@ -439,9 +482,9 @@ function LaboratoryContent() {
           const wx = W * 0.52 + i;
           const wy =
             H / 2 +
-            Math.sin(t * Math.sqrt(p1 / p2) - i * 0.04) *
+            Math.sin(t * Math.sqrt(curP1 / curP2) - i * 0.04) *
               68 *
-              Math.exp(-p3 * (i / 90));
+              Math.exp(-curP3 * (i / 90));
           if (i === 0) ctx.moveTo(wx, wy);
           else ctx.lineTo(wx, wy);
         }
@@ -451,11 +494,11 @@ function LaboratoryContent() {
         ctx.font = "600 12.5px monospace";
         const waveLabelX = Math.min(W * 0.5, Math.max(16, W - 400));
         ctx.fillText("Oscillatory Phase-Wave Envelope (Drag bob to set θ)", waveLabelX, 34, W - waveLabelX - 16);
-      } else if (activeId === "space") {
+      } else if (snap.activeId === "space") {
         const cx = W / 2 + 28;
         const cy = H / 2;
-        const aPx = p3 * 95;
-        const e = p2;
+        const aPx = curP3 * 95;
+        const e = curP2;
         const bPx = aPx * Math.sqrt(1 - e * e);
         const cFocus = aPx * e;
 
@@ -471,11 +514,11 @@ function LaboratoryContent() {
         const starY = cy;
         ctx.fillStyle = palette.amber;
         ctx.beginPath();
-        ctx.arc(starX, starY, 13 + p1 * 4, 0, Math.PI * 2);
+        ctx.arc(starX, starY, 13 + curP1 * 4, 0, Math.PI * 2);
         ctx.fill();
 
         // Orbiting planet
-        const angularSpeed = Math.sqrt(p1 / Math.pow(p3, 3)) * 1.4;
+        const angularSpeed = Math.sqrt(curP1 / Math.pow(curP3, 3)) * 1.4;
         const angle = t * angularSpeed;
         const px = cx + aPx * Math.cos(angle);
         const py = cy + bPx * Math.sin(angle);
@@ -492,17 +535,17 @@ function LaboratoryContent() {
         ctx.arc(px, py, 10, 0, Math.PI * 2);
         ctx.fill();
 
-        const peri = (p3 * (1 - p2)).toFixed(2);
-        const apo = (p3 * (1 + p2)).toFixed(2);
+        const peri = (curP3 * (1 - curP2)).toFixed(2);
+        const apo = (curP3 * (1 + curP2)).toFixed(2);
         ctx.fillStyle = palette.muted;
         ctx.font = "600 12.5px monospace";
-        ctx.fillText(`Focus Star (${p1.toFixed(1)} M☉)`, Math.max(16, starX - 48), starY + 36, W - 32);
+        ctx.fillText(`Focus Star (${curP1.toFixed(1)} M☉)`, Math.max(16, starX - 48), starY + 36, W - 32);
         ctx.fillText(`Periapsis: ${peri} AU  |  Apoapsis: ${apo} AU  |  Drag orbit to reshape a/e`, 20, 28, W - 40);
-      } else if (activeId === "chemistry") {
+      } else if (snap.activeId === "chemistry") {
         const cx = W / 2;
         const cy = H / 2 - 18;
-        const halfRad = ((p1 / 2) * Math.PI) / 180;
-        const vib = Math.sin(t * 6) * (p2 / 120);
+        const halfRad = ((curP1 / 2) * Math.PI) / 180;
+        const vib = Math.sin(t * 6) * (curP2 / 120);
         const bondLen = 115 + vib;
 
         const h1x = cx - bondLen * Math.sin(halfRad);
@@ -538,22 +581,26 @@ function LaboratoryContent() {
 
         ctx.fillStyle = palette.ink;
         ctx.font = "700 14px monospace";
-        ctx.fillText(`θ = ${p1.toFixed(1)}°`, cx - 34, cy + 74);
-      } else if (activeId === "biology") {
+        ctx.fillText(`θ = ${curP1.toFixed(1)}°`, cx - 34, cy + 74);
+      } else if (snap.activeId === "biology") {
         ctx.lineWidth = 2.6;
         let prey = 40;
         let pred = 15;
         const dt = 0.04;
         const preyPts: [number, number][] = [];
         const predPts: [number, number][] = [];
+        const plotTop = W < 450 ? 64 : 46;
+        const plotBot = H - 28;
+        const plotSpan = Math.max(80, plotBot - plotTop);
+
         for (let i = 0; i < 260; i++) {
-          const dPrey = p1 * prey - p2 * 0.05 * prey * pred;
-          const dPred = 0.02 * p2 * prey * pred - p3 * pred;
+          const dPrey = curP1 * prey - curP2 * 0.05 * prey * pred;
+          const dPred = 0.02 * curP2 * prey * pred - curP3 * pred;
           prey = Math.max(2, Math.min(120, prey + dPrey * dt));
           pred = Math.max(2, Math.min(120, pred + dPred * dt));
-          const x = 44 + (i / 260) * (W - 88);
-          preyPts.push([x, H - 35 - prey * 2.0]);
-          predPts.push([x, H - 35 - pred * 2.0]);
+          const x = 36 + (i / 260) * Math.max(120, W - 72);
+          preyPts.push([x, plotBot - (prey / 120) * plotSpan]);
+          predPts.push([x, plotBot - (pred / 120) * plotSpan]);
         }
 
         ctx.strokeStyle = palette.emerald;
@@ -568,52 +615,56 @@ function LaboratoryContent() {
 
         ctx.font = "600 13px monospace";
         ctx.fillStyle = palette.emerald;
-        ctx.fillText("● Prey Population (x)", 28, 28);
+        ctx.fillText("● Prey Population (x)", 24, 28);
         ctx.fillStyle = palette.amber;
         if (W < 450) {
-          ctx.fillText("● Predator Population (y)", 28, 48, W - 48);
+          ctx.fillText("● Predator Population (y)", 24, 48, W - 44);
         } else {
           ctx.fillText("● Predator Population (y)", 224, 28, W - 240);
         }
-      } else if (activeId === "climate") {
-        const forcing = 5.35 * Math.log(p1 / 280);
-        const eqTempC = 14.0 + forcing * 0.8 - (p2 - 0.3) * 85 + (p3 - 1361) * 0.07;
+      } else if (snap.activeId === "climate") {
+        const forcing = 5.35 * Math.log(curP1 / 280);
+        const eqTempC = 14.0 + forcing * 0.8 - (curP2 - 0.3) * 85 + (curP3 - 1361) * 0.07;
 
+        const oceanH = Math.round(H * 0.2);
+        const airTop = Math.max(66, Math.round(H * 0.36));
         ctx.fillStyle = eqTempC > 16 ? "#b45309" : "#1d4ed8";
-        ctx.fillRect(0, H - 64, W, 64);
+        ctx.fillRect(0, H - oceanH, W, oceanH);
 
         ctx.strokeStyle = palette.amber;
         ctx.lineWidth = 3;
-        for (let i = 0; i < 5; i++) {
-          const sx = 80 + i * 130;
+        const beamCount = W < 440 ? 4 : 5;
+        for (let i = 0; i < beamCount; i++) {
+          const sx = ((i + 0.65) / (beamCount + 0.3)) * W;
           ctx.beginPath();
-          ctx.moveTo(sx, 72);
-          ctx.lineTo(sx + 28, H - 74);
+          ctx.moveTo(sx, airTop);
+          ctx.lineTo(Math.min(W - 18, sx + 24), H - oceanH - 10);
           ctx.stroke();
         }
 
-        ctx.fillStyle = `rgba(220, 38, 38, ${Math.min(0.42, Math.max(0.09, (p1 - 260) / 1400))})`;
-        ctx.fillRect(0, H - 165, W, 101);
+        ctx.fillStyle = `rgba(220, 38, 38, ${Math.min(0.42, Math.max(0.09, (curP1 - 260) / 1400))})`;
+        ctx.fillRect(0, airTop, W, H - oceanH - airTop);
 
         ctx.fillStyle = palette.ink;
-        ctx.font = "700 15px monospace";
+        ctx.font = W < 440 ? "700 13px monospace" : "700 15px monospace";
         ctx.fillText(
           `Equilibrium Global Mean Temp: ${eqTempC.toFixed(2)} °C  |  ΔF = +${forcing.toFixed(2)} W/m²`,
-          24,
-          44,
-          W - 48
+          20,
+          38,
+          W - 40
         );
       } else {
         // Pratt Truss Bridge Structural Analysis with interactive bay highlighting
-        const leftX = 72;
-        const rightX = W - 72;
+        const marginX = W < 440 ? 28 : 72;
+        const leftX = marginX;
+        const rightX = W - marginX;
         const baseY = H * 0.66;
-        const depthPx = p3 * 9;
-        const deflection = (p1 * Math.pow(p2, 2)) / (45000 * Math.pow(p3, 2));
+        const depthPx = curP3 * 9;
+        const deflection = (curP1 * Math.pow(curP2, 2)) / (45000 * Math.pow(curP3, 2));
 
         const panels = 6;
         const panelW = (rightX - leftX) / panels;
-        const focusedBay = hoverTrussPanel ?? activeTrussPanel;
+        const focusedBay = snap.hoverTrussPanel ?? snap.activeTrussPanel;
 
         for (let i = 0; i < panels; i++) {
           const x1 = leftX + i * panelW;
@@ -665,14 +716,26 @@ function LaboratoryContent() {
         }
       }
 
-      if (isAnimating) {
+      if (isAnimating && isContinuous) {
         frameId = requestAnimationFrame(render);
       }
     };
 
-    render();
+    if (isContinuous && running && !motionPaused && !pendulumRef.current.dragging && !orbitDraggingRef.current) {
+      frameId = requestAnimationFrame(render);
+    } else {
+      render();
+    }
     return () => cancelAnimationFrame(frameId);
-  }, [activeId, p1, p2, p3, running, motionPaused, theme, canvasSize, activeTrussPanel, hoverTrussPanel, manualDrawTick]);
+  }, [activeId, running, motionPaused, canvasSize, manualDrawTick]);
+
+  // Trigger a lightweight single canvas paint (without resizing bitmap) when parameters update in paused or discrete states
+  useEffect(() => {
+    const isContinuous = activeId === "physics" || activeId === "space";
+    if (!isContinuous || !running || motionPaused) {
+      setManualDrawTick((k) => k + 1);
+    }
+  }, [activeId, running, motionPaused, p1, p2, p3, theme, activeTrussPanel, hoverTrussPanel]);
 
   const handleCanvasPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -708,8 +771,9 @@ function LaboratoryContent() {
         `Adjusted Orbit: a = ${nextA.toFixed(1)} AU, e = ${nextE.toFixed(2)} (Peri ${(nextA * (1 - nextE)).toFixed(2)} AU / Apo ${(nextA * (1 + nextE)).toFixed(2)} AU)`
       );
     } else if (activeId === "engineering") {
-      const leftX = 72;
-      const rightX = canvasSize.width - 72;
+      const marginX = canvasSize.width < 440 ? 28 : 72;
+      const leftX = marginX;
+      const rightX = canvasSize.width - marginX;
       const panelW = (rightX - leftX) / 6;
       const bayIdx = Math.max(0, Math.min(5, Math.floor((cx - leftX) / Math.max(1, panelW))));
       setActiveTrussPanel(bayIdx);
@@ -747,8 +811,9 @@ function LaboratoryContent() {
         `Orbital Semi-Major Axis a = ${nextA.toFixed(1)} AU (Peri ${(nextA * (1 - p2)).toFixed(2)} AU)`
       );
     } else if (activeId === "engineering") {
-      const leftX = 72;
-      const rightX = canvasSize.width - 72;
+      const marginX = canvasSize.width < 440 ? 28 : 72;
+      const leftX = marginX;
+      const rightX = canvasSize.width - marginX;
       if (cx >= leftX && cx <= rightX) {
         const panelW = (rightX - leftX) / 6;
         const bayIdx = Math.max(0, Math.min(5, Math.floor((cx - leftX) / Math.max(1, panelW))));
@@ -839,7 +904,7 @@ function LaboratoryContent() {
       {/* Interactive Simulator + Controls */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Controls & Governing Equations */}
-        <div className="lg:col-span-4 omnis-card p-5 space-y-4">
+        <div className="lg:col-span-4 min-w-0 omnis-card p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
             <h2 className="text-[15px] font-bold text-[var(--text-primary)]">
               Experimental Parameters
@@ -848,7 +913,7 @@ function LaboratoryContent() {
               <button
                 type="button"
                 onClick={() => setRunning((r) => !r)}
-                className="p-2 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[var(--text-primary)] cursor-pointer"
+                className="min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px] flex items-center justify-center rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[var(--text-primary)] cursor-pointer"
                 title={running ? "Pause Simulation" : "Resume Simulation"}
                 aria-label={running ? "Pause Simulation" : "Resume Simulation"}
               >
@@ -861,7 +926,7 @@ function LaboratoryContent() {
                   setP2(exp.param2.defaultVal);
                   setP3(exp.param3.defaultVal);
                 }}
-                className="p-2 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[var(--text-primary)] cursor-pointer"
+                className="min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px] flex items-center justify-center rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[var(--text-primary)] cursor-pointer"
                 title="Reset Parameters"
                 aria-label="Reset Parameters"
               >
@@ -902,7 +967,7 @@ function LaboratoryContent() {
         </div>
 
         {/* Right Live Visualisation Canvas & Learning Context */}
-        <div className="lg:col-span-8 space-y-6">
+        <div className="lg:col-span-8 min-w-0 space-y-6">
           <div className="omnis-card p-5 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2 text-[12.5px] sm:text-[13px]">
               <span className="font-bold tone-blue uppercase tracking-wider omnis-mono">

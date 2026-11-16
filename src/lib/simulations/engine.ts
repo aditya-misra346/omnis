@@ -4,6 +4,7 @@ import {
   WORLD_CATALOG_BY_ISO3,
   WORLD_COUNTRIES_CATALOG,
 } from "@/lib/data/world-catalog";
+import { formatSignedPct, formatSignedValue } from "@/lib/formatters";
 import type {
   CountryIntelligenceProfile,
   SimulationCategory,
@@ -775,7 +776,7 @@ export function executeWhatIfSimulation(params: {
   const anchoredAssumptions = country
     ? [
         resolvedDynamicsPriors
-          ? `Anchored to ${country.officialName} (${country.iso3}): Real growth +${resolvedDynamicsPriors.gdpGrowthPct}%, Clean Grid ${resolvedDynamicsPriors.renewableSharePct}%, AI Index ${resolvedDynamicsPriors.aiReadinessIndex}, Temp Anomaly +${resolvedDynamicsPriors.tempAnomalyC}°C.`
+          ? `Anchored to ${country.officialName} (${country.iso3}): Real growth ${formatSignedPct(resolvedDynamicsPriors.gdpGrowthPct)}, Clean Grid ${resolvedDynamicsPriors.renewableSharePct}%, AI Index ${resolvedDynamicsPriors.aiReadinessIndex}, Temp Anomaly ${formatSignedValue(resolvedDynamicsPriors.tempAnomalyC, "°C")}.`
           : `Anchored to ${country.officialName} (${country.iso3}) structural baseline.`,
         ...spec.baselineAssumptions,
       ]

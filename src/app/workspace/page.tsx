@@ -193,14 +193,14 @@ export default function WorkspacePage() {
               ]}
             />
 
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)]">
+            <div className="w-full sm:w-48 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)]">
               <Search className="w-4 h-4 tone-blue shrink-0" />
               <input
                 type="text"
                 value={filterText}
                 onChange={(e) => setFilterText(e.target.value)}
                 placeholder="Search workspace..."
-                className="bg-transparent text-base sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none w-40"
+                className="w-full bg-transparent text-base md:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
               />
             </div>
           </div>
@@ -281,14 +281,14 @@ export default function WorkspacePage() {
               value={noteTitle}
               onChange={(e) => setNoteTitle(e.target.value)}
               placeholder="Note title or hypothesis..."
-              className="w-full px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-base sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-blue)]"
+              className="w-full px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-base md:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-blue)]"
             />
             <textarea
               rows={3}
               value={noteBody}
               onChange={(e) => setNoteBody(e.target.value)}
               placeholder="Observations, citations, or follow-up questions..."
-              className="w-full px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-base sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-blue)]"
+              className="w-full px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-base md:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-blue)]"
             />
             <OmnisSelect
               value={noteFolder}
@@ -318,7 +318,7 @@ export default function WorkspacePage() {
                 value={newFolderName}
                 onChange={(e) => setNewFolderName(e.target.value)}
                 placeholder="New folder name..."
-                className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-base sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-blue)]"
+                className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-base md:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-blue)]"
               />
               <OmnisButton
                 type="button"

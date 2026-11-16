@@ -51,7 +51,7 @@ const FLAGSHIP_MODULES = [
     tone: "badge-tone-blue",
     accentText: "tone-blue",
     description:
-      "Interactive 3D Earth with Natural Earth 110m vector projection, Fresnel atmospheric scatter, day/night city illumination, and 7 toggleable overlays.",
+      "Interactive 3D Earth with Survey-Aligned country boundaries, Fresnel atmospheric scatter, day/night city illumination, and 7 toggleable overlays.",
     metrics: "Curated Dossiers + Live World Bank & REST Countries",
   },
   {
@@ -112,7 +112,7 @@ const FLAGSHIP_MODULES = [
 ];
 
 const ARCHITECTURAL_NARRATIVE =
-  "Conventional search engines return fragmented links; generic chatbots return unverified prose. OMNIS transforms inquiry into source-traceable intelligence—uniting a 3D Natural Earth Atlas, Infinite Knowledge Graphs, Monte Carlo Scenario Simulations, Deep Research, and a Digital Scientific Laboratory with rigorous provenance.";
+  "Conventional search engines return fragmented links; generic chatbots return unverified prose. OMNIS transforms inquiry into source-traceable intelligence—uniting a Survey-Aligned 3D Global Atlas, Infinite Knowledge Graphs, Monte Carlo Scenario Simulations, Deep Research, and a Digital Scientific Laboratory with rigorous provenance.";
 
 const DISCIPLINES = [
   {
@@ -155,7 +155,7 @@ const DISCIPLINES = [
 
 export default function LandingPage() {
   const router = useRouter();
-  const { motionPaused, toggleMotionPaused } = useOmnisStore();
+  const { motionPaused, toggleMotionPaused, setFocusedSignal } = useOmnisStore();
   const [heroQuery, setHeroQuery] = useState("");
   const [builderOpen, setBuilderOpen] = useState(false);
   const [selectedIso3, setSelectedIso3] = useState("IND");
@@ -203,6 +203,10 @@ export default function LandingPage() {
     hydratingIso3 === selectedIso3 &&
     !COUNTRIES_DATA[selectedIso3] &&
     !hydratedCountries[selectedIso3];
+
+  useEffect(() => {
+    setFocusedSignal({ iso3: activeCountry.iso3, topic: activeCountry.name });
+  }, [activeCountry.iso3, activeCountry.name, setFocusedSignal]);
   const formattedCoords = `${Math.abs(activeCountry.lat).toFixed(2)}°${
     activeCountry.lat >= 0 ? "N" : "S"
   }, ${Math.abs(activeCountry.lng).toFixed(2)}°${activeCountry.lng >= 0 ? "E" : "W"}`;
@@ -301,8 +305,8 @@ export default function LandingPage() {
               />
               <p className="text-[17px] sm:text-[19px] text-[var(--text-secondary)] leading-[1.6] max-w-xl">
                 OMNIS transforms static walls of text into interactive, source-traceable global
-                intelligence—unifying a 3D Natural Earth Atlas, Infinite Knowledge Graphs, Monte
-                Carlo Scenario Simulations, Deep Research, and a Digital Scientific Laboratory.
+                intelligence—unifying a Survey-Aligned 3D Global Atlas, Infinite Knowledge Graphs,
+                Monte Carlo Scenario Simulations, Deep Research, and a Digital Scientific Laboratory.
               </p>
             </div>
 
@@ -319,7 +323,7 @@ export default function LandingPage() {
                     value={heroQuery}
                     onChange={(e) => setHeroQuery(e.target.value)}
                     placeholder="Ask anything: e.g., 'Explain India's economic development since 1991'"
-                    className="w-full bg-transparent text-base sm:text-[15px] focus:outline-none text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                    className="w-full bg-transparent text-base md:text-[15px] focus:outline-none text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
                   />
                 </div>
                 <button
@@ -1017,7 +1021,7 @@ export default function LandingPage() {
                   <strong className="text-[var(--text-primary)]">
                     TypeScript + Next.js + Three.js + D3:
                   </strong>{" "}
-                  Strict typing, GPU-disposed 3D Natural Earth rendering, and 6-layout semantic
+                  Strict typing, GPU-disposed Survey-Aligned 3D Earth rendering, and 6-layout semantic
                   graphs.
                 </span>
               </li>

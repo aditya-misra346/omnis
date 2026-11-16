@@ -12,12 +12,11 @@ import {
   Rows,
   Sparkles,
   ChevronUp,
-  X,
   ArrowRight,
   Pin,
 } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
 import { TIMELINE_EVENTS } from "@/lib/data/global-intelligence";
+import { doesSignalMatchCandidate } from "@/lib/intelligence/spatial-sync";
 import {
   findNearestEventByPercent,
   mapYearToTimelinePercent,
@@ -25,6 +24,7 @@ import {
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
 import {
   OmnisButton,
+  OmnisMobileBottomSheet,
   OmnisModuleHeader,
   OmnisSegmentedControl,
 } from "@/components/ui/OmnisPrimitives";
@@ -79,6 +79,7 @@ function TimelineContent() {
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [searchQuery, setSearchQuery] = useState(urlQParam);
   const [milestonesOnly, setMilestonesOnly] = useState(initialMilestones);
+  const [focusFilterOnly, setFocusFilterOnly] = useState(false);
   const [viewOrientation, setViewOrientation] = useState<"vertical" | "horizontal">("vertical");
   const [selectedEventId, setSelectedEventId] = useState(initialEventId);
   const [savedToast, setSavedToast] = useState(false);
@@ -86,6 +87,7 @@ function TimelineContent() {
   const [mobileDossierOpen, setMobileDossierOpen] = useState(false);
   const scrubberRef = React.useRef<HTMLDivElement | null>(null);
   const lastSyncedTimelineQueryRef = React.useRef<string | null>(null);
+  const urlFocusParam = searchParams.get("focus")?.trim() || "";
 
   const syncTimelineUrl = (overrides?: {
     era?: TimelineEra | "all";
@@ -155,13 +157,24 @@ function TimelineContent() {
     categories,
   ]);
 
-  const { addWorkspaceItem, setActiveContext } = useOmnisStore();
+  const { addWorkspaceItem, setActiveContext, focusedSignal } = useOmnisStore();
+  const activeFocusedSignal = useMemo(
+    () => (urlFocusParam ? { topic: urlFocusParam } : focusedSignal),
+    [urlFocusParam, focusedSignal]
+  );
 
   const filteredEvents = useMemo(() => {
     return TIMELINE_EVENTS.filter((evt) => {
       if (selectedEra !== "all" && evt.era !== selectedEra) return false;
       if (selectedCategory !== "all" && evt.category !== selectedCategory) return false;
       if (milestonesOnly && !evt.isMilestone) return false;
+      if (
+        focusFilterOnly &&
+        activeFocusedSignal &&
+        !doesSignalMatchCandidate(activeFocusedSignal, evt)
+      ) {
+        return false;
+      }
       if (
         searchQuery.trim() &&
         !`${evt.title} ${evt.description} ${evt.historicalContext} ${evt.location}`
@@ -172,7 +185,14 @@ function TimelineContent() {
       }
       return true;
     }).sort((a, b) => a.yearNumeric - b.yearNumeric);
-  }, [selectedEra, selectedCategory, milestonesOnly, searchQuery]);
+  }, [
+    selectedEra,
+    selectedCategory,
+    milestonesOnly,
+    focusFilterOnly,
+    activeFocusedSignal,
+    searchQuery,
+  ]);
 
   const activeEvent =
     filteredEvents.find((e) => e.id === selectedEventId) ??
@@ -197,7 +217,7 @@ function TimelineContent() {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 pb-24 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* Header & Controls */}
       <OmnisModuleHeader
         moduleTag="MODULE 04 • REALITY TIMELINE & CONNECTED HISTORY ENGINE"
@@ -265,7 +285,7 @@ function TimelineContent() {
                     syncTimelineUrl({ q: nextQ });
                   }}
                   placeholder="Search historical events, participants, or locations..."
-                  className="w-full bg-transparent text-base sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
+                  className="w-full bg-transparent text-base md:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
                 />
               </div>
 
@@ -298,6 +318,20 @@ function TimelineContent() {
                 >
                   ★ Major Milestones Only
                 </button>
+                {activeFocusedSignal ? (
+                  <button
+                    type="button"
+                    onClick={() => setFocusFilterOnly((prev) => !prev)}
+                    className={`px-3 py-1.5 rounded-xl border font-semibold transition-colors cursor-pointer ${
+                      focusFilterOnly
+                        ? "badge-tone-cyan"
+                        : "bg-[var(--bg-slate)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                    }`}
+                    title="Filter timeline events matching your active Globe / Knowledge Graph focus"
+                  >
+                    ◎ Focus: {activeFocusedSignal.topic}
+                  </button>
+                ) : null}
               </div>
             </div>
           </div>
@@ -424,26 +458,40 @@ function TimelineContent() {
                 {filteredEvents.map((evt) => {
                   const pct = mapYearToTimelinePercent(evt.yearNumeric);
                   const isActive = evt.id === activeEvent.id;
+                  const isFocusMatch = doesSignalMatchCandidate(activeFocusedSignal, evt);
                   const tickColor = DOMAIN_TICK_COLORS[evt.category] ?? "var(--accent-blue)";
                   return (
                     <button
                       key={evt.id}
                       type="button"
-                      title={`${evt.dateDisplay}: ${evt.title}`}
+                      aria-label={`Select ${evt.dateDisplay}: ${evt.title}`}
+                      title={`${evt.dateDisplay}: ${evt.title}${isFocusMatch ? " (Synced Focus)" : ""}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         selectEvent(evt.id);
                       }}
-                      style={{
-                        left: `${pct}%`,
-                        backgroundColor: tickColor,
-                      }}
-                      className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full transition-all cursor-pointer ${
-                        isActive
-                          ? "w-3.5 h-3.5 ring-4 ring-[var(--accent-cyan)]/35 z-20 scale-110"
-                          : "w-1.5 h-4 opacity-80 hover:opacity-100 hover:scale-125 z-10"
+                      style={{ left: `${pct}%` }}
+                      className={`group absolute top-1/2 -translate-x-1/2 -translate-y-1/2 min-w-[32px] min-h-[44px] flex items-center justify-center cursor-pointer ${
+                        isActive ? "z-20" : isFocusMatch ? "z-15" : "z-10"
                       }`}
-                    />
+                    >
+                      {isFocusMatch && !isActive ? (
+                        <span
+                          aria-hidden="true"
+                          className="absolute w-5 h-5 rounded-full border border-[var(--accent-amber)]/75 bg-[var(--accent-amber)]/15 animate-pulse pointer-events-none"
+                        />
+                      ) : null}
+                      <span
+                        style={{ backgroundColor: isFocusMatch ? "var(--accent-amber)" : tickColor }}
+                        className={`block rounded-full transition-all ${
+                          isActive
+                            ? "w-3.5 h-3.5 ring-4 ring-[var(--accent-cyan)]/35 scale-110"
+                            : isFocusMatch
+                              ? "w-2 h-5 ring-2 ring-[var(--accent-cyan)]/50 opacity-100"
+                              : "w-1.5 h-4 opacity-80 group-hover:opacity-100 group-hover:scale-125"
+                        }`}
+                      />
+                    </button>
                   );
                 })}
 
@@ -537,7 +585,7 @@ function TimelineContent() {
           </div>
 
           {/* Causes & Consequences (Architectural Split Hairline Grid) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 border border-[var(--border-subtle)] rounded-xl overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-[var(--border-subtle)] text-[14.5px] sm:text-[15px] bg-[var(--bg-obsidian)]/30">
+          <div className="grid grid-cols-1 sm:grid-cols-2 border border-[var(--border-subtle)] rounded-xl overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-[var(--border-subtle)] text-[14.5px] sm:text-[15px] bg-[var(--bg-slate)]/60">
             <div className="p-4 space-y-2">
               <div className="font-bold uppercase tracking-wider tone-warning omnis-mono text-xs">
                 Antecedent Causes
@@ -636,7 +684,7 @@ function TimelineContent() {
       </div>
 
       {/* Mobile Sticky Bottom Historical Event Inspector Bar (< 1024px) */}
-      <div className="lg:hidden fixed bottom-3 left-3 right-3 z-40">
+      <div className="lg:hidden fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-3 right-3 z-30">
         <button
           type="button"
           onClick={() => setMobileDossierOpen(true)}
@@ -658,62 +706,31 @@ function TimelineContent() {
       </div>
 
       {/* Mobile Historical Dossier Sheet Drawer */}
-      <AnimatePresence>
-        {mobileDossierOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="lg:hidden fixed inset-0 z-50 omnis-modal-scrim backdrop-blur-sm flex items-end"
-            onClick={() => setMobileDossierOpen(false)}
-          >
-            <motion.div
-              initial={{ y: 40, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 40, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 380, damping: 34 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-h-[75vh] overflow-y-auto rounded-t-2xl bg-[var(--bg-graphite)] border-t border-[var(--border-strong)] p-5 space-y-4"
+      <OmnisMobileBottomSheet
+        open={mobileDossierOpen}
+        onClose={() => setMobileDossierOpen(false)}
+        eyebrow={`${activeEvent.dateDisplay} • ${activeEvent.location}`}
+        title={activeEvent.title}
+        closeAriaLabel="Close Historical Event Dossier"
+      >
+        <p className="text-[14.5px] text-[var(--text-secondary)] leading-relaxed">
+          {activeEvent.historicalContext}
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {activeEvent.connectedGraphTopics.map((topic) => (
+            <button
+              key={topic}
+              type="button"
+              onClick={() =>
+                router.push(`/knowledge-graph?topic=${encodeURIComponent(topic)}`)
+              }
+              className="px-2.5 py-1 rounded-lg badge-tone-violet text-[13px] font-semibold cursor-pointer"
             >
-              <div className="flex items-center justify-between gap-2 pb-2 border-b border-[var(--border-subtle)]">
-                <div>
-                  <div className="text-xs omnis-mono font-bold tone-blue">
-                    {activeEvent.dateDisplay} • {activeEvent.location}
-                  </div>
-                  <div className="font-bold text-lg text-[var(--text-primary)]">
-                    {activeEvent.title}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  aria-label="Close Historical Event Dossier"
-                  onClick={() => setMobileDossierOpen(false)}
-                  className="p-2 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <p className="text-[14.5px] text-[var(--text-secondary)] leading-relaxed">
-                {activeEvent.historicalContext}
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {activeEvent.connectedGraphTopics.map((topic) => (
-                  <button
-                    key={topic}
-                    type="button"
-                    onClick={() =>
-                      router.push(`/knowledge-graph?topic=${encodeURIComponent(topic)}`)
-                    }
-                    className="px-2.5 py-1 rounded-lg badge-tone-violet text-[13px] font-semibold cursor-pointer"
-                  >
-                    {topic} →
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              {topic} →
+            </button>
+          ))}
+        </div>
+      </OmnisMobileBottomSheet>
     </div>
   );
 }

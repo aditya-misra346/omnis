@@ -20,6 +20,7 @@ import {
   executeUniversalSearch,
   type UniversalSearchSourceFilter,
 } from "@/lib/research/engine";
+import { formatSignedPct } from "@/lib/formatters";
 import { fetchOpenAlexSources } from "@/lib/providers/live-data";
 import type { ResearchSourceItem } from "@/types/omnis";
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
@@ -42,6 +43,14 @@ const RESULT_CATEGORIES = [
   { id: "concepts", label: "Related Concepts" },
 ];
 
+const VALID_SOURCES: UniversalSearchSourceFilter[] = [
+  "all",
+  "worldbank",
+  "openalex",
+  "wikimedia",
+  "curated",
+];
+
 function ExploreContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -51,15 +60,8 @@ function ExploreContent() {
   const initialQ = paramQ || "Explain India's economic development since 1991";
   const initialCat =
     paramCat && RESULT_CATEGORIES.some((c) => c.id === paramCat) ? paramCat : "overview";
-  const validSources: UniversalSearchSourceFilter[] = [
-    "all",
-    "worldbank",
-    "openalex",
-    "wikimedia",
-    "curated",
-  ];
   const initialSource: UniversalSearchSourceFilter =
-    paramSource && validSources.includes(paramSource as UniversalSearchSourceFilter)
+    paramSource && VALID_SOURCES.includes(paramSource as UniversalSearchSourceFilter)
       ? (paramSource as UniversalSearchSourceFilter)
       : "all";
 
@@ -91,12 +93,11 @@ function ExploreContent() {
     } else if (paramCat === null) {
       setActiveTab("overview");
     }
-    if (paramSource && validSources.includes(paramSource as UniversalSearchSourceFilter)) {
+    if (paramSource && VALID_SOURCES.includes(paramSource as UniversalSearchSourceFilter)) {
       setSourceFilter(paramSource as UniversalSearchSourceFilter);
     } else if (paramSource === null) {
       setSourceFilter("all");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paramQ, paramCat, paramSource]);
 
   const syncExploreUrl = (
@@ -191,7 +192,7 @@ function ExploreContent() {
               value={queryInput}
               onChange={(e) => setQueryInput(e.target.value)}
               placeholder="Search anything (typo-tolerant & natural language enabled)..."
-              className="w-full bg-transparent text-base sm:text-[15px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
+              className="w-full bg-transparent text-base md:text-[15px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
             />
           </div>
           <OmnisSelect
@@ -282,7 +283,13 @@ function ExploreContent() {
                     </h2>
                   </div>
                   {sourceFilter !== "all" && (
-                    <OmnisButton variant="secondary" onClick={() => setSourceFilter("all")}>
+                    <OmnisButton
+                      variant="secondary"
+                      onClick={() => {
+                        setSourceFilter("all");
+                        syncExploreUrl(activeQuery, activeTab, "all");
+                      }}
+                    >
                       Reset Source Filter
                     </OmnisButton>
                   )}
@@ -336,7 +343,10 @@ function ExploreContent() {
                   </span>
                   <button
                     type="button"
-                    onClick={() => setSourceFilter("all")}
+                    onClick={() => {
+                      setSourceFilter("all");
+                      syncExploreUrl(activeQuery, activeTab, "all");
+                    }}
                     className="tone-blue font-semibold hover:underline cursor-pointer"
                   >
                     Show All Verified Sources
@@ -364,11 +374,26 @@ function ExploreContent() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3 text-[13px] text-[var(--text-secondary)] omnis-tabular shrink-0">
-                        <span>
-                          GDP <strong className="omnis-mono text-[var(--text-primary)]">${c.gdpUsdBn.toLocaleString()}B</strong>{" "}
-                          <span className="tone-verified">(+{c.gdpGrowthPct}%)</span>
-                        </span>
-                        <span className="hidden sm:inline">Clean {c.energyProfile.renewableSharePct}%</span>
+                        {c.gdpUsdBn > 0 ? (
+                          <span>
+                            GDP{" "}
+                            <strong className="omnis-mono text-[var(--text-primary)]">
+                              ${c.gdpUsdBn.toLocaleString()}B
+                            </strong>{" "}
+                            <span className={c.gdpGrowthPct >= 0 ? "tone-verified" : "tone-warning"}>
+                              ({formatSignedPct(c.gdpGrowthPct)})
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="omnis-mono text-xs tone-cyan">
+                            Hydrate Live WDI →
+                          </span>
+                        )}
+                        {c.gdpUsdBn > 0 && (
+                          <span className="hidden sm:inline">
+                            Clean {c.energyProfile.renewableSharePct}%
+                          </span>
+                        )}
                         <ArrowRight className="omnis-arrow-glyph w-3.5 h-3.5 tone-blue" />
                       </div>
                     </Link>

@@ -1,11 +1,24 @@
 import { orchestrateDeepResearch } from "@/lib/research/engine";
-import { checkApiRateLimit, validateAndSanitizeInput } from "@/lib/security/guardrails";
+import { enforceRequestRateLimit, validateAndSanitizeInput } from "@/lib/security/guardrails";
 import { ResearchMode, ResearchRequestSchema } from "@/types/omnis";
 
+const VALID_RESEARCH_MODES = new Set<ResearchMode>([
+  "quick",
+  "deep",
+  "comparative",
+  "historical",
+  "scientific",
+  "economic",
+]);
+
 export async function GET(request: Request) {
+  const rateLimited = enforceRequestRateLimit(request, "research", 60, 60_000);
+  if (rateLimited) return rateLimited;
+
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("q") ?? searchParams.get("query") ?? "Explain India's economic development since 1991";
-  const mode = (searchParams.get("mode") as ResearchMode) ?? "deep";
+  const rawMode = (searchParams.get("mode") ?? "deep") as ResearchMode;
+  const mode: ResearchMode = VALID_RESEARCH_MODES.has(rawMode) ? rawMode : "deep";
   const check = validateAndSanitizeInput(query, 500);
   if (!check.allowed) {
     return Response.json({ error: check.reason }, { status: 400 });
@@ -16,10 +29,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const ip = request.headers.get("x-forwarded-for") ?? "local";
-    if (!checkApiRateLimit(`research:${ip}`, 60, 60_000).allowed) {
-      return Response.json({ error: "Rate limit exceeded." }, { status: 429 });
-    }
+    const rateLimited = enforceRequestRateLimit(request, "research", 60, 60_000);
+    if (rateLimited) return rateLimited;
 
     const body = await request.json();
     const parsed = ResearchRequestSchema.safeParse(body);

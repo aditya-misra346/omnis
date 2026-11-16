@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import {
   Compass,
@@ -33,6 +32,7 @@ import {
   Play,
 } from "lucide-react";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
+import { formatSignedPct } from "@/lib/formatters";
 import { CreatorSignature } from "@/components/CreatorSignature";
 import { COUNTRIES_DATA } from "@/lib/data/global-intelligence";
 import { WORLD_COUNTRIES_CATALOG } from "@/lib/data/world-catalog";
@@ -62,10 +62,59 @@ const QUICK_NATURAL_QUERIES = [
   "Explain the history of nuclear energy",
 ];
 
+function useDialogFocusTrap(
+  containerRef: React.RefObject<HTMLElement | null>,
+  isOpen: boolean
+) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const prevFocused =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const rafId = requestAnimationFrame(() => {
+      const container = containerRef.current;
+      if (!container) return;
+      const autoEl = container.querySelector<HTMLElement>("[autofocus]");
+      const firstFocusable = container.querySelector<HTMLElement>(
+        'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      (autoEl ?? firstFocusable)?.focus();
+    });
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Tab" || !containerRef.current) return;
+      const focusables = Array.from(
+        containerRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      cancelAnimationFrame(rafId);
+      document.removeEventListener("keydown", onKeyDown);
+      prevFocused?.focus();
+    };
+  }, [containerRef, isOpen]);
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient());
   const pathname = usePathname();
   const router = useRouter();
+  const mobileDrawerRef = useRef<HTMLDivElement | null>(null);
+  const commandPaletteRef = useRef<HTMLDivElement | null>(null);
+  const assistantDrawerRef = useRef<HTMLDivElement | null>(null);
+  const shortcutsModalRef = useRef<HTMLDivElement | null>(null);
 
   const {
     theme,
@@ -162,6 +211,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       document.body.style.overflow = prevOverflow;
     };
   }, [mobileMenuOpen, commandPaletteOpen, shortcutsOpen, assistantOpen]);
+
+  // Trap Tab / Shift+Tab inside active modal overlays & restore trigger focus on close
+  useDialogFocusTrap(mobileDrawerRef, mobileMenuOpen);
+  useDialogFocusTrap(commandPaletteRef, commandPaletteOpen);
+  useDialogFocusTrap(assistantDrawerRef, assistantOpen);
+  useDialogFocusTrap(shortcutsModalRef, shortcutsOpen);
 
   // Keyboard shortcuts: Cmd+K Search Palette, Cmd+J Assistant, ? Cheatsheet, Esc Close
   useEffect(() => {
@@ -351,9 +406,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             c.iso3,
             c.flagEmoji,
             c.officialName,
-            `${c.capital} • GDP $${c.gdpUsdBn.toLocaleString()}B (${
-              c.gdpGrowthPct >= 0 ? "+" : ""
-            }${c.gdpGrowthPct}%) • ${c.region}`
+            `${c.capital} • GDP $${c.gdpUsdBn.toLocaleString()}B (${formatSignedPct(
+              c.gdpGrowthPct
+            )}) • ${c.region}`
           );
         } else {
           addAction(
@@ -370,9 +425,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           c.iso3,
           c.flagEmoji,
           c.officialName,
-          `${c.capital} • GDP $${c.gdpUsdBn.toLocaleString()}B (${
-            c.gdpGrowthPct >= 0 ? "+" : ""
-          }${c.gdpGrowthPct}%) • ${c.region}`
+          `${c.capital} • GDP $${c.gdpUsdBn.toLocaleString()}B (${formatSignedPct(
+            c.gdpGrowthPct
+          )}) • ${c.region}`
         );
       }
       return actionsList;
@@ -425,8 +480,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [paletteQuery, commandPaletteOpen]);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <MotionConfig reducedMotion="user">
+    <MotionConfig reducedMotion="user">
         <div className="min-h-dvh flex flex-col bg-[var(--bg-obsidian)] text-[var(--text-primary)]">
           {/* Top Global Intelligence Header */}
           <header
@@ -441,7 +495,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 type="button"
                 onClick={() => setMobileMenuOpen(true)}
                 aria-label="Open Navigation Menu"
-                className="lg:hidden shrink-0 min-h-[40px] min-w-[40px] sm:min-h-[34px] sm:min-w-[34px] flex items-center justify-center p-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                className="lg:hidden shrink-0 min-h-[44px] min-w-[44px] sm:min-h-[38px] sm:min-w-[38px] flex items-center justify-center p-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
               >
                 <Menu className="w-4 h-4" />
               </button>
@@ -454,7 +508,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
 
               {isLandingPage && (
-                <nav className="hidden xl:flex items-center gap-0.5 ml-2 pl-3 border-l border-[var(--border-subtle)] text-sm font-medium shrink-0">
+                <nav className="hidden lg:flex items-center gap-0.5 ml-1.5 xl:ml-2 pl-2 xl:pl-3 border-l border-[var(--border-subtle)] text-[13px] xl:text-sm font-medium shrink-0">
                   {[
                     { label: "Command", href: "/command" },
                     { label: "3D Atlas", href: "/atlas" },
@@ -466,7 +520,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <Link
                       key={item.href}
                       href={item.href}
-                      className="px-2.5 py-1.5 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-slate)] transition-colors whitespace-nowrap"
+                      className="px-1.5 xl:px-2.5 py-1.5 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-slate)] transition-colors whitespace-nowrap"
                     >
                       {item.label}
                     </Link>
@@ -476,7 +530,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
 
             {/* Universal Command & Search Trigger */}
-            <div className="flex-1 min-w-0 max-w-md xl:max-w-lg mx-0.5 sm:mx-2">
+            <div className="flex-1 min-w-[100px] max-w-md lg:max-w-[180px] xl:max-w-lg mx-0.5 sm:mx-2">
               <button
                 type="button"
                 onClick={() => setCommandPaletteOpen(true)}
@@ -484,12 +538,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               >
                 <span className="flex items-center gap-2 min-w-0 flex-1">
                   <Search className="w-3.5 h-3.5 tone-blue shrink-0" />
-                  <span className="sm:hidden truncate">Search OMNIS...</span>
-                  <span className="hidden sm:inline truncate">
+                  <span className="xl:hidden truncate">Search...</span>
+                  <span className="hidden xl:inline truncate">
                     Search nations, graphs, simulations...
                   </span>
                 </span>
-                <kbd className="hidden sm:inline-block shrink-0 px-1.5 py-0.5 text-[11px] rounded-md bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-muted)] omnis-mono">
+                <kbd className="hidden xl:inline-block shrink-0 px-1.5 py-0.5 text-[11px] rounded-md bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[var(--text-muted)] omnis-mono">
                   ⌘K
                 </kbd>
               </button>
@@ -532,7 +586,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">AI Assistant</span>
-                <kbd className="hidden lg:inline text-[11px] opacity-80 omnis-mono">⌘J</kbd>
+                <kbd className="hidden xl:inline text-[11px] opacity-80 omnis-mono">⌘J</kbd>
               </button>
 
               <button
@@ -566,7 +620,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     ? "Switch to Archival Pearl Light Theme"
                     : "Switch to Obsidian Dark Theme"
                 }
-                className="min-h-[40px] min-w-[40px] sm:min-h-[34px] sm:min-w-[34px] flex items-center justify-center p-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-all cursor-pointer shrink-0"
+                className="min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px] flex items-center justify-center p-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-all cursor-pointer shrink-0"
               >
                 {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </button>
@@ -581,7 +635,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     user?.verified ? "tone-verified" : "text-[var(--text-muted)]"
                   }`}
                 />
-                <span className="truncate max-w-[110px]">
+                <span
+                  className={
+                    isLandingPage
+                      ? "hidden xl:inline truncate max-w-[110px]"
+                      : "truncate max-w-[110px]"
+                  }
+                >
                   {user
                     ? user.verified
                       ? user.displayName.replace(/^Dr\.\s*/i, "").split(" ")[0] ||
@@ -701,10 +761,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <CreatorSignature />
 
-          {/* Mobile Accessible Navigation Drawer */}
+          {/* Mobile / Tablet Accessible Navigation Drawer */}
           <AnimatePresence>
             {mobileMenuOpen && (
-              <div className="fixed inset-0 z-[60] lg:hidden flex">
+              <div
+                className="fixed inset-0 z-[60] lg:hidden flex"
+              >
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -714,6 +776,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   onClick={() => setMobileMenuOpen(false)}
                 />
                 <motion.div
+                  ref={mobileDrawerRef}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Navigation Menu"
                   initial={{ x: "-100%" }}
                   animate={{ x: 0 }}
                   exit={{ x: "-100%" }}
@@ -727,7 +793,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         type="button"
                         onClick={() => setMobileMenuOpen(false)}
                         aria-label="Close Navigation Menu"
-                        className="p-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)]"
+                        className="min-h-[44px] min-w-[44px] flex items-center justify-center p-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -815,6 +881,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   onClick={() => setCommandPaletteOpen(false)}
                 />
                 <motion.div
+                  ref={commandPaletteRef}
                   initial={{ opacity: 0, y: -10, scale: 0.985 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -8, scale: 0.985 }}
@@ -855,7 +922,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         }
                       }}
                       placeholder="Jump to module, run action (theme/motion), or search..."
-                      className="w-full bg-transparent text-base sm:text-[15px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
+                      className="w-full bg-transparent text-base md:text-[15px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
                     />
                     <button
                       type="button"
@@ -986,11 +1053,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   className="absolute inset-0 omnis-modal-scrim backdrop-blur-md"
                 />
                 <motion.div
+                  ref={assistantDrawerRef}
                   initial={{ x: "100%" }}
                   animate={{ x: 0 }}
                   exit={{ x: "100%", transition: { duration: 0.18, ease: "easeIn" } }}
                   transition={{ type: "spring", damping: 30, stiffness: 320 }}
                   role="dialog"
+                  aria-modal="true"
                   aria-label="OMNIS Contextual AI Assistant Drawer"
                   className="absolute top-0 bottom-0 right-0 w-full sm:w-[400px] bg-[var(--bg-graphite)] border-l border-[var(--border-subtle)] flex flex-col shadow-2xl"
                 >
@@ -1020,7 +1089,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       type="button"
                       onClick={() => setAssistantOpen(false)}
                       aria-label="Close AI Assistant"
-                      className="p-1.5 rounded-lg hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)]"
+                      className="min-h-[44px] min-w-[44px] sm:min-h-[34px] sm:min-w-[34px] flex items-center justify-center p-1.5 rounded-lg hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)]"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -1093,13 +1162,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     value={assistantInput}
                     onChange={(e) => setAssistantInput(e.target.value)}
                     placeholder={`Ask about ${activeContextTopic}...`}
-                    className="flex-1 px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-base sm:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-blue)]"
+                    className="flex-1 px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-base md:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-blue)]"
                   />
                   <button
                     type="submit"
                     disabled={assistantLoading}
                     aria-label="Send Assistant Message"
-                    className="p-2 rounded-xl bg-[var(--accent-blue-solid)] hover:brightness-110 text-white disabled:opacity-50 transition-all cursor-pointer"
+                    className="min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px] flex items-center justify-center p-2 rounded-xl bg-[var(--accent-blue-solid)] hover:brightness-110 text-white disabled:opacity-50 transition-all cursor-pointer"
                   >
                     <Send className="w-3.5 h-3.5" />
                   </button>
@@ -1122,6 +1191,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   onClick={() => setShortcutsOpen(false)}
                 />
                 <motion.div
+                  ref={shortcutsModalRef}
                   initial={{ opacity: 0, y: 8, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 6, scale: 0.98 }}
@@ -1142,7 +1212,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       type="button"
                       onClick={() => setShortcutsOpen(false)}
                       aria-label="Close Keyboard Shortcuts"
-                      className="min-h-[36px] min-w-[36px] sm:min-h-0 sm:min-w-0 p-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                      className="min-h-[44px] min-w-[44px] sm:min-h-[34px] sm:min-w-[34px] flex items-center justify-center p-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -1199,6 +1269,5 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </AnimatePresence>
         </div>
       </MotionConfig>
-    </QueryClientProvider>
   );
 }

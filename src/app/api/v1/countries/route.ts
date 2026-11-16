@@ -1,6 +1,9 @@
 import { COUNTRIES_DATA } from "@/lib/data/global-intelligence";
+import { enforceRequestRateLimit } from "@/lib/security/guardrails";
 
 export async function GET(request: Request) {
+  const rateLimited = enforceRequestRateLimit(request, "countries-list", 120, 60_000);
+  if (rateLimited) return rateLimited;
   const { searchParams } = new URL(request.url);
   const region = searchParams.get("region");
   const all = Object.values(COUNTRIES_DATA);

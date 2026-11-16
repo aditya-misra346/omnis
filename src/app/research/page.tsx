@@ -26,7 +26,47 @@ import {
   OmnisSkeleton,
 } from "@/components/ui/OmnisPrimitives";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
-import type { ResearchMode, ResearchReportData } from "@/types/omnis";
+import type {
+  ResearchMode,
+  ResearchReportData,
+  VerificationStatus,
+} from "@/types/omnis";
+
+const PROVENANCE_DIFF_META: Record<
+  VerificationStatus,
+  { label: string; badgeClass: string; railClass: string }
+> = {
+  verified: {
+    label: "Multi-Source Verified",
+    badgeClass: "badge-tone-verified",
+    railClass: "border-l-2 border-l-[var(--status-verified)]",
+  },
+  single_source: {
+    label: "Single-Study Scope",
+    badgeClass: "badge-tone-warning",
+    railClass: "border-l-2 border-l-[var(--status-warning)]",
+  },
+  conflicting: {
+    label: "Aggregate Lag Caveat",
+    badgeClass: "badge-tone-warning",
+    railClass: "border-l-2 border-l-[var(--status-warning)]",
+  },
+  interpretation: {
+    label: "Analytical Synthesis",
+    badgeClass: "badge-tone-blue",
+    railClass: "border-l-2 border-l-[var(--accent-blue)]",
+  },
+  unverified: {
+    label: "Primary Check Pending",
+    badgeClass: "badge-tone-danger",
+    railClass: "border-l-2 border-l-[var(--status-danger)]",
+  },
+  ai_hypothesis: {
+    label: "Aggregate Lag Caveat",
+    badgeClass: "badge-tone-violet",
+    railClass: "border-l-2 border-l-[var(--accent-violet)]",
+  },
+};
 
 const RESEARCH_MODES: { id: ResearchMode; label: string; desc: string }[] = [
   { id: "quick", label: "Quick Research", desc: "Concise synthesis with primary citations" },
@@ -58,16 +98,70 @@ function ResearchContent() {
   const [copiedToast, setCopiedToast] = useState(false);
   const [typographyStyle, setTypographyStyle] = useState<"editorial" | "sans">("editorial");
   const [activeSourceId, setActiveSourceId] = useState<string | null>(null);
+  const [activeClaimMeta, setActiveClaimMeta] = useState<{
+    claimId: string;
+    sourceIds: string[];
+    verificationStatus: VerificationStatus;
+    methodologyNote: string;
+  } | null>(null);
   const [hoveredCitationKey, setHoveredCitationKey] = useState<string | null>(null);
+  const [pinnedCitationKey, setPinnedCitationKey] = useState<string | null>(null);
+  const [citationAlign, setCitationAlign] = useState<"left" | "center" | "right">("center");
   const sourceRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  const inspectCitation = (sourceId: string) => {
+  const inspectCitation = (
+    sourceId: string,
+    claimMeta?: {
+      claimId: string;
+      sourceIds: string[];
+      verificationStatus: VerificationStatus;
+      methodologyNote: string;
+    }
+  ) => {
     setActiveSourceId(sourceId);
+    if (claimMeta) setActiveClaimMeta(claimMeta);
+    setPinnedCitationKey(null);
     const card = sourceRefs.current[sourceId];
     if (card) {
       card.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
   };
+
+  const openCitationPopover = (
+    citKey: string,
+    sourceId: string,
+    triggerEl?: HTMLElement | null,
+    claimMeta?: {
+      claimId: string;
+      sourceIds: string[];
+      verificationStatus: VerificationStatus;
+      methodologyNote: string;
+    }
+  ) => {
+    setActiveSourceId(sourceId);
+    if (claimMeta) setActiveClaimMeta(claimMeta);
+    if (triggerEl && typeof window !== "undefined") {
+      const rect = triggerEl.getBoundingClientRect();
+      if (rect.left < 180) setCitationAlign("left");
+      else if (window.innerWidth - rect.right < 180) setCitationAlign("right");
+      else setCitationAlign("center");
+    }
+    setHoveredCitationKey(citKey);
+  };
+
+  useEffect(() => {
+    if (!pinnedCitationKey) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPinnedCitationKey(null);
+    };
+    const onOutside = () => setPinnedCitationKey(null);
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onOutside);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onOutside);
+    };
+  }, [pinnedCitationKey]);
 
   const { addWorkspaceItem, addSearchQuery, setActiveContext } = useOmnisStore();
   const lastFetchedKeyRef = useRef<string | null>(null);
@@ -174,7 +268,7 @@ ${report.sources
   };
 
   const handleCopySummary = () => {
-    navigator.clipboard?.writeText(customSummary);
+    navigator.clipboard?.writeText(customSummary).catch(() => {});
     setCopiedToast(true);
     setTimeout(() => setCopiedToast(false), 2000);
   };
@@ -183,8 +277,8 @@ ${report.sources
     ? Math.max(
         10,
         ...report.visualisationSeries.data.flatMap((d) => [
-          d.primaryValue,
-          d.comparisonValue ?? 0,
+          Math.abs(d.primaryValue),
+          Math.abs(d.comparisonValue ?? 0),
         ])
       )
     : 100;
@@ -250,7 +344,7 @@ ${report.sources
               value={queryInput}
               onChange={(e) => setQueryInput(e.target.value)}
               placeholder="Ask any complex research question..."
-              className="w-full bg-transparent text-base sm:text-[15px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
+              className="w-full bg-transparent text-base md:text-[15px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
             />
           </div>
           <OmnisButton type="submit" disabled={loading}>
@@ -352,7 +446,7 @@ ${report.sources
                     value={customSummary}
                     onChange={(e) => setCustomSummary(e.target.value)}
                     rows={4}
-                    className="w-full p-3 rounded-xl bg-[var(--bg-slate)] border border-[var(--accent-blue)] text-base sm:text-[15px] leading-relaxed text-[var(--text-primary)] focus:outline-none"
+                    className="w-full p-3 rounded-xl bg-[var(--bg-slate)] border border-[var(--accent-blue)] text-base md:text-[15px] leading-relaxed text-[var(--text-primary)] focus:outline-none"
                   />
                 ) : (
                   <p
@@ -427,22 +521,50 @@ ${report.sources
                         {claim.sourceIds.map((sid) => {
                           const citKey = `${claim.id}-${sid}`;
                           const matchedSource = report.sources.find((s) => s.id === sid);
-                          const isOpen = hoveredCitationKey === citKey;
+                          const claimMeta = {
+                            claimId: claim.id,
+                            sourceIds: claim.sourceIds,
+                            verificationStatus: claim.verificationStatus,
+                            methodologyNote: claim.methodologyNote,
+                          };
+                          const isOpen =
+                            pinnedCitationKey === citKey || hoveredCitationKey === citKey;
+                          const posClass =
+                            citationAlign === "left"
+                              ? "sm:left-0 sm:translate-x-0"
+                              : citationAlign === "right"
+                                ? "sm:right-0 sm:left-auto sm:translate-x-0"
+                                : "sm:left-1/2 sm:-translate-x-1/2";
                           return (
-                            <span key={sid} className="relative inline-block">
+                            <span
+                              key={sid}
+                              className="relative inline-block"
+                              onPointerDown={(e) => e.stopPropagation()}
+                            >
                               <button
                                 type="button"
-                                onMouseEnter={() => {
-                                  setActiveSourceId(sid);
-                                  setHoveredCitationKey(citKey);
-                                }}
+                                aria-expanded={isOpen}
+                                onMouseEnter={(e) =>
+                                  openCitationPopover(citKey, sid, e.currentTarget, claimMeta)
+                                }
                                 onMouseLeave={() => setHoveredCitationKey(null)}
-                                onFocus={() => {
-                                  setActiveSourceId(sid);
-                                  setHoveredCitationKey(citKey);
-                                }}
+                                onFocus={(e) =>
+                                  openCitationPopover(citKey, sid, e.currentTarget, claimMeta)
+                                }
                                 onBlur={() => setHoveredCitationKey(null)}
-                                onClick={() => inspectCitation(sid)}
+                                onClick={(e) => {
+                                  if (
+                                    typeof window !== "undefined" &&
+                                    window.innerWidth < 640
+                                  ) {
+                                    openCitationPopover(citKey, sid, e.currentTarget, claimMeta);
+                                    setPinnedCitationKey((prev) =>
+                                      prev === citKey ? null : citKey
+                                    );
+                                  } else {
+                                    inspectCitation(sid, claimMeta);
+                                  }
+                                }}
                                 className={`px-2 py-0.5 rounded text-xs omnis-mono font-semibold border transition-colors cursor-pointer ${
                                   activeSourceId === sid
                                     ? "badge-tone-blue border-[var(--accent-blue)]"
@@ -453,10 +575,15 @@ ${report.sources
                               </button>
                               {isOpen && matchedSource ? (
                                 <div
-                                  role="tooltip"
-                                  className="fixed inset-x-4 bottom-4 sm:inset-auto sm:absolute sm:bottom-full sm:left-1/2 sm:-translate-x-1/2 sm:mb-2 sm:w-80 p-3.5 rounded-xl bg-[var(--bg-graphite)] border border-[var(--border-strong)] shadow-2xl z-50 text-left space-y-1.5 pointer-events-none"
+                                  role="dialog"
+                                  aria-label={`Citation preview for ${matchedSource.title}`}
+                                  className={`fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] sm:inset-auto sm:absolute sm:bottom-full ${posClass} sm:mb-2 sm:w-80 p-3.5 rounded-xl bg-[var(--bg-graphite)] border border-[var(--border-strong)] shadow-2xl z-50 text-left space-y-2 ${
+                                    pinnedCitationKey === citKey
+                                      ? "pointer-events-auto"
+                                      : "sm:pointer-events-none pointer-events-auto"
+                                  }`}
                                 >
-                                  <div className="flex items-center justify-between text-[11px] omnis-mono tone-cyan font-bold">
+                                  <div className="flex items-center justify-between gap-2 text-[11px] omnis-mono tone-cyan font-bold">
                                     <span>{matchedSource.sourceType}</span>
                                     <span>{matchedSource.publishedDate}</span>
                                   </div>
@@ -469,6 +596,25 @@ ${report.sources
                                   <p className="text-[13px] text-[var(--text-secondary)] italic line-clamp-3">
                                     “{matchedSource.excerpt}”
                                   </p>
+                                  <div className="flex items-center justify-between gap-2 pt-1 sm:hidden">
+                                    <button
+                                      type="button"
+                                      onClick={() => inspectCitation(sid, claimMeta)}
+                                      className="px-2.5 py-1.5 rounded-lg bg-[var(--accent-blue-solid)] text-white text-xs font-semibold cursor-pointer"
+                                    >
+                                      View in Registry ↓
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setPinnedCitationKey(null);
+                                        setHoveredCitationKey(null);
+                                      }}
+                                      className="px-2.5 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-xs text-[var(--text-secondary)] cursor-pointer"
+                                    >
+                                      Dismiss
+                                    </button>
+                                  </div>
                                 </div>
                               ) : null}
                             </span>
@@ -493,7 +639,7 @@ ${report.sources
                     </span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 border border-[var(--border-subtle)] rounded-xl overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-[var(--border-subtle)]">
-                    <div className="p-3 bg-[var(--bg-obsidian)]/40">
+                    <div className="p-3 bg-[var(--bg-slate)]/60">
                       <div className="font-semibold tone-cyan text-xs omnis-mono">
                         Perspective A
                       </div>
@@ -501,7 +647,7 @@ ${report.sources
                         {ce.perspectiveA}
                       </p>
                     </div>
-                    <div className="p-3 bg-[var(--bg-obsidian)]/40">
+                    <div className="p-3 bg-[var(--bg-slate)]/60">
                       <div className="font-semibold tone-violet text-xs omnis-mono">
                         Perspective B
                       </div>
@@ -529,7 +675,8 @@ ${report.sources
                   {report.relevantStatistics.map((stat) => {
                     const citKey = `stat-${stat.metric}-${stat.sourceId}`;
                     const matchedSource = report.sources.find((s) => s.id === stat.sourceId);
-                    const isOpen = hoveredCitationKey === citKey;
+                    const isOpen =
+                      pinnedCitationKey === citKey || hoveredCitationKey === citKey;
                     return (
                       <div
                         key={stat.metric}
@@ -541,34 +688,68 @@ ${report.sources
                           </div>
                           <div className="text-xs text-[var(--text-muted)] flex flex-wrap items-center gap-1">
                             <span>{stat.period} •</span>
-                            <span className="relative inline-block">
+                            <span
+                              className="relative inline-block"
+                              onPointerDown={(e) => e.stopPropagation()}
+                            >
                               <button
                                 type="button"
-                                onMouseEnter={() => {
-                                  setActiveSourceId(stat.sourceId);
-                                  setHoveredCitationKey(citKey);
-                                }}
+                                aria-expanded={isOpen}
+                                onMouseEnter={(e) =>
+                                  openCitationPopover(citKey, stat.sourceId, e.currentTarget)
+                                }
                                 onMouseLeave={() => setHoveredCitationKey(null)}
-                                onFocus={() => {
-                                  setActiveSourceId(stat.sourceId);
-                                  setHoveredCitationKey(citKey);
-                                }}
+                                onFocus={(e) =>
+                                  openCitationPopover(citKey, stat.sourceId, e.currentTarget)
+                                }
                                 onBlur={() => setHoveredCitationKey(null)}
-                                onClick={() => inspectCitation(stat.sourceId)}
+                                onClick={(e) => {
+                                  if (
+                                    typeof window !== "undefined" &&
+                                    window.innerWidth < 640
+                                  ) {
+                                    openCitationPopover(citKey, stat.sourceId, e.currentTarget);
+                                    setPinnedCitationKey((prev) =>
+                                      prev === citKey ? null : citKey
+                                    );
+                                  } else {
+                                    inspectCitation(stat.sourceId);
+                                  }
+                                }}
                                 className="tone-blue hover:underline omnis-mono cursor-pointer"
                               >
                                 Ref: [{stat.sourceId}]
                               </button>
                               {isOpen && matchedSource ? (
                                 <div
-                                  role="tooltip"
-                                  className="fixed inset-x-4 bottom-4 sm:inset-auto sm:absolute sm:bottom-full sm:left-1/2 sm:-translate-x-1/2 sm:mb-2 sm:w-72 p-3.5 rounded-xl bg-[var(--bg-graphite)] border border-[var(--border-strong)] shadow-2xl z-50 text-left space-y-1.5 pointer-events-none"
+                                  role="dialog"
+                                  aria-label={`Citation preview for ${matchedSource.title}`}
+                                  className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] sm:inset-auto sm:absolute sm:bottom-full sm:right-0 sm:mb-2 sm:w-72 p-3.5 rounded-xl bg-[var(--bg-graphite)] border border-[var(--border-strong)] shadow-2xl z-50 text-left space-y-2 pointer-events-auto"
                                 >
                                   <div className="font-bold text-xs text-[var(--text-primary)] line-clamp-2">
                                     {matchedSource.title}
                                   </div>
                                   <div className="text-[11.5px] text-[var(--text-muted)]">
                                     {matchedSource.publisher} ({matchedSource.publishedDate})
+                                  </div>
+                                  <div className="flex items-center justify-between gap-2 pt-1 sm:hidden">
+                                    <button
+                                      type="button"
+                                      onClick={() => inspectCitation(stat.sourceId)}
+                                      className="px-2.5 py-1.5 rounded-lg bg-[var(--accent-blue-solid)] text-white text-xs font-semibold cursor-pointer"
+                                    >
+                                      View in Registry ↓
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setPinnedCitationKey(null);
+                                        setHoveredCitationKey(null);
+                                      }}
+                                      className="px-2.5 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-xs text-[var(--text-secondary)] cursor-pointer"
+                                    >
+                                      Dismiss
+                                    </button>
                                   </div>
                                 </div>
                               ) : null}
@@ -614,13 +795,13 @@ ${report.sources
                       report.visualisationSeries.data.map((d) => {
                         const pPct = Math.min(
                           100,
-                          Math.max(4, (d.primaryValue / maxChartVal) * 100)
+                          Math.max(4, (Math.abs(d.primaryValue) / maxChartVal) * 100)
                         );
                         const hasComp = d.comparisonValue !== undefined;
                         const cPct = hasComp
                           ? Math.min(
                               100,
-                              Math.max(4, ((d.comparisonValue ?? 0) / maxChartVal) * 100)
+                              Math.max(4, (Math.abs(d.comparisonValue ?? 0) / maxChartVal) * 100)
                             )
                           : 0;
                         return (
@@ -636,7 +817,11 @@ ${report.sources
                               <div className="w-full h-2 rounded-full bg-[var(--bg-slate)] overflow-hidden">
                                 <div
                                   className="h-full rounded-full"
-                                  style={{ width: `${pPct}%`, backgroundColor: "var(--chart-blue)" }}
+                                  style={{
+                                    width: `${pPct}%`,
+                                    backgroundColor:
+                                      d.primaryValue < 0 ? "var(--status-warning)" : "var(--chart-blue)",
+                                  }}
                                 />
                               </div>
                               {hasComp ? (
@@ -645,7 +830,10 @@ ${report.sources
                                     className="h-full rounded-full"
                                     style={{
                                       width: `${cPct}%`,
-                                      backgroundColor: "var(--chart-violet)",
+                                      backgroundColor:
+                                        (d.comparisonValue ?? 0) < 0
+                                          ? "var(--status-danger)"
+                                          : "var(--chart-violet)",
                                     }}
                                   />
                                 </div>
@@ -665,10 +853,13 @@ ${report.sources
                   <h3 className="text-base font-bold text-[var(--text-primary)]">
                     Transparent Source Credibility Registry ({report.sources.length})
                   </h3>
-                  {activeSourceId && (
+                  {(activeSourceId || activeClaimMeta) && (
                     <button
                       type="button"
-                      onClick={() => setActiveSourceId(null)}
+                      onClick={() => {
+                        setActiveSourceId(null);
+                        setActiveClaimMeta(null);
+                      }}
                       className="text-xs omnis-mono tone-blue hover:underline cursor-pointer"
                     >
                       Clear highlight
@@ -678,6 +869,13 @@ ${report.sources
                 <div className="space-y-2.5 max-h-96 overflow-y-auto pr-1">
                   {report.sources.map((src) => {
                     const isFocused = activeSourceId === src.id;
+                    const isClaimLinked = Boolean(
+                      activeClaimMeta && activeClaimMeta.sourceIds.includes(src.id)
+                    );
+                    const diffMeta =
+                      isClaimLinked && activeClaimMeta
+                        ? PROVENANCE_DIFF_META[activeClaimMeta.verificationStatus]
+                        : null;
                     return (
                       <div
                         key={src.id}
@@ -686,14 +884,27 @@ ${report.sources
                         }}
                         className={`p-3 space-y-1.5 text-[13.5px] rounded-xl border transition-all ${
                           isFocused
-                            ? "bg-[var(--badge-blue-bg)] border-[var(--accent-blue)] ring-1 ring-[var(--accent-blue)]"
-                            : "omnis-surface-slate border-[var(--border-subtle)]"
+                            ? `bg-[var(--badge-blue-bg)] border-[var(--accent-blue)] ring-1 ring-[var(--accent-blue)] ${
+                                diffMeta?.railClass ?? "border-l-2 border-l-[var(--accent-blue)]"
+                              }`
+                            : isClaimLinked && diffMeta
+                              ? `omnis-surface-slate border-[var(--border-strong)] ${diffMeta.railClass}`
+                              : "omnis-surface-slate border-[var(--border-subtle)]"
                         }`}
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-[11.5px] px-1.5 py-0.5 rounded-md badge-tone-verified font-semibold">
-                            {src.sourceType}
-                          </span>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-[11.5px] px-1.5 py-0.5 rounded-md badge-tone-verified font-semibold">
+                              {src.sourceType}
+                            </span>
+                            {diffMeta ? (
+                              <span
+                                className={`text-[11px] px-1.5 py-0.5 rounded-md font-semibold omnis-mono ${diffMeta.badgeClass}`}
+                              >
+                                {diffMeta.label}
+                              </span>
+                            ) : null}
+                          </div>
                           <span className="text-[11.5px] omnis-mono text-[var(--text-muted)]">
                             [{src.id}] • {src.publishedDate}
                           </span>
@@ -714,6 +925,11 @@ ${report.sources
                         <p className="text-xs sm:text-[13px] text-[var(--text-secondary)] italic">
                           “{src.excerpt}”
                         </p>
+                        {isClaimLinked && activeClaimMeta ? (
+                          <div className="pt-1.5 border-t border-[var(--border-subtle)] text-[11.5px] text-[var(--text-secondary)] omnis-mono">
+                            Provenance Note: {activeClaimMeta.methodologyNote}
+                          </div>
+                        ) : null}
                       </div>
                     );
                   })}

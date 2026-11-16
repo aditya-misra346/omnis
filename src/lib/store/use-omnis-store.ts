@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
+import type { FocusedSignal } from "@/lib/intelligence/spatial-sync";
 
 const memoryFallbackStorage = new Map<string, string>();
 
@@ -103,6 +104,8 @@ interface OmnisState {
   activeContextLabel: string;
   activeContextTopic: string;
   setActiveContext: (label: string, topic: string) => void;
+  focusedSignal: FocusedSignal | null;
+  setFocusedSignal: (signal: FocusedSignal | null) => void;
   assistantMessages: AssistantMessage[];
   addAssistantMessage: (msg: AssistantMessage) => void;
   clearAssistantMessages: () => void;
@@ -211,6 +214,8 @@ export const useOmnisStore = create<OmnisState>()(
       activeContextTopic: "Global Macroeconomic & Scientific Overview",
       setActiveContext: (activeContextLabel, activeContextTopic) =>
         set({ activeContextLabel, activeContextTopic }),
+      focusedSignal: null,
+      setFocusedSignal: (focusedSignal) => set({ focusedSignal }),
       assistantMessages: [
         {
           id: "msg-welcome",
@@ -269,6 +274,17 @@ export const useOmnisStore = create<OmnisState>()(
           workspaceItems: [],
           searchHistory: [],
           savedSearches: [],
+          folders: ["General", "Geopolitics & Macro", "Technology & Compute", "Scenario Simulations"],
+          widgets: DEFAULT_WIDGETS,
+          assistantMessages: [
+            {
+              id: "msg-welcome",
+              role: "assistant",
+              content:
+                "Welcome to OMNIS Universal Intelligence Assistant. Local workspace storage was cleared and reset.",
+              timestamp: new Date().toISOString(),
+            },
+          ],
           followedTopics: ["Artificial Intelligence", "Indian Economy"],
         }),
 
@@ -373,6 +389,21 @@ export const useOmnisStore = create<OmnisState>()(
     {
       name: "omnis-intelligence-workspace-v1",
       storage: createJSONStorage(() => safeWebStorage),
+      partialize: (state) => ({
+        theme: state.theme,
+        motionPaused: state.motionPaused,
+        sidebarCollapsed: state.sidebarCollapsed,
+        activeContextLabel: state.activeContextLabel,
+        activeContextTopic: state.activeContextTopic,
+        assistantMessages: state.assistantMessages,
+        user: state.user,
+        followedTopics: state.followedTopics,
+        searchHistory: state.searchHistory,
+        savedSearches: state.savedSearches,
+        widgets: state.widgets,
+        workspaceItems: state.workspaceItems,
+        folders: state.folders,
+      }),
     }
   )
 );

@@ -1,12 +1,9 @@
 import { executeUniversalSearch } from "@/lib/research/engine";
-import { checkApiRateLimit, validateAndSanitizeInput } from "@/lib/security/guardrails";
+import { enforceRequestRateLimit, validateAndSanitizeInput } from "@/lib/security/guardrails";
 
 export async function GET(request: Request) {
-  const ip = request.headers.get("x-forwarded-for") ?? "local";
-  const rate = checkApiRateLimit(`search:${ip}`, 120, 60_000);
-  if (!rate.allowed) {
-    return Response.json({ error: "Rate limit exceeded." }, { status: 429 });
-  }
+  const rateLimited = enforceRequestRateLimit(request, "search", 120, 60_000);
+  if (rateLimited) return rateLimited;
 
   const { searchParams } = new URL(request.url);
   const rawQuery = searchParams.get("q") ?? "";

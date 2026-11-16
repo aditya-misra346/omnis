@@ -25,6 +25,7 @@ import {
   parseSimulationQueryPrompt,
   SIMULATION_SCENARIOS,
 } from "@/lib/simulations/engine";
+import { formatSignedPct } from "@/lib/formatters";
 import { ProvenancePanel } from "@/components/ui/ProvenancePanel";
 import { MonteCarloFanChart, TornadoSensitivityChart } from "@/components/charts/OmnisCharts";
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
@@ -102,12 +103,16 @@ function SimulationsContent() {
         ? parsedPrompt.overrides.oilPriceShockPct
         : null;
 
-  const paramHorizon = Number(searchParams.get("horizon"));
+  const rawHorizonParam = searchParams.get("horizon");
+  const paramHorizon =
+    rawHorizonParam !== null && rawHorizonParam.trim() !== "" ? Number(rawHorizonParam) : NaN;
   const initialHorizon =
     Number.isFinite(paramHorizon) && paramHorizon >= 5 && paramHorizon <= 35
       ? Math.round(paramHorizon)
       : 15;
-  const paramSeed = Number(searchParams.get("seed"));
+  const rawSeedParam = searchParams.get("seed");
+  const paramSeed =
+    rawSeedParam !== null && rawSeedParam.trim() !== "" ? Number(rawSeedParam) : NaN;
   const initialSeed = Number.isFinite(paramSeed) ? Math.round(paramSeed) : 42;
 
   const [category, setCategory] = useState<SimulationCategory>(
@@ -140,7 +145,7 @@ function SimulationsContent() {
           ? `${curated.flagEmoji} ${curated.name} (${curated.iso3})`
           : `${entry.name} (${entry.iso3})`,
         hint: curated
-          ? `+${curated.gdpGrowthPct}% GDP • ${curated.energyProfile.renewableSharePct}% Clean`
+          ? `${formatSignedPct(curated.gdpGrowthPct)} GDP • ${curated.energyProfile.renewableSharePct}% Clean`
           : entry.region,
       });
     }
@@ -149,7 +154,7 @@ function SimulationsContent() {
         byIso.set(curated.iso3, {
           value: curated.iso3,
           label: `${curated.flagEmoji} ${curated.name} (${curated.iso3})`,
-          hint: `+${curated.gdpGrowthPct}% GDP • ${curated.energyProfile.renewableSharePct}% Clean`,
+          hint: `${formatSignedPct(curated.gdpGrowthPct)} GDP • ${curated.energyProfile.renewableSharePct}% Clean`,
         });
       }
     }
@@ -385,6 +390,34 @@ function SimulationsContent() {
     setTimeout(() => setCopiedLink(false), 2200);
   };
 
+  // Debounced two-way URL synchronization for slider drags, horizon & seed adjustments
+  const hasMountedSimSyncRef = useRef(false);
+  useEffect(() => {
+    if (!hasMountedSimSyncRef.current) {
+      hasMountedSimSyncRef.current = true;
+      return;
+    }
+    const timer = setTimeout(() => {
+      const targetSpec =
+        SIMULATION_SCENARIOS.find((s) => s.category === category) ?? activeSpec;
+      const params = new URLSearchParams({
+        category,
+        country: countryBaselineIso3,
+        horizon: String(horizonYears),
+        seed: String(seed),
+      });
+      for (const p of targetSpec.parameters) {
+        params.set(p.key, String(overrides[p.key] ?? p.defaultModifiedValue));
+      }
+      const qs = params.toString();
+      if (qs !== lastSyncedQueryRef.current) {
+        lastSyncedQueryRef.current = qs;
+        router.replace(`/simulations?${qs}`, { scroll: false });
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [category, countryBaselineIso3, horizonYears, seed, overrides, activeSpec, router]);
+
   const handleSaveExperiment = () => {
     const params = buildShareQueryParams();
     addWorkspaceItem({
@@ -601,7 +634,7 @@ function SimulationsContent() {
                   value={seed}
                   aria-label="Monte Carlo Seed"
                   onChange={(e) => setSeed(Number(e.target.value) || 42)}
-                  className="w-20 px-2.5 py-1 rounded-md bg-[var(--bg-graphite)] border border-[var(--border-subtle)] text-base sm:text-sm font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]"
+                  className="w-20 px-2.5 py-1 rounded-md bg-[var(--bg-graphite)] border border-[var(--border-subtle)] text-base md:text-sm font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]"
                 />
               </div>
             </div>
@@ -609,7 +642,7 @@ function SimulationsContent() {
         </div>
 
         {/* Right Trajectory Chart, Sensitivity & Epistemic Separation */}
-        <div className="lg:col-span-8 space-y-6">
+        <div className="lg:col-span-8 min-w-0 space-y-6">
           {/* Summary KPI Strip */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
             <OmnisStatTile
@@ -626,7 +659,7 @@ function SimulationsContent() {
             />
             <OmnisStatTile
               label="Divergence vs Baseline"
-              value={`${simulationOutput.summaryMetrics.percentageDelta >= 0 ? "+" : ""}${simulationOutput.summaryMetrics.percentageDelta}%`}
+              value={formatSignedPct(simulationOutput.summaryMetrics.percentageDelta)}
               subValue="Relative Shift"
               tone={simulationOutput.summaryMetrics.percentageDelta >= 0 ? "verified" : "warning"}
             />

@@ -21,11 +21,11 @@ const NARRATIVE_TERMS: NarrativeTermDefinition[] = [
       "Every indicator, historical claim, and citation traces directly to World Bank, OpenAlex, UN DESA, or REST Countries records.",
   },
   {
-    phrase: "3D Natural Earth Atlas",
+    phrase: "Survey-Aligned 3D Global Atlas",
     href: "/atlas",
     moduleName: "Module 01 • Sovereign Globe",
     summary:
-      "Interactive 3D geodesic projection with 110m Natural Earth vectors and 7 macroeconomic, demographic, and energy layers.",
+      "Interactive 3D geodesic projection with official Survey of India boundaries and 7 macroeconomic, demographic, and energy layers.",
   },
   {
     phrase: "Infinite Knowledge Graphs",

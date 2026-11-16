@@ -18,6 +18,11 @@ import type {
   RelationshipType,
 } from "@/types/omnis";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
+import { useFullscreenBodyLock } from "@/components/ui/OmnisPrimitives";
+import {
+  doesSignalMatchCandidate,
+  type FocusedSignal,
+} from "@/lib/intelligence/spatial-sync";
 
 const CATEGORY_COLORS: Record<string, string> = {
   "Core Concept": "#2563eb",
@@ -209,6 +214,7 @@ export function KnowledgeGraphCanvas({
   searchFilter = "",
   highlightedPathNodeIds,
   highlightedPathEdgeIds,
+  focusedSignal = null,
 }: {
   nodes: KnowledgeGraphNode[];
   edges: KnowledgeGraphEdge[];
@@ -221,6 +227,7 @@ export function KnowledgeGraphCanvas({
   searchFilter?: string;
   highlightedPathNodeIds?: Set<string>;
   highlightedPathEdgeIds?: Set<string>;
+  focusedSignal?: FocusedSignal | null;
 }) {
   const motionPaused = useOmnisStore((s) => s.motionPaused);
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -231,6 +238,9 @@ export function KnowledgeGraphCanvas({
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [touchGraphLocked, setTouchGraphLocked] = useState(false);
+  const [isCanvasVisible, setIsCanvasVisible] = useState(true);
+  const [isTabActive, setIsTabActive] = useState(true);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [draggedOffsets, setDraggedOffsets] = useState<Record<string, { dx: number; dy: number }>>(
     {}
@@ -295,16 +305,28 @@ export function KnowledgeGraphCanvas({
     };
   }, [isFullscreen]);
 
+  useFullscreenBodyLock(isFullscreen, () => setIsFullscreen(false));
+
   useEffect(() => {
-    if (!isFullscreen) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setIsFullscreen(false);
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isFullscreen]);
+    if (typeof document === "undefined") return;
+    setIsTabActive(document.visibilityState === "visible");
+    const onVis = () => setIsTabActive(document.visibilityState === "visible");
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry) setIsCanvasVisible(entry.isIntersecting);
+      },
+      { threshold: 0.05 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
 
   const basePositions = useMemo(
     () =>
@@ -366,7 +388,7 @@ export function KnowledgeGraphCanvas({
   );
 
   useEffect(() => {
-    if (!hasActivePathTrace || motionPaused) return;
+    if (!hasActivePathTrace || motionPaused || !isCanvasVisible || !isTabActive) return;
     const prefersReduced =
       typeof window !== "undefined" &&
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -386,7 +408,7 @@ export function KnowledgeGraphCanvas({
       start = 0;
       cancelAnimationFrame(rafId);
     };
-  }, [hasActivePathTrace, motionPaused]);
+  }, [hasActivePathTrace, motionPaused, isCanvasVisible, isTabActive]);
 
   const positionedNodes = useMemo(
     () =>
@@ -539,7 +561,7 @@ export function KnowledgeGraphCanvas({
             onClick={() => setZoom((z) => Math.min(2.2, Number((z + 0.15).toFixed(2))))}
             title="Zoom In"
             aria-label="Zoom In"
-            className="min-h-[38px] min-w-[38px] sm:min-h-[30px] sm:min-w-[30px] flex items-center justify-center p-1.5 rounded-lg hover:bg-[var(--bg-elevated)] cursor-pointer text-[var(--text-primary)]"
+            className="min-h-[44px] min-w-[44px] sm:min-h-[32px] sm:min-w-[32px] flex items-center justify-center p-1.5 rounded-lg hover:bg-[var(--bg-elevated)] cursor-pointer text-[var(--text-primary)]"
           >
             <ZoomIn className="w-3.5 h-3.5" />
           </button>
@@ -548,7 +570,7 @@ export function KnowledgeGraphCanvas({
             onClick={() => setZoom((z) => Math.max(0.45, Number((z - 0.15).toFixed(2))))}
             title="Zoom Out"
             aria-label="Zoom Out"
-            className="min-h-[38px] min-w-[38px] sm:min-h-[30px] sm:min-w-[30px] flex items-center justify-center p-1.5 rounded-lg hover:bg-[var(--bg-elevated)] cursor-pointer text-[var(--text-primary)]"
+            className="min-h-[44px] min-w-[44px] sm:min-h-[32px] sm:min-w-[32px] flex items-center justify-center p-1.5 rounded-lg hover:bg-[var(--bg-elevated)] cursor-pointer text-[var(--text-primary)]"
           >
             <ZoomOut className="w-3.5 h-3.5" />
           </button>
@@ -557,7 +579,7 @@ export function KnowledgeGraphCanvas({
             onClick={handleFitToScreen}
             title="Fit Graph to Screen"
             aria-label="Fit Graph to Screen"
-            className="min-h-[38px] sm:min-h-[30px] inline-flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-[var(--bg-elevated)] cursor-pointer font-medium text-[var(--text-primary)]"
+            className="min-h-[44px] min-w-[44px] sm:min-h-[32px] sm:min-w-[32px] inline-flex items-center justify-center gap-1 px-2 py-1 rounded-lg hover:bg-[var(--bg-elevated)] cursor-pointer font-medium text-[var(--text-primary)]"
           >
             <Scan className="w-3.5 h-3.5 tone-blue" />
             <span className="hidden sm:inline">Fit</span>
@@ -571,7 +593,7 @@ export function KnowledgeGraphCanvas({
             }}
             title="Reset Graph Positions & Zoom"
             aria-label="Reset Graph Positions"
-            className="min-h-[38px] min-w-[38px] sm:min-h-[30px] sm:min-w-[30px] flex items-center justify-center p-1.5 rounded-lg hover:bg-[var(--bg-elevated)] cursor-pointer text-[var(--text-primary)]"
+            className="min-h-[44px] min-w-[44px] sm:min-h-[32px] sm:min-w-[32px] flex items-center justify-center p-1.5 rounded-lg hover:bg-[var(--bg-elevated)] cursor-pointer text-[var(--text-primary)]"
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
@@ -579,7 +601,8 @@ export function KnowledgeGraphCanvas({
             type="button"
             onClick={handleExportSvg}
             title="Export Knowledge Graph as SVG"
-            className="min-h-[38px] sm:min-h-[30px] inline-flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-[var(--bg-elevated)] cursor-pointer font-medium text-[var(--text-primary)]"
+            aria-label="Export Knowledge Graph as SVG"
+            className="min-h-[44px] min-w-[44px] sm:min-h-[32px] sm:min-w-[32px] inline-flex items-center justify-center gap-1 px-2 py-1 rounded-lg hover:bg-[var(--bg-elevated)] cursor-pointer font-medium text-[var(--text-primary)]"
           >
             <Download className="w-3.5 h-3.5 tone-blue" />
             <span>SVG</span>
@@ -589,7 +612,7 @@ export function KnowledgeGraphCanvas({
             onClick={() => setIsFullscreen((f) => !f)}
             title="Toggle Fullscreen Graph Exploration"
             aria-label="Toggle Fullscreen Graph"
-            className="min-h-[38px] min-w-[38px] sm:min-h-[30px] sm:min-w-[30px] flex items-center justify-center p-1.5 rounded-lg hover:bg-[var(--bg-elevated)] cursor-pointer text-[var(--text-primary)]"
+            className="min-h-[44px] min-w-[44px] sm:min-h-[32px] sm:min-w-[32px] flex items-center justify-center p-1.5 rounded-lg hover:bg-[var(--bg-elevated)] cursor-pointer text-[var(--text-primary)]"
           >
             {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
           </button>
@@ -599,7 +622,9 @@ export function KnowledgeGraphCanvas({
       {/* Responsive Interactive SVG Canvas */}
       <div
         ref={stageRef}
-        className="flex-1 relative omnis-subtle-dots bg-[var(--bg-graphite)] overflow-hidden touch-none"
+        className={`flex-1 relative omnis-subtle-dots bg-[var(--bg-graphite)] overflow-hidden ${
+          isFullscreen || touchGraphLocked ? "touch-none" : "touch-pan-y sm:touch-none"
+        }`}
         onPointerDown={(e) => {
           activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
           if (activePointersRef.current.size === 2) {
@@ -608,6 +633,9 @@ export function KnowledgeGraphCanvas({
             pinchStartRef.current = { dist: Math.max(1, dist), zoom };
             setDraggingNodeId(null);
             setPanningCanvas(false);
+            return;
+          }
+          if (e.pointerType === "touch" && !touchGraphLocked && !isFullscreen) {
             return;
           }
           setPanningCanvas(true);
@@ -949,7 +977,7 @@ export function KnowledgeGraphCanvas({
                   aria-pressed={isSelected}
                   transform={`translate(${node.x}, ${node.y})`}
                   opacity={effectiveOpacity}
-                  className="cursor-pointer focus:outline-none"
+                  className="group cursor-pointer focus:outline-none"
                   onMouseEnter={() => setHoveredNodeId(node.id)}
                   onMouseLeave={() => setHoveredNodeId(null)}
                   onFocus={() => setHoveredNodeId(node.id)}
@@ -979,6 +1007,34 @@ export function KnowledgeGraphCanvas({
                   }}
                   onDoubleClick={() => onExpandNode?.(node.id)}
                 >
+                  <circle
+                    r={radius + 11}
+                    fill="none"
+                    stroke="var(--accent-blue)"
+                    strokeWidth={2.5}
+                    className="opacity-0 group-focus-visible:opacity-100 pointer-events-none transition-opacity"
+                  />
+                  {doesSignalMatchCandidate(focusedSignal, node) ? (
+                    <>
+                      <circle
+                        r={radius + 13.5}
+                        fill="none"
+                        stroke="var(--accent-amber)"
+                        strokeWidth="1.6"
+                        strokeDasharray="4,3"
+                        strokeOpacity={0.78}
+                        className="pointer-events-none"
+                      />
+                      <circle
+                        r={radius + 17}
+                        fill="none"
+                        stroke="var(--accent-cyan)"
+                        strokeWidth="1"
+                        strokeOpacity={0.35}
+                        className="pointer-events-none animate-pulse"
+                      />
+                    </>
+                  ) : null}
                   {isPathNode ? (
                     <circle
                       r={radius + 9}
@@ -1064,12 +1120,28 @@ export function KnowledgeGraphCanvas({
             <button
               type="button"
               onClick={() => onExpandNode(selectedNodeId)}
-              className="min-h-[38px] sm:min-h-[30px] inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--accent-blue-solid)] hover:brightness-110 text-white font-semibold cursor-pointer"
+              className="min-h-[44px] sm:min-h-[30px] inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--accent-blue-solid)] hover:brightness-110 text-white font-semibold cursor-pointer"
             >
               <PlusCircle className="w-3.5 h-3.5" />
               <span>Expand Node (+4)</span>
             </button>
           ) : null}
+        </div>
+
+        {/* Mobile Scroll-Safe vs Locked Touch Canvas Mode Toggle */}
+        <div className="sm:hidden absolute top-2.5 left-2.5 z-10">
+          <button
+            type="button"
+            onClick={() => setTouchGraphLocked((prev) => !prev)}
+            className={`min-h-[38px] inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.08em] backdrop-blur-md transition-all cursor-pointer ${
+              touchGraphLocked
+                ? "badge-tone-warning"
+                : "omnis-hud-pill text-[var(--text-secondary)]"
+            }`}
+            title="Toggle between vertical page scroll and 1-finger canvas pan/zoom"
+          >
+            <span>{touchGraphLocked ? "Pan/Zoom Locked" : "Scroll-Safe Touch"}</span>
+          </button>
         </div>
       </div>
     </div>

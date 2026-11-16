@@ -18,11 +18,17 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { ISO3_TO_NUMERIC, NUMERIC_TO_ISO3 } from "@/lib/data/world-catalog";
+import {
+  ISO3_TO_NUMERIC,
+  NUMERIC_TO_ISO3,
+  buildPlaceholderCountryProfile,
+} from "@/lib/data/world-catalog";
 import { applyOfficialSurveyOfIndiaBoundaries } from "@/lib/data/india-soi-official";
+import { formatSignedValue } from "@/lib/formatters";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 import { dateFromUtcMinutes, getSunVectorInEarthFrame } from "@/lib/solarTime";
 import { CountrySolarClockBadge, SolarSyncHudControl } from "@/components/solar/SolarBadges";
+import { useFullscreenBodyLock } from "@/components/ui/OmnisPrimitives";
 import type { CountryIntelligenceProfile, IntelligenceLayerId } from "@/types/omnis";
 
 const MIN_ZOOM = 1.85;
@@ -157,7 +163,7 @@ export function getLayerMetricForCountry(
     case "environment":
       return {
         label: "Temp Anomaly & CO₂",
-        value: `+${country.environmentProfile.tempAnomalyC}°C • ${country.environmentProfile.co2PerCapitaTons}t/cap`,
+        value: `${formatSignedValue(country.environmentProfile.tempAnomalyC, "°C")} • ${country.environmentProfile.co2PerCapitaTons}t/cap`,
         numericWeight: Math.min(1.65, Math.max(0.7, country.environmentProfile.tempAnomalyC)),
         colorHex: 0xf59e0b,
         cssColor: "#f59e0b",
@@ -241,6 +247,7 @@ export function InteractiveGlobe3D({
   const stageRef = useRef<HTMLDivElement | null>(null);
   const mountRef = useRef<HTMLDivElement | null>(null);
   const railRef = useRef<HTMLDivElement | null>(null);
+  const railButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const { theme, motionPaused } = useOmnisStore();
 
   const [autoRotate, setAutoRotate] = useState(true);
@@ -393,6 +400,8 @@ export function InteractiveGlobe3D({
     isFullscreenRef.current = isFullscreen;
     touchOrbitLockedRef.current = touchOrbitLocked || isFullscreen;
   }, [isFullscreen, touchOrbitLocked]);
+
+  useFullscreenBodyLock(isFullscreen, () => setIsFullscreen(false));
 
   useEffect(() => {
     onSelectCountryRef.current = onSelectCountry;
@@ -1448,7 +1457,7 @@ totalEmissiveRadiance *= omnisNightMask * omnisEmissiveGain * uCityLightsEnabled
               ? selectedFeat.geometry.coordinates.map((poly) => poly[0])
               : [];
         for (const ring of rings) {
-          if (!ring || ring.length < 10) continue;
+          if (!ring || ring.length < 4) continue;
           const borderPoints: THREE.Vector3[] = [];
           for (let i = 0; i < ring.length; i++) {
             const [lng, lat] = ring[i];
@@ -1552,6 +1561,21 @@ totalEmissiveRadiance *= omnisNightMask * omnisEmissiveGain * uCityLightsEnabled
     }
     arcPulsesRef.current = newPulses;
   }, [countries, selectedIso3, activeLayer, selectedIsoKey, selectedLatKey, selectedLngKey, theme]);
+
+  const railCountries = useMemo(() => {
+    if (countries.some((c) => c.iso3 === selectedIso3)) return countries;
+    const placeholder = buildPlaceholderCountryProfile(selectedIso3);
+    return placeholder ? [placeholder, ...countries] : countries;
+  }, [countries, selectedIso3]);
+
+  useEffect(() => {
+    const activeBtn = railButtonRefs.current[selectedIso3];
+    if (activeBtn) {
+      activeBtn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    }
+    const id = requestAnimationFrame(updateRailScrollState);
+    return () => cancelAnimationFrame(id);
+  }, [selectedIso3, railCountries.length, updateRailScrollState]);
 
   const activeLayerMeta = selectedCountry
     ? getLayerMetricForCountry(selectedCountry, activeLayer)
@@ -1690,7 +1714,7 @@ totalEmissiveRadiance *= omnisNightMask * omnisEmissiveGain * uCityLightsEnabled
             onClick={() => setAutoRotate((prev) => !prev)}
             title={autoRotate ? "Pause Orbital Rotation" : "Resume Orbital Rotation"}
             aria-label={autoRotate ? "Pause Orbital Rotation" : "Resume Orbital Rotation"}
-            className="min-h-[38px] min-w-[38px] sm:min-h-[34px] sm:min-w-[34px] inline-flex items-center justify-center rounded-md hover:bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+            className="min-h-[44px] min-w-[44px] sm:min-h-[34px] sm:min-w-[34px] inline-flex items-center justify-center rounded-md hover:bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
           >
             {autoRotate ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
           </button>
@@ -1701,7 +1725,7 @@ totalEmissiveRadiance *= omnisNightMask * omnisEmissiveGain * uCityLightsEnabled
             }
             title="Zoom In"
             aria-label="Zoom In"
-            className="min-h-[38px] min-w-[38px] sm:min-h-[34px] sm:min-w-[34px] inline-flex items-center justify-center rounded-md hover:bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+            className="min-h-[44px] min-w-[44px] sm:min-h-[34px] sm:min-w-[34px] inline-flex items-center justify-center rounded-md hover:bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
           >
             <ZoomIn className="w-3.5 h-3.5" />
           </button>
@@ -1712,7 +1736,7 @@ totalEmissiveRadiance *= omnisNightMask * omnisEmissiveGain * uCityLightsEnabled
             }
             title="Zoom Out"
             aria-label="Zoom Out"
-            className="min-h-[38px] min-w-[38px] sm:min-h-[34px] sm:min-w-[34px] inline-flex items-center justify-center rounded-md hover:bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+            className="min-h-[44px] min-w-[44px] sm:min-h-[34px] sm:min-w-[34px] inline-flex items-center justify-center rounded-md hover:bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
           >
             <ZoomOut className="w-3.5 h-3.5" />
           </button>
@@ -1736,7 +1760,7 @@ totalEmissiveRadiance *= omnisNightMask * omnisEmissiveGain * uCityLightsEnabled
             onClick={handleResetView}
             title="Reset View"
             aria-label="Reset View"
-            className="min-h-[38px] min-w-[38px] sm:min-h-[34px] sm:min-w-[34px] inline-flex items-center justify-center rounded-md hover:bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+            className="min-h-[44px] min-w-[44px] sm:min-h-[34px] sm:min-w-[34px] inline-flex items-center justify-center rounded-md hover:bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
@@ -1745,7 +1769,7 @@ totalEmissiveRadiance *= omnisNightMask * omnisEmissiveGain * uCityLightsEnabled
             onClick={() => setIsFullscreen((f) => !f)}
             title={isFullscreen ? "Exit Fullscreen" : "Fullscreen Globe"}
             aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen Globe"}
-            className="min-h-[38px] min-w-[38px] sm:min-h-[34px] sm:min-w-[34px] inline-flex items-center justify-center rounded-md hover:bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+            className="min-h-[44px] min-w-[44px] sm:min-h-[34px] sm:min-w-[34px] inline-flex items-center justify-center rounded-md hover:bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
           >
             {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
           </button>
@@ -1775,7 +1799,7 @@ totalEmissiveRadiance *= omnisNightMask * omnisEmissiveGain * uCityLightsEnabled
             type="button"
             onClick={() => railRef.current?.scrollBy({ left: -200, behavior: "smooth" })}
             aria-label="Scroll countries left"
-            className="shrink-0 min-h-[40px] min-w-[40px] sm:min-h-[32px] sm:min-w-[32px] flex items-center justify-center p-1.5 rounded-lg bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+            className="shrink-0 min-h-[44px] min-w-[44px] sm:min-h-[34px] sm:min-w-[34px] flex items-center justify-center p-1.5 rounded-lg bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
           >
             <ChevronLeft className="w-3.5 h-3.5" />
           </button>
@@ -1794,12 +1818,15 @@ totalEmissiveRadiance *= omnisNightMask * omnisEmissiveGain * uCityLightsEnabled
                   : ""
           }`}
         >
-          {countries.map((c) => {
+          {railCountries.map((c) => {
             const active = c.iso3 === selectedIso3;
             const layerInfo = getLayerMetricForCountry(c, activeLayer);
             return (
               <button
                 key={c.iso3}
+                ref={(el) => {
+                  railButtonRefs.current[c.iso3] = el;
+                }}
                 type="button"
                 onClick={() => {
                   if (c.iso3 === selectedIso3) {
@@ -1828,7 +1855,7 @@ totalEmissiveRadiance *= omnisNightMask * omnisEmissiveGain * uCityLightsEnabled
             type="button"
             onClick={() => railRef.current?.scrollBy({ left: 200, behavior: "smooth" })}
             aria-label="Scroll countries right"
-            className="shrink-0 min-h-[40px] min-w-[40px] sm:min-h-[32px] sm:min-w-[32px] flex items-center justify-center p-1.5 rounded-lg bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+            className="shrink-0 min-h-[44px] min-w-[44px] sm:min-h-[34px] sm:min-w-[34px] flex items-center justify-center p-1.5 rounded-lg bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
           >
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
