@@ -30,12 +30,19 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+allowed_origins = [
+    origin.strip()
+    for origin in settings.allowed_origins_raw.split(",")
+    if origin.strip()
+] or ["http://localhost:3000"]
+allow_wildcard_cors = "*" in allowed_origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=allowed_origins,
+    allow_credentials=not allow_wildcard_cors,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 
@@ -55,17 +62,38 @@ async def security_and_rate_limit_middleware(request: Request, call_next):
 
 @app.get("/api/v1/health")
 async def health_check():
+    sim_self_check = False
+    try:
+        probe = run_numerical_simulation(
+            SimulationRequest(
+                scenario_id="health-probe",
+                category="economics",
+                horizon_years=5,
+                monte_carlo_runs=50,
+                seed=42,
+                parameters={"baselineGdpGrowthPct": 3.0},
+            )
+        )
+        sim_self_check = len(probe.trajectory) == 9
+    except Exception:
+        sim_self_check = False
+
+    providers = [
+        {"id": "world-bank", "name": "World Bank Open Data API", "baseUrl": settings.world_bank_api_base, "status": "configured"},
+        {"id": "rest-countries", "name": "REST Countries v3.1", "baseUrl": settings.rest_countries_api_base, "status": "configured"},
+        {"id": "openalex", "name": "OpenAlex Scholarly Graph", "baseUrl": settings.openalex_api_base, "status": "configured"},
+        {"id": "wikimedia", "name": "Wikimedia REST API v1", "baseUrl": settings.wikimedia_api_base, "status": "configured"},
+    ]
     return {
-        "status": "operational",
+        "status": "operational" if sim_self_check and len(CURATED_COUNTRIES) >= 5 else "degraded",
         "service": settings.app_name,
+        "version": app.version,
+        "environment": settings.environment,
         "runtime": "python-fastapi",
+        "simulationSelfCheck": sim_self_check,
+        "corsOriginsCount": len(allowed_origins),
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "providers": [
-            {"id": "world-bank", "name": "World Bank Open Data API", "status": "operational"},
-            {"id": "rest-countries", "name": "REST Countries v3.1", "status": "operational"},
-            {"id": "openalex", "name": "OpenAlex Scholarly Graph", "status": "operational"},
-            {"id": "wikimedia", "name": "Wikimedia REST API v1", "status": "operational"},
-        ],
+        "providers": providers,
     }
 
 

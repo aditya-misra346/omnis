@@ -10,7 +10,32 @@ def test_health_endpoint():
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "operational"
+    assert data["simulationSelfCheck"] is True
+    assert data["corsOriginsCount"] >= 1
+    assert "version" in data
+    assert "environment" in data
     assert len(data["providers"]) >= 4
+
+
+def test_cors_hardening():
+    preflight = client.options(
+        "/api/v1/health",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    assert preflight.status_code == 200
+    assert preflight.headers.get("access-control-allow-origin") == "http://localhost:3000"
+
+    disallowed = client.options(
+        "/api/v1/health",
+        headers={
+            "Origin": "https://evil.example",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    assert disallowed.headers.get("access-control-allow-origin") != "*"
 
 
 def test_countries_list_and_profile():

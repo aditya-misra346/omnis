@@ -1,6 +1,9 @@
+import type { CountryIntelligenceProfile } from "@/types/omnis";
+
 /**
- * Shared numeric, signed-delta, and macroeconomic currency formatters.
- * Prevents double-sign artifacts (e.g. `+-1.2%`) and scale-ambiguous `$k` axis ticks.
+ * Shared numeric, signed-delta, macroeconomic currency, and provenance-truthfulness formatters.
+ * Prevents double-sign artifacts (e.g. `+-1.2%`), scale-ambiguous `$k` axis ticks,
+ * stale GDP displays when live WDI overrides exist, and synthetic `0` / `100% Thermal` values.
  */
 
 function normalizeZero(value: number): number {
@@ -75,4 +78,66 @@ export function escapeCsvCell(value: unknown): string {
     return `"${safe.replace(/"/g, '""')}"`;
   }
   return safe;
+}
+
+/**
+ * Returns the canonical nominal GDP in USD billions, preferring verified live World Bank
+ * API v2 telemetry when `liveWorldBankOverride.retrievedFromApi` is present.
+ */
+export function getEffectiveGdpUsdBn(country: CountryIntelligenceProfile): number {
+  const override = country.liveWorldBankOverride;
+  if (
+    override?.retrievedFromApi &&
+    typeof override.gdpUsdBn === "number" &&
+    Number.isFinite(override.gdpUsdBn) &&
+    override.gdpUsdBn > 0
+  ) {
+    return override.gdpUsdBn;
+  }
+  return country.gdpUsdBn;
+}
+
+/**
+ * Returns the latest year of verified live World Bank GDP telemetry when `retrievedFromApi` is active.
+ */
+export function getEffectiveGdpYear(country: CountryIntelligenceProfile): string | undefined {
+  const override = country.liveWorldBankOverride;
+  if (!override?.retrievedFromApi) return undefined;
+  const trimmed = override.latestYear?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+/**
+ * Returns true when a country has measured total grid generation telemetry so fossil/thermal
+ * remainder shares can be derived truthfully without inventing `100% Thermal`.
+ */
+export function hasEnergyProfileData(country: CountryIntelligenceProfile): boolean {
+  return (
+    country.energyProfile.electricityGenerationTwh > 0 && !country.provenance.missingData
+  );
+}
+
+/**
+ * Returns true when a sector indicator represents an actual measured value rather than a
+ * zero-filled placeholder on a `provenance.missingData` live skeleton profile.
+ */
+export function hasSectorMetricValue(
+  country: CountryIntelligenceProfile,
+  value: number
+): boolean {
+  if (!Number.isFinite(value)) return false;
+  if (!country.provenance.missingData) return true;
+  return value !== 0;
+}
+
+/**
+ * Formats a country metric or returns `"N/A"` when the field is an unpopulated placeholder zero.
+ */
+export function formatCountryMetricOrNa(
+  country: CountryIntelligenceProfile,
+  value: number,
+  formatFn: (v: number) => string,
+  naLabel = "N/A"
+): string {
+  return hasSectorMetricValue(country, value) ? formatFn(value) : naLabel;
 }

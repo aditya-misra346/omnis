@@ -194,12 +194,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // Auto-dismiss transient global overlays on route change
   useEffect(() => {
-    setMobileMenuOpen(false);
-    setCommandPaletteOpen(false);
-    setShortcutsOpen(false);
-    if (typeof window !== "undefined" && window.innerWidth < 640) {
-      setAssistantOpen(false);
-    }
+    const timer = window.setTimeout(() => {
+      setMobileMenuOpen(false);
+      setCommandPaletteOpen(false);
+      setShortcutsOpen(false);
+      if (typeof window !== "undefined" && window.innerWidth < 640) {
+        setAssistantOpen(false);
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [pathname, setCommandPaletteOpen, setAssistantOpen]);
 
   // Prevent background page scroll while modal overlays/drawers are open
@@ -476,9 +479,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     router,
   ]);
 
-  useEffect(() => {
+  const paletteResetKey = `${paletteQuery}::${commandPaletteOpen}`;
+  const [prevPaletteResetKey, setPrevPaletteResetKey] = useState(paletteResetKey);
+  if (paletteResetKey !== prevPaletteResetKey) {
+    setPrevPaletteResetKey(paletteResetKey);
     setPaletteActiveIdx(0);
-  }, [paletteQuery, commandPaletteOpen]);
+  }
 
   return (
     <MotionConfig reducedMotion="user">
@@ -496,7 +502,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 type="button"
                 onClick={() => setMobileMenuOpen(true)}
                 aria-label="Open Navigation Menu"
-                className="lg:hidden shrink-0 min-h-[44px] min-w-[44px] sm:min-h-[38px] sm:min-w-[38px] flex items-center justify-center p-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                className="lg:hidden shrink-0 min-h-[44px] min-w-[44px] md:min-h-[38px] md:min-w-[38px] flex items-center justify-center p-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
               >
                 <Menu className="w-4 h-4" />
               </button>
@@ -539,7 +545,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 onClick={() => setCommandPaletteOpen(true)}
-                className="w-full min-w-0 flex items-center justify-between gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[13px] text-[var(--text-secondary)] transition-all shadow-2xs"
+                className="w-full min-w-0 min-h-[44px] md:min-h-0 flex items-center justify-between gap-2 px-2.5 sm:px-3 py-2 md:py-1.5 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[13px] text-[var(--text-secondary)] transition-all shadow-2xs"
               >
                 <span className="flex items-center gap-2 min-w-0 flex-1">
                   <Search className="w-3.5 h-3.5 tone-blue shrink-0" />
@@ -588,14 +594,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 onClick={() => setAssistantOpen(!assistantOpen)}
                 aria-label="Toggle OMNIS AI Assistant"
                 title="AI Assistant (⌘J)"
-                className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-2 sm:py-1.5 rounded-lg badge-tone-blue hover:brightness-105 text-[13px] font-semibold transition-all cursor-pointer shrink-0"
+                className="min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 inline-flex items-center justify-center gap-1.5 px-2.5 py-2 md:py-1.5 rounded-lg badge-tone-blue hover:brightness-105 text-[13px] font-semibold transition-all cursor-pointer shrink-0"
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                <span
-                  className={
-                    isLandingPage ? "hidden sm:inline lg:hidden xl:inline" : "hidden sm:inline"
-                  }
-                >
+                <span className="hidden sm:inline lg:hidden xl:inline">
                   AI Assistant
                 </span>
                 <kbd className="hidden xl:inline text-[11px] opacity-80 omnis-mono">⌘J</kbd>
@@ -632,7 +634,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     ? "Switch to Archival Pearl Light Theme"
                     : "Switch to Obsidian Dark Theme"
                 }
-                className="min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px] flex items-center justify-center p-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-all cursor-pointer shrink-0"
+                className="min-h-[44px] min-w-[44px] md:min-h-[36px] md:min-w-[36px] flex items-center justify-center p-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-all cursor-pointer shrink-0"
               >
                 {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </button>
@@ -640,6 +642,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Link
                 href="/settings"
                 title={user?.verified ? `${user.displayName} (${user.role})` : "Local Browser Workspace"}
+                aria-label="Settings and Session Governance"
                 className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:border-[var(--border-strong)] text-[13px] font-medium text-[var(--text-primary)] transition-colors shrink-0"
               >
                 <ShieldCheck
@@ -647,13 +650,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     user?.verified ? "tone-verified" : "text-[var(--text-muted)]"
                   }`}
                 />
-                <span
-                  className={
-                    isLandingPage
-                      ? "hidden xl:inline truncate max-w-[110px]"
-                      : "truncate max-w-[110px]"
-                  }
-                >
+                <span className="lg:hidden xl:inline truncate max-w-[110px]">
                   {user
                     ? user.verified
                       ? user.displayName.replace(/^Dr\.\s*/i, "").split(" ")[0] ||
@@ -853,7 +850,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       onClick={toggleMotionPaused}
                       aria-label={motionPaused ? "Resume motion" : "Pause motion"}
                       aria-pressed={motionPaused}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium transition-colors"
+                      className="w-full min-h-[44px] flex items-center justify-between px-3 py-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium transition-colors"
                     >
                       <span className="inline-flex items-center gap-2">
                         {motionPaused ? (
@@ -939,7 +936,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <button
                       type="button"
                       onClick={() => setCommandPaletteOpen(false)}
-                      className="px-2 py-1 text-xs font-medium rounded-md border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)] omnis-mono"
+                      className="min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 px-2.5 md:px-2 py-1 text-xs font-medium rounded-md border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)] omnis-mono"
                     >
                       ESC
                     </button>
@@ -1093,7 +1090,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <button
                       type="button"
                       onClick={clearAssistantMessages}
-                      className="text-xs px-2 py-1 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-graphite)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium"
+                      className="min-h-[44px] md:min-h-0 text-xs px-3 md:px-2 py-1.5 md:py-1 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-graphite)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium"
                     >
                       Reset
                     </button>
@@ -1101,7 +1098,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       type="button"
                       onClick={() => setAssistantOpen(false)}
                       aria-label="Close AI Assistant"
-                      className="min-h-[44px] min-w-[44px] sm:min-h-[34px] sm:min-w-[34px] flex items-center justify-center p-1.5 rounded-lg hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)]"
+                      className="min-h-[44px] min-w-[44px] md:min-h-[34px] md:min-w-[34px] flex items-center justify-center p-1.5 rounded-lg hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)]"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -1176,7 +1173,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                                 }
                                 router.push(act.href);
                               }}
-                              className="px-2 py-1 rounded-md badge-tone-blue hover:brightness-105 text-xs font-semibold"
+                              className="min-h-[44px] md:min-h-0 inline-flex items-center px-3 md:px-2 py-1.5 md:py-1 rounded-md badge-tone-blue hover:brightness-105 text-xs font-semibold"
                             >
                               {act.label} →
                             </button>

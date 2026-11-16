@@ -69,10 +69,14 @@ function ExploreContent() {
   const [activeQuery, setActiveQuery] = useState(initialQ);
   const [activeTab, setActiveTab] = useState(initialCat);
   const [sourceFilter, setSourceFilter] = useState<UniversalSearchSourceFilter>(initialSource);
-  const [openAlexWorks, setOpenAlexWorks] = useState<ResearchSourceItem[]>([]);
-  const [liveFetchState, setLiveFetchState] = useState<
-    "loading" | "verified" | "offline-fallback"
-  >("loading");
+  const [openAlexFetch, setOpenAlexFetch] = useState<{
+    query: string;
+    works: ResearchSourceItem[];
+    status: "verified" | "offline-fallback";
+  } | null>(null);
+  const openAlexWorks = openAlexFetch?.query === activeQuery ? openAlexFetch.works : [];
+  const liveFetchState: "loading" | "verified" | "offline-fallback" =
+    openAlexFetch?.query === activeQuery ? openAlexFetch.status : "loading";
 
   const {
     searchHistory,
@@ -84,7 +88,10 @@ function ExploreContent() {
     setFocusedSignal,
   } = useOmnisStore();
 
-  useEffect(() => {
+  const exploreUrlKey = `${paramQ ?? ""}::${paramCat ?? ""}::${paramSource ?? ""}`;
+  const [prevExploreUrlKey, setPrevExploreUrlKey] = useState(exploreUrlKey);
+  if (exploreUrlKey !== prevExploreUrlKey) {
+    setPrevExploreUrlKey(exploreUrlKey);
     if (paramQ && paramQ.trim()) {
       setQueryInput(paramQ);
       setActiveQuery(paramQ);
@@ -99,7 +106,7 @@ function ExploreContent() {
     } else if (paramSource === null) {
       setSourceFilter("all");
     }
-  }, [paramQ, paramCat, paramSource]);
+  }
 
   const syncExploreUrl = (
     nextQ: string,
@@ -122,17 +129,23 @@ function ExploreContent() {
 
   useEffect(() => {
     let active = true;
-    setLiveFetchState("loading");
-    fetchOpenAlexSources(activeQuery, 4)
+    const targetQuery = activeQuery;
+    fetchOpenAlexSources(targetQuery, 4)
       .then((items) => {
         if (!active) return;
-        setOpenAlexWorks(items);
-        setLiveFetchState(items.length > 0 ? "verified" : "offline-fallback");
+        setOpenAlexFetch({
+          query: targetQuery,
+          works: items,
+          status: items.length > 0 ? "verified" : "offline-fallback",
+        });
       })
       .catch(() => {
         if (!active) return;
-        setOpenAlexWorks([]);
-        setLiveFetchState("offline-fallback");
+        setOpenAlexFetch({
+          query: targetQuery,
+          works: [],
+          status: "offline-fallback",
+        });
       });
     return () => {
       active = false;

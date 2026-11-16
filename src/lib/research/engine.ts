@@ -7,8 +7,13 @@ import {
   WORLD_COUNTRIES_CATALOG,
   buildPlaceholderCountryProfile,
 } from "@/lib/data/world-catalog";
-import { formatSignedPct } from "@/lib/formatters";
 import {
+  formatCountryMetricOrNa,
+  formatSignedPct,
+  getEffectiveGdpUsdBn,
+} from "@/lib/formatters";
+import {
+  fetchLiveCountryIntelligence,
   fetchOpenAlexPublicationTrend,
   fetchOpenAlexSources,
   fetchWikimediaSummary,
@@ -376,11 +381,22 @@ export async function orchestrateDeepResearch(
         wikiSummary ? ` Context: ${wikiSummary.extract}` : ""
       }`;
 
-  const matchedCountries = Object.values(COUNTRIES_DATA).filter((c) =>
-    matchesCountryMention(cleanQuery, c.name, c.iso3)
-  );
-  const leadCountry = matchedCountries[0];
-  const compareCountry = matchedCountries[1];
+  const matchedCatalogEntries = WORLD_COUNTRIES_CATALOG.filter((entry) =>
+    matchesCountryMention(cleanQuery, entry.name, entry.iso3)
+  ).slice(0, 2);
+
+  const hydratedMatchedCountries = (
+    await Promise.all(
+      matchedCatalogEntries.map(async (entry) => {
+        if (COUNTRIES_DATA[entry.iso3]) return COUNTRIES_DATA[entry.iso3];
+        const live = await fetchLiveCountryIntelligence(entry.iso3).catch(() => null);
+        return live ?? buildPlaceholderCountryProfile(entry.iso3);
+      })
+    )
+  ).filter((c): c is CountryIntelligenceProfile => Boolean(c));
+
+  const leadCountry = hydratedMatchedCountries[0];
+  const compareCountry = hydratedMatchedCountries[1];
 
   const matchedComparable = COMPARABLE_ENTITIES.find((ent) => {
     const hay = `${ent.name} ${ent.subtitle} ${ent.category}`.toLowerCase();
@@ -400,25 +416,40 @@ export async function orchestrateDeepResearch(
         }))
     : [];
 
+  const leadGdpUsdBn = leadCountry ? getEffectiveGdpUsdBn(leadCountry) : 0;
+  const leadGdpDisplay = leadGdpUsdBn > 0 ? `$${leadGdpUsdBn.toLocaleString()}B` : "N/A";
+  const leadGrowthDisplay = leadCountry
+    ? leadCountry.provenance.missingData && leadCountry.gdpGrowthPct === 0 && leadGdpUsdBn === 0
+      ? "N/A"
+      : formatSignedPct(leadCountry.gdpGrowthPct)
+    : "N/A";
+  const leadRenewableDisplay = leadCountry
+    ? !leadCountry.provenance.missingData || leadCountry.energyProfile.renewableSharePct > 0
+      ? `${leadCountry.energyProfile.renewableSharePct}%`
+      : formatCountryMetricOrNa(leadCountry, leadCountry.energyProfile.renewableSharePct, (v) => `${v}%`)
+    : "N/A";
+
   const relevantStatistics: ResearchReportData["relevantStatistics"] = leadCountry
     ? [
         {
           metric: `${leadCountry.name} Nominal GDP`,
-          value: `$${leadCountry.gdpUsdBn.toLocaleString()}B`,
+          value: leadGdpDisplay,
           unit: "USD Billions",
-          period: "2026 Verified Baseline",
+          period: leadCountry.liveWorldBankOverride?.latestYear
+            ? `${leadCountry.liveWorldBankOverride.latestYear} Live WDI`
+            : "2026 Verified Baseline",
           sourceId: "src-wb-wdi",
         },
         {
           metric: `${leadCountry.name} Real GDP Growth`,
-          value: formatSignedPct(leadCountry.gdpGrowthPct),
+          value: leadGrowthDisplay,
           unit: "Annual %",
           period: "2026 Verified Baseline",
           sourceId: "src-wb-wdi",
         },
         {
           metric: `${leadCountry.name} Clean Electricity Share`,
-          value: `${leadCountry.energyProfile.renewableSharePct}%`,
+          value: leadRenewableDisplay,
           unit: "% of Generation",
           period: "2026 Baseline",
           sourceId: "src-wb-wdi",
@@ -531,7 +562,7 @@ export async function orchestrateDeepResearch(
         ? `Retrieved ${openAlexSources.length} peer-reviewed OpenAlex records directly matching "${cleanQuery}" (earliest/top cited: ${openAlexSources[0].publishedDate}).`
         : `No live OpenAlex works returned within timeout for "${cleanQuery}"; relying strictly on curated sovereign datasets without fabricated citations.`,
       leadCountry
-        ? `${leadCountry.name} nominal GDP stands at $${leadCountry.gdpUsdBn.toLocaleString()}B (${formatSignedPct(leadCountry.gdpGrowthPct)} real growth), with ${leadCountry.energyProfile.renewableSharePct}% clean electricity generation.`
+        ? `${leadCountry.name} nominal GDP stands at ${leadGdpDisplay} (${leadGrowthDisplay} real growth), with ${leadRenewableDisplay} clean electricity generation.`
         : "Physical infrastructure capacity (grid transmission, wafer lithography, skilled cohorts) constrains aggregate productivity diffusion.",
       "Macro-econometric national accounts frequently exhibit 3–5 year structural adjustment lags between R&D investment and total factor productivity gains.",
       "Model uncertainty bands and forward-looking scenarios are isolated strictly from measured historical observations.",
@@ -555,11 +586,11 @@ export async function orchestrateDeepResearch(
       {
         id: "claim-1",
         statement: leadCountry
-          ? `${leadCountry.name} (${leadCountry.iso3}) recorded $${leadCountry.gdpUsdBn.toLocaleString()}B nominal GDP with ${leadCountry.energyProfile.renewableSharePct}% renewable electricity generation (World Bank WDI).`
+          ? `${leadCountry.name} (${leadCountry.iso3}) recorded ${leadGdpDisplay} nominal GDP with ${leadRenewableDisplay} renewable electricity generation (World Bank WDI).`
           : `Primary institutional datasets and OpenAlex literature retrieved ${allSources.length} traceable sources linked to "${cleanQuery}".`,
         category: "Macroeconomic & Institutional Series",
-        verificationStatus: "verified",
-        sourceIds: [primarySourceId, "src-wb-wdi"],
+        verificationStatus: leadCountry?.provenance.verificationStatus ?? "verified",
+        sourceIds: Array.from(new Set([primarySourceId, "src-wb-wdi"])),
         methodologyNote: "Cross-verified against World Bank SNA 2008 national accounts and OpenAlex corpus.",
       },
       {
@@ -591,7 +622,7 @@ export async function orchestrateDeepResearch(
           "Aggregate national accounts frequently exhibit slower multi-year productivity realization due to organisational and infrastructure adjustment lags.",
         epistemicResolution:
           "Both observations reconcile cleanly when separating narrow micro-efficiency from economy-wide structural adoption lags.",
-        sourceIds: [primarySourceId, "src-imf-weo"],
+        sourceIds: Array.from(new Set([primarySourceId, "src-imf-weo"])),
       },
     ],
     relevantStatistics,

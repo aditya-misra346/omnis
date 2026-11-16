@@ -25,7 +25,11 @@ import {
   buildPlaceholderCountryProfile,
 } from "@/lib/data/world-catalog";
 import { buildSovereignComparisonMatrix } from "@/lib/research/compare";
-import { formatSignedPct, formatSignedValue } from "@/lib/formatters";
+import {
+  formatSignedPct,
+  formatSignedValue,
+  getEffectiveGdpUsdBn,
+} from "@/lib/formatters";
 import { fetchOpenAlexSources } from "@/lib/providers/live-data";
 import { ComparisonRadarChart } from "@/components/charts/OmnisCharts";
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
@@ -108,12 +112,13 @@ function resolveCachedTopicBriefing(topic: string): FollowedTopicBriefing {
   }
 
   const country = matchedCountry ?? COUNTRIES_DATA.IND;
+  const effectiveGdp = getEffectiveGdpUsdBn(matchedCountry ?? COUNTRIES_DATA.IND);
   if (matchedEvent && matchedCountry) {
     return {
       status: "cached",
       dateLabel: `Sovereign & Event Record • ${matchedEvent.dateDisplay}`,
       headline: `${matchedCountry.name}: ${matchedEvent.title}`,
-      summary: `${matchedEvent.description} (2026 GDP: $${matchedCountry.gdpUsdBn.toLocaleString()}B, +${matchedCountry.gdpGrowthPct}%/yr).`,
+      summary: `${matchedEvent.description} (2026 GDP: $${effectiveGdp.toLocaleString()}B, ${formatSignedPct(matchedCountry.gdpGrowthPct)}/yr).`,
       sourceLabel: `${matchedEvent.sources[0]?.publisher ?? "OMNIS"} / ${matchedCountry.provenance.publisher}`,
       sourceUrl: `/atlas?country=${matchedCountry.iso3}`,
     };
@@ -123,7 +128,7 @@ function resolveCachedTopicBriefing(topic: string): FollowedTopicBriefing {
     status: "cached",
     dateLabel: `WDI Edition • ${country.provenance.lastUpdated}`,
     headline: `${country.flagEmoji} ${country.officialName} — ${topic}`,
-    summary: `GDP $${country.gdpUsdBn.toLocaleString()}B (${formatSignedPct(
+    summary: `GDP $${getEffectiveGdpUsdBn(country).toLocaleString()}B (${formatSignedPct(
       country.gdpGrowthPct
     )} real), ${country.energyProfile.renewableSharePct}% clean electricity, AI readiness ${country.technologyProfile.aiReadinessIndex}/100.`,
     sourceLabel: country.provenance.source,
@@ -221,7 +226,10 @@ function IntelligenceCompareContent() {
   const [liveBriefings, setLiveBriefings] = useState<Record<string, ResearchSourceItem | null>>({});
   const fetchedTopicsRef = useRef<Set<string>>(new Set());
 
-  useEffect(() => {
+  const intelQueryKey = searchParams.toString();
+  const [prevIntelQueryKey, setPrevIntelQueryKey] = useState(intelQueryKey);
+  if (intelQueryKey !== prevIntelQueryKey) {
+    setPrevIntelQueryKey(intelQueryKey);
     const q = searchParams.get("q") || "";
     const parsed = parseCountriesFromCompareQuery(q);
     const leftParam = searchParams.get("left")?.trim().toUpperCase();
@@ -230,7 +238,7 @@ function IntelligenceCompareContent() {
     const nextRight = (isSupportedIso3(rightParam) ? rightParam : null) || parsed?.[1];
     if (nextLeft) setLeftIso(nextLeft);
     if (nextRight) setRightIso(nextRight);
-  }, [searchParams]);
+  }
 
   const { followedTopics, toggleFollowedTopic, addWorkspaceItem, setActiveContext } =
     useOmnisStore();
@@ -324,11 +332,12 @@ function IntelligenceCompareContent() {
   useEffect(() => {
     let active = true;
     let settled = false;
-    const missing = followedTopics.filter((t) => !fetchedTopicsRef.current.has(t));
+    const fetchedSet = fetchedTopicsRef.current;
+    const missing = followedTopics.filter((t) => !fetchedSet.has(t));
     if (missing.length === 0) return;
 
     for (const topic of missing) {
-      fetchedTopicsRef.current.add(topic);
+      fetchedSet.add(topic);
     }
 
     Promise.all(
@@ -352,7 +361,7 @@ function IntelligenceCompareContent() {
       active = false;
       if (!settled) {
         for (const topic of missing) {
-          fetchedTopicsRef.current.delete(topic);
+          fetchedSet.delete(topic);
         }
       }
     };
@@ -411,7 +420,7 @@ function IntelligenceCompareContent() {
             type="button"
             onClick={() => updateComparePair(rightIso, leftIso)}
             aria-label="Swap Entities"
-            className="p-2 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] transition-colors cursor-pointer"
+            className="min-h-[44px] min-w-[44px] md:min-h-[36px] md:min-w-[36px] inline-flex items-center justify-center p-2 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] transition-colors cursor-pointer"
             title="Swap Entities"
           >
             <ArrowLeftRight className="w-4 h-4 tone-blue" />
@@ -439,7 +448,7 @@ function IntelligenceCompareContent() {
                 key={pair.label}
                 type="button"
                 onClick={() => updateComparePair(pair.l, pair.r)}
-                className="px-2.5 py-1.5 rounded-lg bg-[var(--bg-slate)] hover:border-[var(--border-strong)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] font-medium transition-colors cursor-pointer"
+                className="min-h-[44px] md:min-h-[34px] inline-flex items-center px-3 md:px-2.5 py-1.5 rounded-lg bg-[var(--bg-slate)] hover:border-[var(--border-strong)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] font-medium transition-colors cursor-pointer"
               >
                 {pair.label}
               </button>
@@ -450,7 +459,7 @@ function IntelligenceCompareContent() {
 
       {/* Side-by-Side Indicator Table + Multi-Axis Radar Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-7 omnis-card p-6 space-y-4">
+        <div className="lg:col-span-7 min-w-0 omnis-card p-6 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-[15px] sm:text-base font-bold text-[var(--text-primary)]">
               Side-by-Side Indicator &amp; Relative Delta Matrix
@@ -487,6 +496,7 @@ function IntelligenceCompareContent() {
                     hydratingIsoList.length > 0 &&
                     ((hydratingIsoList.includes(leftIso) && row.leftVal === 0) ||
                       (hydratingIsoList.includes(rightIso) && row.rightVal === 0));
+                  const anyMissing = Boolean(row.leftMissing || row.rightMissing);
                   const diffVal = row.leftVal - row.rightVal;
                   const bothZero = row.leftVal === 0 && row.rightVal === 0;
                   const rightIsZero = Math.abs(row.rightVal) < 1e-6;
@@ -494,13 +504,16 @@ function IntelligenceCompareContent() {
                     ? ((row.leftVal - row.rightVal) / Math.abs(row.rightVal)) * 100
                     : null;
                   const sum = Math.max(1e-6, Math.abs(row.leftVal) + Math.abs(row.rightVal));
-                  const leftShare = bothZero
-                    ? 50
-                    : Math.min(92, Math.max(8, (Math.abs(row.leftVal) / sum) * 100));
+                  const leftShare =
+                    anyMissing || bothZero
+                      ? 50
+                      : Math.min(92, Math.max(8, (Math.abs(row.leftVal) / sum) * 100));
 
                   let deltaText = "—";
                   if (isHydratingRow) {
                     deltaText = "Syncing…";
+                  } else if (anyMissing) {
+                    deltaText = "N/A";
                   } else if (bothZero) {
                     deltaText = "0.0";
                   } else if (rightIsZero) {
@@ -522,6 +535,8 @@ function IntelligenceCompareContent() {
                       <td className="py-2.5 pr-3 font-bold">
                         {isHydratingRow && row.leftVal === 0 ? (
                           <OmnisSkeleton className="h-4 w-20 rounded" />
+                        ) : row.leftMissing ? (
+                          <span className="text-[var(--text-muted)]">N/A</span>
                         ) : (
                           `${row.leftVal.toLocaleString()} ${row.unit}`
                         )}
@@ -529,13 +544,15 @@ function IntelligenceCompareContent() {
                       <td className="py-2.5 pr-3 font-bold">
                         {isHydratingRow && row.rightVal === 0 ? (
                           <OmnisSkeleton className="h-4 w-20 rounded" />
+                        ) : row.rightMissing ? (
+                          <span className="text-[var(--text-muted)]">N/A</span>
                         ) : (
                           `${row.rightVal.toLocaleString()} ${row.unit}`
                         )}
                       </td>
                       <td
                         className={`py-2.5 font-semibold ${
-                          isHydratingRow
+                          isHydratingRow || anyMissing
                             ? "text-[var(--text-muted)]"
                             : diffVal >= 0
                               ? "tone-verified"
@@ -553,7 +570,7 @@ function IntelligenceCompareContent() {
         </div>
 
         {/* Interactive 6-Axis Normalised Radar Chart */}
-        <div className="lg:col-span-5 omnis-card p-6 flex flex-col justify-between space-y-4">
+        <div className="lg:col-span-5 min-w-0 omnis-card p-6 flex flex-col justify-between space-y-4">
           <div>
             <h2 className="text-[15px] sm:text-base font-bold text-[var(--text-primary)]">
               6-Dimension Normalized Radar Profile
@@ -619,7 +636,7 @@ function IntelligenceCompareContent() {
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2">
           {ALL_TOPICS.map((topic) => {
             const active = followedTopics.includes(topic);
             return (
@@ -627,7 +644,7 @@ function IntelligenceCompareContent() {
                 key={topic}
                 type="button"
                 onClick={() => toggleFollowedTopic(topic)}
-                className={`px-3 py-1.5 rounded-full text-[13px] font-semibold inline-flex items-center gap-1.5 border transition-colors cursor-pointer ${
+                className={`min-h-[44px] md:min-h-[34px] px-3 py-1.5 rounded-full text-[13px] font-semibold inline-flex items-center gap-1.5 border transition-colors cursor-pointer ${
                   active
                     ? "badge-tone-blue"
                     : "bg-[var(--bg-slate)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
@@ -694,7 +711,7 @@ function IntelligenceCompareContent() {
                       });
                       setPinnedTopics((p) => ({ ...p, [topic]: true }));
                     }}
-                    className="px-2.5 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] hover:border-[var(--border-strong)] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
+                    className="min-h-[44px] md:min-h-[34px] px-3 md:px-2.5 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] hover:border-[var(--border-strong)] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
                   >
                     <Pin className="w-3.5 h-3.5 tone-blue" />
                     <span>{isPinned ? "Pinned" : "Pin to Workspace"}</span>

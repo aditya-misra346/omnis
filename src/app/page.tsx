@@ -28,7 +28,13 @@ import {
 } from "lucide-react";
 import { COUNTRIES_DATA } from "@/lib/data/global-intelligence";
 import { buildPlaceholderCountryProfile } from "@/lib/data/world-catalog";
-import { formatSignedPct, formatSignedValue } from "@/lib/formatters";
+import {
+  formatCountryMetricOrNa,
+  formatSignedPct,
+  formatSignedValue,
+  getEffectiveGdpUsdBn,
+  getEffectiveGdpYear,
+} from "@/lib/formatters";
 import { InteractiveGlobe3D } from "@/components/globe/InteractiveGlobe3D";
 import { CountrySolarClockBadge } from "@/components/solar/SolarBadges";
 import { ProvenancePanel } from "@/components/ui/ProvenancePanel";
@@ -163,47 +169,60 @@ export default function LandingPage() {
   const [hydratedCountries, setHydratedCountries] = useState<
     Record<string, CountryIntelligenceProfile>
   >({});
-  const [hydratingIso3, setHydratingIso3] = useState<string | null>(null);
+  const [failedHydrateIso3, setFailedHydrateIso3] = useState<Record<string, boolean>>({});
   const [activeLayer, setActiveLayer] = useState<IntelligenceLayerId>("economics");
   const [simOilShock, setSimOilShock] = useState(30);
   const [activeGraphNodeIdx, setActiveGraphNodeIdx] = useState(0);
 
   useEffect(() => {
-    if (COUNTRIES_DATA[selectedIso3] || hydratedCountries[selectedIso3]) return;
+    if (hydratedCountries[selectedIso3] || failedHydrateIso3[selectedIso3]) return;
     let active = true;
-    setHydratingIso3(selectedIso3);
-    fetch(`/api/v1/countries/${encodeURIComponent(selectedIso3)}`)
+    const targetIso = selectedIso3;
+    const controller = new AbortController();
+    fetch(`/api/v1/countries/${encodeURIComponent(targetIso)}`, {
+      signal: controller.signal,
+    })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
+        if (!active) return;
         const resolved: CountryIntelligenceProfile | null =
           data?.country ?? (data?.iso3 ? data : null);
-        if (!active || !resolved) return;
-        setHydratedCountries((prev) => ({ ...prev, [selectedIso3]: resolved }));
+        if (resolved) {
+          setHydratedCountries((prev) => ({ ...prev, [targetIso]: resolved }));
+        } else {
+          setFailedHydrateIso3((prev) => ({ ...prev, [targetIso]: true }));
+        }
       })
-      .catch(() => {})
-      .finally(() => {
+      .catch(() => {
         if (active) {
-          setHydratingIso3((prev) => (prev === selectedIso3 ? null : prev));
+          setFailedHydrateIso3((prev) => ({ ...prev, [targetIso]: true }));
         }
       });
     return () => {
       active = false;
+      controller.abort();
     };
-  }, [selectedIso3, hydratedCountries]);
+  }, [selectedIso3, hydratedCountries, failedHydrateIso3]);
 
   const countriesList = useMemo(
-    () => [...Object.values(COUNTRIES_DATA), ...Object.values(hydratedCountries)],
+    () =>
+      Object.values({
+        ...COUNTRIES_DATA,
+        ...hydratedCountries,
+      }),
     [hydratedCountries]
   );
   const activeCountry =
-    COUNTRIES_DATA[selectedIso3] ??
     hydratedCountries[selectedIso3] ??
+    COUNTRIES_DATA[selectedIso3] ??
     buildPlaceholderCountryProfile(selectedIso3) ??
     COUNTRIES_DATA.IND;
+  const effectiveActiveGdp = getEffectiveGdpUsdBn(activeCountry);
+  const effectiveActiveGdpYear = getEffectiveGdpYear(activeCountry);
   const isHydratingSelected =
-    hydratingIso3 === selectedIso3 &&
     !COUNTRIES_DATA[selectedIso3] &&
-    !hydratedCountries[selectedIso3];
+    !hydratedCountries[selectedIso3] &&
+    !failedHydrateIso3[selectedIso3];
 
   useEffect(() => {
     setFocusedSignal({
@@ -353,7 +372,7 @@ export default function LandingPage() {
                     key={chip}
                     type="button"
                     onClick={() => submitHeroExplore(chip)}
-                    className="px-2.5 py-1 rounded-full bg-[var(--bg-slate)] hover:border-[var(--border-strong)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                    className="min-h-[44px] sm:min-h-0 px-3 sm:px-2.5 py-2 sm:py-1 rounded-full bg-[var(--bg-slate)] hover:border-[var(--border-strong)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer text-left"
                   >
                     {chip}
                   </button>
@@ -362,7 +381,7 @@ export default function LandingPage() {
                   type="button"
                   onClick={() => setBuilderOpen((prev) => !prev)}
                   aria-expanded={builderOpen}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full badge-tone-blue text-xs sm:text-[13px] font-semibold cursor-pointer hover:brightness-105 transition-all"
+                  className="min-h-[44px] sm:min-h-0 inline-flex items-center gap-1 px-3 sm:px-2.5 py-2 sm:py-1 rounded-full badge-tone-blue text-xs sm:text-[13px] font-semibold cursor-pointer hover:brightness-105 transition-all"
                 >
                   <span>Structured Query Builder</span>
                   <ChevronDown
@@ -678,14 +697,18 @@ export default function LandingPage() {
                 <OmnisStatTile
                   label="Nominal GDP"
                   value={
-                    isHydratingSelected && activeCountry.gdpUsdBn === 0
+                    isHydratingSelected && effectiveActiveGdp === 0
                       ? "Syncing…"
-                      : `$${activeCountry.gdpUsdBn.toLocaleString()}B`
+                      : effectiveActiveGdp > 0
+                        ? `$${effectiveActiveGdp.toLocaleString()}B`
+                        : "N/A"
                   }
                   subValue={
-                    isHydratingSelected && activeCountry.gdpUsdBn === 0
+                    isHydratingSelected && effectiveActiveGdp === 0
                       ? "World Bank WDI"
-                      : `${formatSignedPct(activeCountry.gdpGrowthPct)} real/yr`
+                      : effectiveActiveGdpYear && effectiveActiveGdp !== activeCountry.gdpUsdBn
+                        ? `Live WDI ${effectiveActiveGdpYear} • ${formatSignedPct(activeCountry.gdpGrowthPct)}`
+                        : `${formatSignedPct(activeCountry.gdpGrowthPct)} real/yr`
                   }
                   tone="blue"
                 />
@@ -694,12 +717,14 @@ export default function LandingPage() {
                   value={
                     isHydratingSelected && activeCountry.gdpPerCapitaUsd === 0
                       ? "Syncing…"
-                      : `$${activeCountry.gdpPerCapitaUsd.toLocaleString()}`
+                      : activeCountry.gdpPerCapitaUsd > 0
+                        ? `$${activeCountry.gdpPerCapitaUsd.toLocaleString()}`
+                        : "N/A"
                   }
                   subValue={
                     isHydratingSelected && activeCountry.gdpPerCapitaUsd === 0
                       ? "Querying CPI…"
-                      : `CPI: ${activeCountry.inflationPct}%`
+                      : `CPI: ${formatCountryMetricOrNa(activeCountry, activeCountry.inflationPct, (v) => `${v}%`)}`
                   }
                   tone="default"
                 />
@@ -708,12 +733,14 @@ export default function LandingPage() {
                   value={
                     isHydratingSelected && activeCountry.energyProfile.renewableSharePct === 0
                       ? "Syncing…"
-                      : `${activeCountry.energyProfile.renewableSharePct}%`
+                      : !activeCountry.provenance.missingData || activeCountry.energyProfile.renewableSharePct > 0
+                        ? `${activeCountry.energyProfile.renewableSharePct}%`
+                        : "N/A"
                   }
                   subValue={
                     isHydratingSelected && activeCountry.energyProfile.renewableSharePct === 0
                       ? "Energy Mix"
-                      : `Nuclear: ${activeCountry.energyProfile.nuclearSharePct}%`
+                      : `Nuclear: ${formatCountryMetricOrNa(activeCountry, activeCountry.energyProfile.nuclearSharePct, (v) => `${v}%`)}`
                   }
                   tone="verified"
                 />
@@ -722,12 +749,14 @@ export default function LandingPage() {
                   value={
                     isHydratingSelected && activeCountry.population === 0
                       ? "Syncing…"
-                      : `${(activeCountry.population / 1e6).toFixed(1)}M`
+                      : activeCountry.population > 0
+                        ? `${(activeCountry.population / 1e6).toFixed(1)}M`
+                        : "N/A"
                   }
                   subValue={
                     isHydratingSelected && activeCountry.population === 0
                       ? "Demographics"
-                      : `Life Exp: ${activeCountry.lifeExpectancyYears}y`
+                      : `Life Exp: ${formatCountryMetricOrNa(activeCountry, activeCountry.lifeExpectancyYears, (v) => `${v}y`)}`
                   }
                   tone="default"
                 />
@@ -944,9 +973,30 @@ export default function LandingPage() {
                             return (
                               <g
                                 key={n.id}
-                                className="cursor-pointer"
+                                role="button"
+                                tabIndex={0}
+                                aria-label={`Inspect ${n.title}: ${n.short}`}
+                                aria-pressed={selected}
+                                className="group cursor-pointer focus:outline-none"
                                 onClick={() => setActiveGraphNodeIdx(idx)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    setActiveGraphNodeIdx(idx);
+                                  }
+                                }}
                               >
+                                <rect
+                                  x={n.x - n.rectW / 2 - 3}
+                                  y={n.y - 16}
+                                  width={n.rectW + 6}
+                                  height={32}
+                                  rx={8}
+                                  fill="none"
+                                  stroke="var(--accent-blue)"
+                                  strokeWidth={2}
+                                  className="opacity-0 group-focus-visible:opacity-100 pointer-events-none transition-opacity"
+                                />
                                 <rect
                                   x={n.x - n.rectW / 2}
                                   y={n.y - 13}

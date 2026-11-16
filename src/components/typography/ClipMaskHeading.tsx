@@ -21,21 +21,18 @@ export function ClipMaskHeading({
   const [revealed, setRevealed] = useState(initialVisible);
 
   useEffect(() => {
-    if (motionPaused || initialVisible) {
-      setRevealed(true);
-      return;
-    }
+    if (motionPaused || initialVisible) return;
 
     const mq = window.matchMedia?.("(prefers-reduced-motion: reduce)");
     if (mq?.matches) {
-      setRevealed(true);
-      return;
+      const id = window.setTimeout(() => setRevealed(true), 0);
+      return () => window.clearTimeout(id);
     }
 
     const el = rootRef.current;
     if (!el || typeof IntersectionObserver === "undefined") {
-      setRevealed(true);
-      return;
+      const id = window.setTimeout(() => setRevealed(true), 0);
+      return () => window.clearTimeout(id);
     }
 
     const observer = new IntersectionObserver(
@@ -55,10 +52,14 @@ export function ClipMaskHeading({
     return () => observer.disconnect();
   }, [motionPaused, initialVisible]);
 
-  const show = revealed || motionPaused;
+  const show = revealed || motionPaused || initialVisible;
 
   return (
-    <Tag ref={rootRef as React.Ref<never>} className={`omnis-text-mask ${className}`}>
+    <Tag
+      ref={rootRef as React.Ref<never>}
+      data-clip-mask-heading="true"
+      className={`omnis-text-mask ${className}`}
+    >
       <span
         className="omnis-text-mask-inner"
         style={{

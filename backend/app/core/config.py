@@ -6,6 +6,10 @@ from dataclasses import dataclass
 class Settings:
     app_name: str = os.getenv("NEXT_PUBLIC_APP_NAME", "OMNIS")
     environment: str = os.getenv("NODE_ENV", "development")
+    allowed_origins_raw: str = os.getenv(
+        "OMNIS_ALLOWED_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:3000,https://omnis-one.vercel.app",
+    )
     database_url: str = os.getenv("DATABASE_URL", "sqlite:///./omnis.db")
     redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     auth_secret: str = os.getenv(

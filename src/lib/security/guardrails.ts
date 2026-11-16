@@ -35,11 +35,19 @@ export function validateAndSanitizeInput(input: string, maxLength = 600): Guardr
   return { allowed: true, sanitizedText: cleaned };
 }
 
-export function sanitizeExternalSnippet(raw: string): string {
-  if (!raw) return "";
-  return raw
-    .replace(/<[^>]*>/g, "")
-    .replace(/ignore\s+previous\s+instructions/gi, "[redacted]")
+export function sanitizeExternalSnippet(raw: unknown): string {
+  if (typeof raw !== "string" || !raw) return "";
+  let cleaned = raw;
+  let previous = "";
+  do {
+    previous = cleaned;
+    cleaned = cleaned.replace(/<[^<>]*>/g, "");
+  } while (cleaned !== previous);
+
+  return cleaned
+    .replace(/[<>]/g, "")
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+    .replace(/ignore\s+(all\s+)?(previous|prior|above|system)\s+instructions/gi, "[redacted]")
     .trim()
     .slice(0, 1200);
 }

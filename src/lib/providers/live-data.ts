@@ -171,7 +171,9 @@ export async function fetchLiveCountryIntelligence(
         "World Bank Open Data API v2 (Live Telemetry) + REST Countries v3.1 + National Statistical Offices";
     }
 
-    if (useCache) setCached(cacheKey, baseProfile, 300_000);
+    if (useCache) {
+      setCached(cacheKey, baseProfile, wbGdp.latestValue !== null ? 300_000 : 15_000);
+    }
     return baseProfile;
   }
 
@@ -431,7 +433,9 @@ interface WorldBankCountryMetaRecord {
     },
   };
 
-  if (useCache) setCached(cacheKey, hydrated, 300_000);
+  if (useCache) {
+    setCached(cacheKey, hydrated, wbHasAnyData ? 300_000 : 15_000);
+  }
   return hydrated;
 }
 

@@ -42,6 +42,63 @@ interface PositionedNode extends KnowledgeGraphNode {
   y: number;
 }
 
+function estimateNodePillWidth(label: string): number {
+  const len = Math.min(label.length, 38);
+  return Math.min(296, Math.max(88, len * 7.5 + 22));
+}
+
+function relaxSameBandPillCollisions(
+  nodes: PositionedNode[],
+  safeW: number,
+  padX: number,
+  yBandThreshold = 56
+): PositionedNode[] {
+  const out = nodes.map((n) => ({ ...n }));
+  for (let pass = 0; pass < 8; pass++) {
+    for (let i = 0; i < out.length; i++) {
+      for (let j = i + 1; j < out.length; j++) {
+        if (Math.abs(out[i].y - out[j].y) > yBandThreshold) continue;
+        const wA = estimateNodePillWidth(out[i].label);
+        const wB = estimateNodePillWidth(out[j].label);
+        const minDx = wA / 2 + wB / 2 + 12;
+        const dx = out[j].x - out[i].x;
+        const absDx = Math.abs(dx);
+        if (absDx < minDx) {
+          const push = (minDx - absDx) * 0.52;
+          const dir = dx >= 0 ? 1 : -1;
+          out[i].x = Math.max(padX, Math.min(safeW - padX, out[i].x - dir * push));
+          out[j].x = Math.max(padX, Math.min(safeW - padX, out[j].x + dir * push));
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Resolves all `var(--token)` CSS references inside a serialized SVG string against computed theme
+ * tokens and prepends a solid theme background rectangle so exported SVGs are portable.
+ */
+export function buildStandaloneThemedSvg(
+  rawSerializedSvg: string,
+  resolveToken: (tokenName: string) => string
+): string {
+  const resolveValue = (val: string): string =>
+    val.replace(/var\((--[a-zA-Z0-9-]+)\)/g, (_full, tokenName: string) => {
+      const resolved = resolveToken(tokenName).trim();
+      return resolved || "#0b1120";
+    });
+
+  const bgColor = resolveToken("--bg-graphite").trim() || "#0b1120";
+  const withResolvedTokens = resolveValue(rawSerializedSvg);
+  const withXmlns = withResolvedTokens.includes('xmlns="http://www.w3.org/2000/svg"')
+    ? withResolvedTokens
+    : withResolvedTokens.replace("<svg", '<svg xmlns="http://www.w3.org/2000/svg"');
+
+  const injection = `<style>text { font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif; }</style><rect x="0" y="0" width="100%" height="100%" fill="${bgColor}" />`;
+  return withXmlns.replace(/(<svg\b[^>]*>)/i, `$1${injection}`);
+}
+
 function computeLayoutPositions(
   nodes: KnowledgeGraphNode[],
   edges: KnowledgeGraphEdge[],
@@ -96,9 +153,9 @@ function computeLayoutPositions(
     const out: PositionedNode[] = [];
     const topY = safeH * 0.16;
     const stepY = (safeH * 0.66) / 2;
+    const padX = Math.max(96, safeW * 0.1);
     levels.forEach((lvlNodes, lvlIdx) => {
       const y = topY + lvlIdx * stepY;
-      const padX = Math.max(76, safeW * 0.1);
       const span = Math.max(120, safeW - padX * 2);
       lvlNodes.forEach((n, i) => {
         const x =
@@ -108,26 +165,28 @@ function computeLayoutPositions(
         out.push({ ...n, x, y });
       });
     });
-    return out;
+    return relaxSameBandPillCollisions(out, safeW, padX, 52);
   }
 
   if (mode === "clustered") {
     const categories = Array.from(new Set(nodes.map((n) => n.category)));
-    const rx = safeW * 0.21;
-    const ry = safeH * 0.27;
-    return nodes.map((n, idx) => {
+    const rx = safeW * 0.24;
+    const ry = safeH * 0.28;
+    const padX = Math.max(96, safeW * 0.1);
+    const initial = nodes.map((n, idx) => {
       const catIdx = categories.indexOf(n.category);
       const clusterAngle = (2 * Math.PI * catIdx) / Math.max(1, categories.length);
       const clusterCx = cx + (catIdx === 0 ? 0 : rx * Math.cos(clusterAngle));
       const clusterCy = cy + (catIdx === 0 ? 0 : ry * Math.sin(clusterAngle));
       const jitterAngle = idx * 1.9;
-      const jitterR = idx === 0 ? 0 : Math.min(54, Math.min(safeW, safeH) * 0.1);
+      const jitterR = idx === 0 ? 0 : Math.min(58, Math.min(safeW, safeH) * 0.11);
       return {
         ...n,
         x: clusterCx + jitterR * Math.cos(jitterAngle),
         y: clusterCy + jitterR * Math.sin(jitterAngle),
       };
     });
+    return relaxSameBandPillCollisions(initial, safeW, padX, 56);
   }
 
   const baseDist = Math.min(safeW, safeH) * 0.38;
@@ -252,12 +311,14 @@ export function KnowledgeGraphCanvas({
   const packetPhaseRef = useRef(0);
 
   const rootNodeId = nodes[0]?.id ?? "";
-
-  useEffect(() => {
+  const graphResetKey = `${layoutMode}::${rootNodeId}`;
+  const [prevGraphResetKey, setPrevGraphResetKey] = useState(graphResetKey);
+  if (graphResetKey !== prevGraphResetKey) {
+    setPrevGraphResetKey(graphResetKey);
     setZoom(1);
     setPan({ x: 0, y: 0 });
     setDraggedOffsets({});
-  }, [layoutMode, rootNodeId]);
+  }
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -310,7 +371,6 @@ export function KnowledgeGraphCanvas({
 
   useEffect(() => {
     if (typeof document === "undefined") return;
-    setIsTabActive(document.visibilityState === "visible");
     const onVis = () => setIsTabActive(document.visibilityState === "visible");
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
@@ -394,8 +454,8 @@ export function KnowledgeGraphCanvas({
       typeof window !== "undefined" &&
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     if (prefersReduced) {
-      setPacketPhase(0.5);
-      return;
+      const id = window.setTimeout(() => setPacketPhase(0.5), 0);
+      return () => window.clearTimeout(id);
     }
     let rafId = 0;
     let lastTime = performance.now();
@@ -526,9 +586,16 @@ export function KnowledgeGraphCanvas({
 
   const handleExportSvg = () => {
     const svgElement = document.getElementById("omnis-knowledge-graph-svg");
-    if (!svgElement) return;
+    if (!(svgElement instanceof SVGSVGElement)) return;
+    const clone = svgElement.cloneNode(true) as SVGSVGElement;
+    clone.setAttribute("width", String(canvasSize.width));
+    clone.setAttribute("height", String(canvasSize.height));
     const serializer = new XMLSerializer();
-    const source = serializer.serializeToString(svgElement);
+    const rawSource = serializer.serializeToString(clone);
+    const rootStyles = getComputedStyle(document.documentElement);
+    const source = buildStandaloneThemedSvg(rawSource, (tokenName) =>
+      rootStyles.getPropertyValue(tokenName)
+    );
     const blob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -627,12 +694,18 @@ export function KnowledgeGraphCanvas({
         className={`flex-1 relative omnis-subtle-dots bg-[var(--bg-graphite)] overflow-hidden ${
           isFullscreen || touchGraphLocked ? "touch-none" : "touch-pan-y sm:touch-none"
         }`}
-        onPointerDown={(e) => {
+        onPointerDownCapture={(e) => {
           activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
           if (activePointersRef.current.size === 2) {
             const pts = Array.from(activePointersRef.current.values());
             const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
             pinchStartRef.current = { dist: Math.max(1, dist), zoom };
+            setDraggingNodeId(null);
+            setPanningCanvas(false);
+          }
+        }}
+        onPointerDown={(e) => {
+          if (activePointersRef.current.size >= 2) {
             setDraggingNodeId(null);
             setPanningCanvas(false);
             return;
@@ -1002,8 +1075,15 @@ export function KnowledgeGraphCanvas({
                     }
                   }}
                   onPointerDown={(e) => {
-                    e.stopPropagation();
+                    if (activePointersRef.current.size > 1 || !e.isPrimary) {
+                      setDraggingNodeId(null);
+                      return;
+                    }
                     onSelectNode(node.id);
+                    if (e.pointerType === "touch" && !touchGraphLocked && !isFullscreen) {
+                      return;
+                    }
+                    e.stopPropagation();
                     setDraggingNodeId(node.id);
                     setDragStart({ x: e.clientX, y: e.clientY });
                   }}
@@ -1135,7 +1215,7 @@ export function KnowledgeGraphCanvas({
           <button
             type="button"
             onClick={() => setTouchGraphLocked((prev) => !prev)}
-            className={`min-h-[38px] inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.08em] backdrop-blur-md transition-all cursor-pointer ${
+            className={`min-h-[44px] inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] backdrop-blur-md transition-all cursor-pointer ${
               touchGraphLocked
                 ? "badge-tone-warning"
                 : "omnis-hud-pill text-[var(--text-secondary)]"

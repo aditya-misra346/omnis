@@ -34,9 +34,9 @@ export function OmnisButton({
   };
 
   const sizeClasses = {
-    sm: "px-3 py-1.5 text-[13px] rounded-lg gap-1.5",
-    md: "px-4 py-2 text-sm rounded-lg gap-2",
-    lg: "px-5.5 py-2.5 text-[15px] rounded-xl gap-2",
+    sm: "min-h-[44px] md:min-h-0 px-3 py-1.5 text-[13px] rounded-lg gap-1.5",
+    md: "min-h-[44px] md:min-h-0 px-4 py-2 text-sm rounded-lg gap-2",
+    lg: "min-h-[44px] px-5.5 py-2.5 text-[15px] rounded-xl gap-2",
   };
 
   return (
@@ -324,7 +324,9 @@ export { OmnisParameterSlider, type OmnisParameterSliderProps } from "./OmnisPar
  */
 export function useFullscreenBodyLock(isFullscreen: boolean, onExit: () => void): void {
   const onExitRef = useRef(onExit);
-  onExitRef.current = onExit;
+  useEffect(() => {
+    onExitRef.current = onExit;
+  }, [onExit]);
 
   useEffect(() => {
     if (!isFullscreen) return;
@@ -364,13 +366,15 @@ export function OmnisMobileBottomSheet({
   subtitle?: React.ReactNode;
   ariaLabel?: string;
   closeAriaLabel?: string;
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }) {
   const sheetRef = useRef<HTMLDivElement | null>(null);
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
   const prevFocusRef = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) return;

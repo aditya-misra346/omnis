@@ -64,32 +64,29 @@ export function OmnisSelect({
   }, [isSearchable, options, searchQuery]);
 
   useEffect(() => {
-    setResolvedAlign(menuAlign);
-  }, [menuAlign]);
-
-  useEffect(() => {
-    if (!open) {
-      setSearchQuery("");
-      return;
-    }
+    if (!open) return;
     if (isSearchable && !window.matchMedia?.("(pointer: coarse)").matches) {
       requestAnimationFrame(() => searchInputRef.current?.focus());
     }
+    const closeMenu = () => {
+      setOpen(false);
+      setSearchQuery("");
+    };
     const handleOutside = (event: PointerEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setOpen(false);
+        closeMenu();
       }
     };
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setOpen(false);
+        closeMenu();
         triggerRef.current?.focus();
       }
     };
     const initialScrollY = window.scrollY;
     const handleScroll = () => {
       if (Math.abs(window.scrollY - initialScrollY) > 24) {
-        setOpen(false);
+        closeMenu();
       }
     };
     document.addEventListener("pointerdown", handleOutside);
@@ -191,7 +188,9 @@ export function OmnisSelect({
         : "border-[var(--border-subtle)] hover:border-[var(--border-strong)]";
 
   const sizeClass =
-    size === "md" ? "px-3 py-2 text-sm min-h-[38px]" : "px-2.5 py-1.5 text-[13px] min-h-[34px]";
+    size === "md"
+      ? "px-3 py-2 text-sm min-h-[44px] md:min-h-[38px]"
+      : "px-2.5 py-1.5 text-[13px] min-h-[44px] md:min-h-[34px]";
 
   const prefixToneClass =
     tone === "blue" ? "tone-blue" : tone === "violet" ? "tone-violet" : "text-[var(--text-muted)]";
@@ -274,7 +273,7 @@ export function OmnisSelect({
                   aria-selected={isSelected}
                   onMouseEnter={() => setActiveIndex(idx)}
                   onClick={() => handleSelect(opt.value)}
-                  className={`w-full min-h-[42px] sm:min-h-[34px] flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-md text-left text-sm transition-colors cursor-pointer ${
+                  className={`w-full min-h-[44px] md:min-h-[34px] flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-md text-left text-sm transition-colors cursor-pointer ${
                     isSelected
                       ? "bg-[var(--badge-blue-bg)] text-[var(--text-primary)] font-semibold"
                       : isHighlighted

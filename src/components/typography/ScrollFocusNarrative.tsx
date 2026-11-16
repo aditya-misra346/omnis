@@ -119,10 +119,13 @@ export function ScrollFocusNarrative({ text, className = "" }: ScrollFocusNarrat
 
   useEffect(() => {
     const mq = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+    let initTimer = 0;
     if (mq?.matches) {
-      setReducedMotion(true);
-      setScrollProgress(1);
-      return;
+      initTimer = window.setTimeout(() => {
+        setReducedMotion(true);
+        setScrollProgress(1);
+      }, 0);
+      return () => window.clearTimeout(initTimer);
     }
 
     const onChange = (e: MediaQueryListEvent) => {
@@ -132,18 +135,21 @@ export function ScrollFocusNarrative({ text, className = "" }: ScrollFocusNarrat
     mq?.addEventListener?.("change", onChange);
 
     if (motionPaused) {
-      setScrollProgress(1);
-      return () => mq?.removeEventListener?.("change", onChange);
+      initTimer = window.setTimeout(() => setScrollProgress(1), 0);
+      return () => {
+        window.clearTimeout(initTimer);
+        mq?.removeEventListener?.("change", onChange);
+      };
     }
 
     const el = containerRef.current;
     if (!el) return () => mq?.removeEventListener?.("change", onChange);
 
-    let rafPending = false;
+    let rafId = 0;
     let isVisible = false;
 
     const measureScroll = () => {
-      rafPending = false;
+      rafId = 0;
       const node = containerRef.current;
       if (!node) return;
       const rect = node.getBoundingClientRect();
@@ -160,9 +166,9 @@ export function ScrollFocusNarrative({ text, className = "" }: ScrollFocusNarrat
     };
 
     const scheduleMeasure = () => {
-      if (!isVisible || rafPending) return;
-      rafPending = true;
-      requestAnimationFrame(measureScroll);
+      if (!isVisible) return;
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(measureScroll);
     };
 
     const io = new IntersectionObserver(
@@ -184,6 +190,7 @@ export function ScrollFocusNarrative({ text, className = "" }: ScrollFocusNarrat
     window.addEventListener("keydown", handleKeyDown);
 
     return () => {
+      if (rafId) cancelAnimationFrame(rafId);
       io.disconnect();
       window.removeEventListener("scroll", scheduleMeasure);
       window.removeEventListener("resize", scheduleMeasure);

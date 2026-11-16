@@ -76,7 +76,7 @@ export async function probeUpstreamProviders(options?: {
   }
 
   const fetchImpl = options?.fetchFn ?? fetch;
-  const timeoutMs = options?.timeoutMs ?? 2500;
+  const timeoutMs = options?.timeoutMs ?? 6500;
 
   const providers = await Promise.all(
     PROVIDERS.map(async (provider): Promise<ProviderHealthCheckResult> => {
@@ -157,7 +157,10 @@ export async function probeUpstreamProviders(options?: {
   };
 
   if (!options?.bypassCache) {
-    cachedHealthReport = { report, expiresAt: now + 60_000 };
+    cachedHealthReport = {
+      report,
+      expiresAt: now + (overallStatus === "unreachable" ? 3_000 : 60_000),
+    };
   }
 
   return report;

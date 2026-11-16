@@ -106,7 +106,7 @@ export function InteractiveQueryComposer({
               key={chip}
               type="button"
               onClick={() => onSubmitQuery(chip)}
-              className="px-2.5 py-1 rounded-full bg-[var(--bg-slate)] hover:border-[var(--border-strong)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+              className="min-h-[44px] md:min-h-[32px] inline-flex items-center px-3 md:px-2.5 py-2 md:py-1 rounded-full bg-[var(--bg-slate)] hover:border-[var(--border-strong)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
             >
               {chip}
             </button>
@@ -135,7 +135,7 @@ export function InteractiveQueryComposer({
                 type="button"
                 onClick={() => toggleAction(verb)}
                 aria-pressed={active}
-                className={`px-2 py-0.5 rounded-md text-[13px] font-semibold transition-all cursor-pointer border ${
+                className={`min-h-[44px] md:min-h-[30px] inline-flex items-center px-3 md:px-2 py-1.5 md:py-0.5 rounded-md text-[13px] font-semibold transition-all cursor-pointer border ${
                   active
                     ? "bg-[var(--accent-blue-solid)] text-white border-transparent shadow-2xs"
                     : "bg-[var(--bg-graphite)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]"
@@ -158,7 +158,7 @@ export function InteractiveQueryComposer({
                 type="button"
                 onClick={() => toggleTopic(topic)}
                 aria-pressed={active}
-                className={`px-2 py-0.5 rounded-md text-[13px] font-medium transition-all cursor-pointer border ${
+                className={`min-h-[44px] md:min-h-[30px] inline-flex items-center px-3 md:px-2 py-1.5 md:py-0.5 rounded-md text-[13px] font-medium transition-all cursor-pointer border ${
                   active
                     ? "badge-tone-violet font-semibold"
                     : "bg-[var(--bg-graphite)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]"
@@ -179,7 +179,7 @@ export function InteractiveQueryComposer({
                   type="button"
                   onClick={() => removeToken(tok)}
                   title={`Remove "${tok.label}"`}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--bg-graphite)] border border-[var(--border-strong)] text-[13px] text-[var(--text-primary)] hover:opacity-80 cursor-pointer"
+                  className="min-h-[44px] md:min-h-[30px] inline-flex items-center gap-1.5 px-3 md:px-2 py-1.5 md:py-0.5 rounded-full bg-[var(--bg-graphite)] border border-[var(--border-strong)] text-[13px] text-[var(--text-primary)] hover:opacity-80 cursor-pointer"
                 >
                   <span className="omnis-editorial text-[15px] leading-none tone-blue">
                     {tok.label}
@@ -196,7 +196,7 @@ export function InteractiveQueryComposer({
               <button
                 type="button"
                 onClick={handleReset}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] text-[13px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                className="min-h-[44px] md:min-h-[32px] inline-flex items-center gap-1 px-3 md:px-2.5 py-2 md:py-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-graphite)] text-[13px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
               >
                 <RotateCcw className="w-3 h-3" />
                 Reset
@@ -204,7 +204,7 @@ export function InteractiveQueryComposer({
               <button
                 type="button"
                 onClick={() => onSubmitQuery(composedQuery)}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--accent-blue-solid)] hover:brightness-110 text-white text-[13px] font-semibold cursor-pointer shadow-2xs"
+                className="min-h-[44px] md:min-h-[32px] inline-flex items-center gap-1 px-3 md:px-2.5 py-2 md:py-1 rounded-lg bg-[var(--accent-blue-solid)] hover:brightness-110 text-white text-[13px] font-semibold cursor-pointer shadow-2xs"
               >
                 <span>Investigate</span>
                 <ArrowRight className="w-3 h-3" />

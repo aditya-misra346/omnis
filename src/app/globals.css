@@ -438,12 +438,6 @@ a:hover .omnis-magnetic-arrow[data-diagonal="true"] {
   background-size: 22px 22px;
 }
 
-/* Focus rings */
-:focus-visible {
-  outline: 2px solid var(--accent-blue);
-  outline-offset: 2px;
-}
-
 /* Range inputs styling */
 input[type="range"] {
   accent-color: var(--accent-blue-solid);
@@ -504,6 +498,29 @@ input[type="range"] {
 }
 
 @media print {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+  html,
+  :root,
+  [data-theme="dark"],
+  [data-theme="light"] {
+    --bg-obsidian: #ffffff;
+    --bg-graphite: #ffffff;
+    --bg-slate: #f8fafc;
+    --bg-elevated: #f1f5f9;
+    --bg-glass: #ffffff;
+    --border-subtle: #cbd5e1;
+    --border-highlight: #e2e8f0;
+    --border-strong: #475569;
+    --text-primary: #0f172a;
+    --text-secondary: #334155;
+    --text-muted: #475569;
+    color-scheme: light !important;
+  }
   aside,
   header,
   nav,
@@ -511,15 +528,29 @@ input[type="range"] {
   .omnis-no-print {
     display: none !important;
   }
+  html,
   body,
   main {
     background: #ffffff !important;
     color: #0f172a !important;
   }
-  .omnis-card {
+  .omnis-card,
+  .omnis-surface-slate,
+  .omnis-glass-panel,
+  .omnis-hud-pill {
     background: #ffffff !important;
+    background-color: #ffffff !important;
     border-color: #cbd5e1 !important;
     box-shadow: none !important;
     break-inside: avoid;
+  }
+  [data-clip-mask-heading],
+  .omnis-text-mask,
+  .omnis-text-mask-inner {
+    opacity: 1 !important;
+    transform: none !important;
+    clip-path: none !important;
+    transition: none !important;
+    animation: none !important;
   }
 }

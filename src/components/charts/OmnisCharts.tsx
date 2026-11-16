@@ -2,7 +2,13 @@
 
 import React, { useMemo, useState } from "react";
 import { OmnisSegmentedControl } from "@/components/ui/OmnisPrimitives";
-import { formatMonetaryAxisTick, formatSignedPct, formatSignedValue } from "@/lib/formatters";
+import {
+  formatMonetaryAxisTick,
+  formatSignedPct,
+  formatSignedValue,
+  getEffectiveGdpUsdBn,
+  hasSectorMetricValue,
+} from "@/lib/formatters";
 
 /** Maps a pointer clientX coordinate inside an SVG viewBox plot area to the nearest data index. */
 function resolveSvgPlotIndex(
@@ -332,6 +338,13 @@ export function HistoricalTrajectoryChart({
 
           {points.map((p, idx) => {
             const hovered = hoverIdx === idx;
+            const tickStep = Math.max(1, Math.ceil(points.length / 5));
+            const minTerminalGap = Math.max(2, Math.floor(tickStep * 0.6));
+            const showTickLabel =
+              points.length <= 6 ||
+              idx === 0 ||
+              idx === points.length - 1 ||
+              (idx % tickStep === 0 && points.length - 1 - idx >= minTerminalGap);
             return (
               <g key={p.year}>
                 <circle
@@ -342,10 +355,7 @@ export function HistoricalTrajectoryChart({
                   stroke={meta.colorVar}
                   strokeWidth={hovered ? 3 : 2.2}
                 />
-                {(points.length <= 6 ||
-                  idx === 0 ||
-                  idx === points.length - 1 ||
-                  idx % Math.ceil(points.length / 5) === 0) && (
+                {showTickLabel && (
                   <text
                     x={p.x}
                     y={h - 9}
@@ -443,7 +453,7 @@ export function MonteCarloFanChart({
           <button
             type="button"
             onClick={() => setShowBaseline((s) => !s)}
-            className={`px-2.5 py-1 rounded-md border text-xs font-medium inline-flex items-center gap-1.5 cursor-pointer ${
+            className={`min-h-[44px] md:min-h-[32px] px-3 md:px-2.5 py-1.5 md:py-1 rounded-md border text-xs font-medium inline-flex items-center gap-1.5 cursor-pointer ${
               showBaseline
                 ? "bg-[var(--bg-slate)] border-[var(--border-strong)] text-[var(--text-primary)]"
                 : "border-[var(--border-subtle)] text-[var(--text-muted)] opacity-60"
@@ -455,7 +465,7 @@ export function MonteCarloFanChart({
           <button
             type="button"
             onClick={() => setShowUncertainty((s) => !s)}
-            className={`px-2.5 py-1 rounded-md border text-xs font-medium inline-flex items-center gap-1.5 cursor-pointer ${
+            className={`min-h-[44px] md:min-h-[32px] px-3 md:px-2.5 py-1.5 md:py-1 rounded-md border text-xs font-medium inline-flex items-center gap-1.5 cursor-pointer ${
               showUncertainty
                 ? "bg-[var(--bg-slate)] border-[var(--border-strong)] text-[var(--text-primary)]"
                 : "border-[var(--border-subtle)] text-[var(--text-muted)] opacity-60"
@@ -604,20 +614,27 @@ export function MonteCarloFanChart({
             </g>
           )}
 
-          {trajectory.map((pt, i) => (
-            <g key={pt.year}>
-              {(i % 3 === 0 || i === trajectory.length - 1) && (
-                <text
-                  x={toX(i)}
-                  y={h - 9}
-                  textAnchor="middle"
-                  fontSize="11.5"
-                  fill="var(--chart-axis)"
-                  className="omnis-mono"
-                >
-                  {pt.year}
-                </text>
-              )}
+          {trajectory.map((pt, i) => {
+            const tickStep = trajectory.length > 24 ? 5 : trajectory.length > 13 ? 3 : 2;
+            const minTerminalGap = Math.max(2, Math.floor(tickStep * 0.6));
+            const showTick =
+              i === 0 ||
+              i === trajectory.length - 1 ||
+              (i % tickStep === 0 && trajectory.length - 1 - i >= minTerminalGap);
+            return (
+              <g key={pt.year}>
+                {showTick && (
+                  <text
+                    x={toX(i)}
+                    y={h - 9}
+                    textAnchor="middle"
+                    fontSize="11.5"
+                    fill="var(--chart-axis)"
+                    className="omnis-mono"
+                  >
+                    {pt.year}
+                  </text>
+                )}
               <rect
                 x={toX(i) - 16}
                 y={padT}
@@ -629,7 +646,8 @@ export function MonteCarloFanChart({
                 onMouseLeave={() => setHoverIndex(null)}
               />
             </g>
-          ))}
+            );
+          })}
         </svg>
       </div>
     </div>
@@ -707,84 +725,129 @@ export function ComparisonRadarChart({
 }) {
   const [hoveredAxis, setHoveredAxis] = useState<number | null>(null);
 
+  const growthAvailable = (c: CountryIntelligenceProfile) =>
+    !(c.provenance.missingData && c.gdpGrowthPct === 0 && getEffectiveGdpUsdBn(c) === 0);
+  const renewAvailable = (c: CountryIntelligenceProfile) =>
+    !c.provenance.missingData || c.energyProfile.renewableSharePct > 0;
+  const aiAvailable = (c: CountryIntelligenceProfile) =>
+    hasSectorMetricValue(c, c.technologyProfile.aiReadinessIndex);
+  const rdAvailable = (c: CountryIntelligenceProfile) =>
+    hasSectorMetricValue(c, c.technologyProfile.rdSpendPctGdp);
+  const internetAvailable = (c: CountryIntelligenceProfile) =>
+    hasSectorMetricValue(c, c.technologyProfile.internetPenetrationPct);
+  const longevityAvailable = (c: CountryIntelligenceProfile) =>
+    hasSectorMetricValue(c, c.lifeExpectancyYears) && c.lifeExpectancyYears >= 25;
+
   const radarAxes = [
     {
       label: "Real Growth",
       maxLabel: "-2..+10%",
-      l: Math.max(0, Math.min(1, (leftCountry.gdpGrowthPct - -2) / 12)),
-      r: Math.max(0, Math.min(1, (rightCountry.gdpGrowthPct - -2) / 12)),
-      rawL: formatSignedPct(leftCountry.gdpGrowthPct),
-      rawR: formatSignedPct(rightCountry.gdpGrowthPct),
-      deltaLabel: formatSignedValue(leftCountry.gdpGrowthPct - rightCountry.gdpGrowthPct, " pp", 1),
+      availL: growthAvailable(leftCountry),
+      availR: growthAvailable(rightCountry),
+      l: growthAvailable(leftCountry) ? Math.max(0, Math.min(1, (leftCountry.gdpGrowthPct - -2) / 12)) : 0,
+      r: growthAvailable(rightCountry) ? Math.max(0, Math.min(1, (rightCountry.gdpGrowthPct - -2) / 12)) : 0,
+      rawL: growthAvailable(leftCountry) ? formatSignedPct(leftCountry.gdpGrowthPct) : "N/A",
+      rawR: growthAvailable(rightCountry) ? formatSignedPct(rightCountry.gdpGrowthPct) : "N/A",
+      deltaLabel:
+        growthAvailable(leftCountry) && growthAvailable(rightCountry)
+          ? formatSignedValue(leftCountry.gdpGrowthPct - rightCountry.gdpGrowthPct, " pp", 1)
+          : "N/A",
     },
     {
       label: "Clean Energy",
       maxLabel: "0..100%",
-      l: Math.max(0, Math.min(1, leftCountry.energyProfile.renewableSharePct / 100)),
-      r: Math.max(0, Math.min(1, rightCountry.energyProfile.renewableSharePct / 100)),
-      rawL: `${leftCountry.energyProfile.renewableSharePct}%`,
-      rawR: `${rightCountry.energyProfile.renewableSharePct}%`,
-      deltaLabel: formatSignedValue(
-        leftCountry.energyProfile.renewableSharePct - rightCountry.energyProfile.renewableSharePct,
-        " pp",
-        1
-      ),
+      availL: renewAvailable(leftCountry),
+      availR: renewAvailable(rightCountry),
+      l: renewAvailable(leftCountry) ? Math.max(0, Math.min(1, leftCountry.energyProfile.renewableSharePct / 100)) : 0,
+      r: renewAvailable(rightCountry) ? Math.max(0, Math.min(1, rightCountry.energyProfile.renewableSharePct / 100)) : 0,
+      rawL: renewAvailable(leftCountry) ? `${leftCountry.energyProfile.renewableSharePct}%` : "N/A",
+      rawR: renewAvailable(rightCountry) ? `${rightCountry.energyProfile.renewableSharePct}%` : "N/A",
+      deltaLabel:
+        renewAvailable(leftCountry) && renewAvailable(rightCountry)
+          ? formatSignedValue(
+              leftCountry.energyProfile.renewableSharePct - rightCountry.energyProfile.renewableSharePct,
+              " pp",
+              1
+            )
+          : "N/A",
     },
     {
       label: "AI Index",
       maxLabel: "0..100",
-      l: Math.max(0, Math.min(1, leftCountry.technologyProfile.aiReadinessIndex / 100)),
-      r: Math.max(0, Math.min(1, rightCountry.technologyProfile.aiReadinessIndex / 100)),
-      rawL: `${leftCountry.technologyProfile.aiReadinessIndex}/100`,
-      rawR: `${rightCountry.technologyProfile.aiReadinessIndex}/100`,
-      deltaLabel: formatSignedValue(
-        leftCountry.technologyProfile.aiReadinessIndex -
-          rightCountry.technologyProfile.aiReadinessIndex,
-        " pts",
-        0
-      ),
+      availL: aiAvailable(leftCountry),
+      availR: aiAvailable(rightCountry),
+      l: aiAvailable(leftCountry) ? Math.max(0, Math.min(1, leftCountry.technologyProfile.aiReadinessIndex / 100)) : 0,
+      r: aiAvailable(rightCountry) ? Math.max(0, Math.min(1, rightCountry.technologyProfile.aiReadinessIndex / 100)) : 0,
+      rawL: aiAvailable(leftCountry) ? `${leftCountry.technologyProfile.aiReadinessIndex}/100` : "N/A",
+      rawR: aiAvailable(rightCountry) ? `${rightCountry.technologyProfile.aiReadinessIndex}/100` : "N/A",
+      deltaLabel:
+        aiAvailable(leftCountry) && aiAvailable(rightCountry)
+          ? formatSignedValue(
+              leftCountry.technologyProfile.aiReadinessIndex -
+                rightCountry.technologyProfile.aiReadinessIndex,
+              " pts",
+              0
+            )
+          : "N/A",
     },
     {
       label: "R&D Spend",
       maxLabel: "0..4.5%",
-      l: Math.max(0, Math.min(1, leftCountry.technologyProfile.rdSpendPctGdp / 4.5)),
-      r: Math.max(0, Math.min(1, rightCountry.technologyProfile.rdSpendPctGdp / 4.5)),
-      rawL: `${leftCountry.technologyProfile.rdSpendPctGdp}%`,
-      rawR: `${rightCountry.technologyProfile.rdSpendPctGdp}%`,
-      deltaLabel: formatSignedValue(
-        leftCountry.technologyProfile.rdSpendPctGdp - rightCountry.technologyProfile.rdSpendPctGdp,
-        "% GDP",
-        2
-      ),
+      availL: rdAvailable(leftCountry),
+      availR: rdAvailable(rightCountry),
+      l: rdAvailable(leftCountry) ? Math.max(0, Math.min(1, leftCountry.technologyProfile.rdSpendPctGdp / 4.5)) : 0,
+      r: rdAvailable(rightCountry) ? Math.max(0, Math.min(1, rightCountry.technologyProfile.rdSpendPctGdp / 4.5)) : 0,
+      rawL: rdAvailable(leftCountry) ? `${leftCountry.technologyProfile.rdSpendPctGdp}%` : "N/A",
+      rawR: rdAvailable(rightCountry) ? `${rightCountry.technologyProfile.rdSpendPctGdp}%` : "N/A",
+      deltaLabel:
+        rdAvailable(leftCountry) && rdAvailable(rightCountry)
+          ? formatSignedValue(
+              leftCountry.technologyProfile.rdSpendPctGdp - rightCountry.technologyProfile.rdSpendPctGdp,
+              "% GDP",
+              2
+            )
+          : "N/A",
     },
     {
       label: "Internet",
       maxLabel: "0..100%",
-      l: Math.max(0, Math.min(1, leftCountry.technologyProfile.internetPenetrationPct / 100)),
-      r: Math.max(0, Math.min(1, rightCountry.technologyProfile.internetPenetrationPct / 100)),
-      rawL: `${leftCountry.technologyProfile.internetPenetrationPct}%`,
-      rawR: `${rightCountry.technologyProfile.internetPenetrationPct}%`,
-      deltaLabel: formatSignedValue(
-        leftCountry.technologyProfile.internetPenetrationPct -
-          rightCountry.technologyProfile.internetPenetrationPct,
-        " pp",
-        1
-      ),
+      availL: internetAvailable(leftCountry),
+      availR: internetAvailable(rightCountry),
+      l: internetAvailable(leftCountry) ? Math.max(0, Math.min(1, leftCountry.technologyProfile.internetPenetrationPct / 100)) : 0,
+      r: internetAvailable(rightCountry) ? Math.max(0, Math.min(1, rightCountry.technologyProfile.internetPenetrationPct / 100)) : 0,
+      rawL: internetAvailable(leftCountry) ? `${leftCountry.technologyProfile.internetPenetrationPct}%` : "N/A",
+      rawR: internetAvailable(rightCountry) ? `${rightCountry.technologyProfile.internetPenetrationPct}%` : "N/A",
+      deltaLabel:
+        internetAvailable(leftCountry) && internetAvailable(rightCountry)
+          ? formatSignedValue(
+              leftCountry.technologyProfile.internetPenetrationPct -
+                rightCountry.technologyProfile.internetPenetrationPct,
+              " pp",
+              1
+            )
+          : "N/A",
     },
     {
       label: "Longevity",
       maxLabel: "50..90y",
-      l: Math.max(0, Math.min(1, (leftCountry.lifeExpectancyYears - 50) / 40)),
-      r: Math.max(0, Math.min(1, (rightCountry.lifeExpectancyYears - 50) / 40)),
-      rawL: `${leftCountry.lifeExpectancyYears} yrs`,
-      rawR: `${rightCountry.lifeExpectancyYears} yrs`,
-      deltaLabel: formatSignedValue(
-        leftCountry.lifeExpectancyYears - rightCountry.lifeExpectancyYears,
-        " yrs",
-        1
-      ),
+      availL: longevityAvailable(leftCountry),
+      availR: longevityAvailable(rightCountry),
+      l: longevityAvailable(leftCountry) ? Math.max(0, Math.min(1, (leftCountry.lifeExpectancyYears - 50) / 40)) : 0,
+      r: longevityAvailable(rightCountry) ? Math.max(0, Math.min(1, (rightCountry.lifeExpectancyYears - 50) / 40)) : 0,
+      rawL: longevityAvailable(leftCountry) ? `${leftCountry.lifeExpectancyYears} yrs` : "N/A",
+      rawR: longevityAvailable(rightCountry) ? `${rightCountry.lifeExpectancyYears} yrs` : "N/A",
+      deltaLabel:
+        longevityAvailable(leftCountry) && longevityAvailable(rightCountry)
+          ? formatSignedValue(
+              leftCountry.lifeExpectancyYears - rightCountry.lifeExpectancyYears,
+              " yrs",
+              1
+            )
+          : "N/A",
     },
   ];
+  const leftHasMissing = radarAxes.some((a) => !a.availL);
+  const rightHasMissing = radarAxes.some((a) => !a.availR);
 
   const cx = 210;
   const cy = 165;
@@ -908,14 +971,18 @@ export function ComparisonRadarChart({
         <polygon
           points={buildPolygon("r")}
           fill="var(--chart-violet-area)"
+          fillOpacity={rightHasMissing ? 0.45 : 1}
           stroke="var(--chart-violet)"
           strokeWidth="2.1"
+          strokeDasharray={rightHasMissing ? "4,3" : undefined}
         />
         <polygon
           points={buildPolygon("l")}
           fill="var(--chart-blue-area)"
+          fillOpacity={leftHasMissing ? 0.45 : 1}
           stroke="var(--chart-blue)"
           strokeWidth="2.4"
+          strokeDasharray={leftHasMissing ? "4,3" : undefined}
         />
 
         {radarAxes.map((axis, i) => {
@@ -928,12 +995,34 @@ export function ComparisonRadarChart({
               onMouseEnter={() => setHoveredAxis(i)}
               onClick={() => setHoveredAxis((prev) => (prev === i ? null : i))}
             >
-              <circle cx={pr.x} cy={pr.y} r={hoveredAxis === i ? 5 : 3.5} fill="var(--chart-violet)" />
-              <circle cx={pl.x} cy={pl.y} r={hoveredAxis === i ? 5.2 : 3.8} fill="var(--chart-blue)" />
+              <circle
+                cx={pr.x}
+                cy={pr.y}
+                r={hoveredAxis === i ? 5 : 3.5}
+                fill={axis.availR ? "var(--chart-violet)" : "var(--bg-graphite)"}
+                stroke={axis.availR ? undefined : "var(--chart-violet)"}
+                strokeWidth={axis.availR ? undefined : 1.5}
+                strokeDasharray={axis.availR ? undefined : "2,2"}
+              />
+              <circle
+                cx={pl.x}
+                cy={pl.y}
+                r={hoveredAxis === i ? 5.2 : 3.8}
+                fill={axis.availL ? "var(--chart-blue)" : "var(--bg-graphite)"}
+                stroke={axis.availL ? undefined : "var(--chart-blue)"}
+                strokeWidth={axis.availL ? undefined : 1.5}
+                strokeDasharray={axis.availL ? undefined : "2,2"}
+              />
             </g>
           );
         })}
       </svg>
+
+      {leftHasMissing || rightHasMissing ? (
+        <div className="px-2.5 py-1 rounded-md badge-tone-warning text-[11px] omnis-mono text-center">
+          Dashed ring vertices denote N/A metrics pending upstream sector ingestion.
+        </div>
+      ) : null}
 
       {contractionNotes.length > 0 ? (
         <div className="px-2.5 py-1.5 rounded-md badge-tone-warning text-xs omnis-mono text-center">

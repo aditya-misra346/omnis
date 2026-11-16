@@ -16,6 +16,8 @@ export interface FluidInkTextProps {
   editorial?: boolean;
   /** Optional external per-glyph transforms synced from an enclosing ElasticMagneticText */
   externalTransformsRef?: React.MutableRefObject<GlyphSpringTransform[]>;
+  /** Preferred callback getter for external per-glyph transforms without render-time ref access */
+  getExternalTransforms?: () => GlyphSpringTransform[];
   /** Callback to expose per-glyph DOM spans to a parent spring controller */
   onGlyphElementsReady?: (elements: HTMLSpanElement[]) => void;
   /** Accessible label for the enclosing text phrase */
@@ -30,6 +32,7 @@ export function FluidInkText({
   glyphClassName = "",
   editorial = false,
   externalTransformsRef,
+  getExternalTransforms,
   onGlyphElementsReady,
   ariaLabel,
 }: FluidInkTextProps) {
@@ -45,7 +48,13 @@ export function FluidInkText({
   const fallbackTransformsRef = useRef<GlyphSpringTransform[]>(DEFAULT_TRANSFORMS);
   const lastTouchRef = useRef<{ x: number; y: number } | null>(null);
   const onGlyphElementsReadyRef = useRef(onGlyphElementsReady);
-  onGlyphElementsReadyRef.current = onGlyphElementsReady;
+  const getExternalTransformsRef = useRef(getExternalTransforms);
+  useEffect(() => {
+    onGlyphElementsReadyRef.current = onGlyphElementsReady;
+  }, [onGlyphElementsReady]);
+  useEffect(() => {
+    getExternalTransformsRef.current = getExternalTransforms;
+  }, [getExternalTransforms]);
 
   const [inkReady, setInkReady] = useState(false);
 
@@ -140,7 +149,11 @@ export function FluidInkText({
       mirrorCanvas: mirror,
       getGlyphMetrics: () => metricsCacheRef.current,
       getTransforms: () =>
-        externalTransformsRef ? externalTransformsRef.current : fallbackTransformsRef.current,
+        getExternalTransformsRef.current
+          ? getExternalTransformsRef.current()
+          : externalTransformsRef
+            ? externalTransformsRef.current
+            : fallbackTransformsRef.current,
       onReadyChange: (ready) => setInkReady(ready),
     });
 

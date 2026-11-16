@@ -24,7 +24,13 @@ import {
   buildPlaceholderCountryProfile,
 } from "@/lib/data/world-catalog";
 import { applyOfficialSurveyOfIndiaBoundaries } from "@/lib/data/india-soi-official";
-import { formatSignedPct, formatSignedValue } from "@/lib/formatters";
+import {
+  formatSignedPct,
+  formatSignedValue,
+  getEffectiveGdpUsdBn,
+  hasEnergyProfileData,
+  hasSectorMetricValue,
+} from "@/lib/formatters";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 import { dateFromUtcMinutes, getSunVectorInEarthFrame } from "@/lib/solarTime";
 import { CountrySolarClockBadge, SolarSyncHudControl } from "@/components/solar/SolarBadges";
@@ -135,35 +141,51 @@ export function getLayerMetricForCountry(
   country: CountryIntelligenceProfile,
   layer: IntelligenceLayerId
 ): { label: string; value: string; numericWeight: number; colorHex: number; cssColor: string } {
+  const effectiveGdp = getEffectiveGdpUsdBn(country);
   switch (layer) {
     case "economics":
       return {
         label: "Nominal GDP",
-        value: `$${country.gdpUsdBn.toLocaleString()}B (${formatSignedPct(country.gdpGrowthPct)})`,
-        numericWeight: Math.min(1.65, Math.max(0.7, Math.log10(Math.max(10, country.gdpUsdBn)) / 2.6)),
+        value:
+          effectiveGdp !== null
+            ? `$${effectiveGdp.toLocaleString()}B (${formatSignedPct(country.gdpGrowthPct)})`
+            : "GDP N/A",
+        numericWeight: Math.min(1.65, Math.max(0.7, Math.log10(Math.max(10, effectiveGdp ?? 10)) / 2.6)),
         colorHex: 0x3b82f6,
         cssColor: "#3b82f6",
       };
-    case "demographics":
+    case "demographics": {
+      const popLabel = country.population > 0 ? `${(country.population / 1e6).toFixed(1)}M` : "Pop N/A";
+      const lifeExp = hasSectorMetricValue(country, country.lifeExpectancyYears)
+        ? `${country.lifeExpectancyYears}y`
+        : "N/A";
       return {
         label: "Population",
-        value: `${(country.population / 1e6).toFixed(1)}M • Life Exp ${country.lifeExpectancyYears}y`,
+        value: `${popLabel} • Life Exp ${lifeExp}`,
         numericWeight: Math.min(1.65, Math.max(0.7, country.population / 5e8)),
         colorHex: 0x8b5cf6,
         cssColor: "#8b5cf6",
       };
+    }
     case "energy":
       return {
         label: "Clean Grid Share",
-        value: `${country.energyProfile.renewableSharePct}% Clean • ${country.energyProfile.electricityGenerationTwh} TWh`,
-        numericWeight: Math.min(1.65, Math.max(0.7, country.energyProfile.renewableSharePct / 45)),
+        value: hasEnergyProfileData(country)
+          ? `${country.energyProfile.renewableSharePct}% Clean • ${country.energyProfile.electricityGenerationTwh} TWh`
+          : "Energy N/A",
+        numericWeight: Math.min(
+          1.65,
+          Math.max(0.7, hasEnergyProfileData(country) ? country.energyProfile.renewableSharePct / 45 : 0.7)
+        ),
         colorHex: 0x10b981,
         cssColor: "#10b981",
       };
     case "environment":
       return {
         label: "Temp Anomaly & CO₂",
-        value: `${formatSignedValue(country.environmentProfile.tempAnomalyC, "°C")} • ${country.environmentProfile.co2PerCapitaTons}t/cap`,
+        value: hasSectorMetricValue(country, country.environmentProfile.co2PerCapitaTons)
+          ? `${formatSignedValue(country.environmentProfile.tempAnomalyC, "°C")} • ${country.environmentProfile.co2PerCapitaTons}t/cap`
+          : "Emissions N/A",
         numericWeight: Math.min(1.65, Math.max(0.7, country.environmentProfile.tempAnomalyC)),
         colorHex: 0xf59e0b,
         cssColor: "#f59e0b",
@@ -171,8 +193,13 @@ export function getLayerMetricForCountry(
     case "technology":
       return {
         label: "AI & R&D Index",
-        value: `AI ${country.technologyProfile.aiReadinessIndex} • R&D ${country.technologyProfile.rdSpendPctGdp}% GDP`,
-        numericWeight: Math.min(1.65, Math.max(0.7, country.technologyProfile.aiReadinessIndex / 65)),
+        value: hasSectorMetricValue(country, country.technologyProfile.aiReadinessIndex)
+          ? `AI ${country.technologyProfile.aiReadinessIndex} • R&D ${country.technologyProfile.rdSpendPctGdp}% GDP`
+          : "Tech Index N/A",
+        numericWeight: Math.min(
+          1.65,
+          Math.max(0.7, hasSectorMetricValue(country, country.technologyProfile.aiReadinessIndex) ? country.technologyProfile.aiReadinessIndex / 65 : 0.7)
+        ),
         colorHex: 0x06b6d4,
         cssColor: "#06b6d4",
       };
@@ -187,7 +214,7 @@ export function getLayerMetricForCountry(
     default:
       return {
         label: "Geographic Footprint",
-        value: `${(country.areaSqKm / 1000).toFixed(0)}k km² • Capital: ${country.capital}`,
+        value: `${country.areaSqKm > 0 ? `${(country.areaSqKm / 1000).toFixed(0)}k km²` : "Area N/A"} • Capital: ${country.capital}`,
         numericWeight: 1.0,
         colorHex: 0x60a5fa,
         cssColor: "#60a5fa",
@@ -328,10 +355,12 @@ export function InteractiveGlobe3D({
   >([]);
   const sceneHandleRef = useRef<GlobeSceneHandle | null>(null);
 
-  themeRef.current = theme;
-  selectedIso3Ref.current = selectedIso3;
-  activeLayerRef.current = activeLayer;
-  countriesRef.current = countries;
+  useEffect(() => {
+    themeRef.current = theme;
+    selectedIso3Ref.current = selectedIso3;
+    activeLayerRef.current = activeLayer;
+    countriesRef.current = countries;
+  }, [theme, selectedIso3, activeLayer, countries]);
 
   const matchedCountry = useMemo(
     () => countries.find((c) => c.iso3 === selectedIso3) ?? null,
@@ -371,7 +400,8 @@ export function InteractiveGlobe3D({
     const mq = window.matchMedia?.("(prefers-reduced-motion: reduce)");
     if (mq?.matches) {
       reducedMotionRef.current = true;
-      setAutoRotate(false);
+      const timer = window.setTimeout(() => setAutoRotate(false), 0);
+      return () => window.clearTimeout(timer);
     }
   }, []);
 
@@ -685,7 +715,7 @@ export function InteractiveGlobe3D({
         powerPreference: "high-performance",
       });
     } catch {
-      setWebglSupported(false);
+      window.setTimeout(() => setWebglSupported(false), 0);
       return;
     }
 
@@ -1568,10 +1598,21 @@ totalEmissiveRadiance *= omnisNightMask * omnisEmissiveGain * uCityLightsEnabled
     return placeholder ? [placeholder, ...countries] : countries;
   }, [countries, selectedIso3]);
 
+  const railMountedRef = useRef(false);
+
   useEffect(() => {
+    const rail = railRef.current;
     const activeBtn = railButtonRefs.current[selectedIso3];
-    if (activeBtn) {
-      activeBtn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    if (rail && activeBtn) {
+      const targetLeft = Math.max(
+        0,
+        activeBtn.offsetLeft - rail.clientWidth / 2 + activeBtn.offsetWidth / 2
+      );
+      rail.scrollTo({
+        left: targetLeft,
+        behavior: railMountedRef.current ? "smooth" : "auto",
+      });
+      railMountedRef.current = true;
     }
     const id = requestAnimationFrame(updateRailScrollState);
     return () => cancelAnimationFrame(id);
@@ -1680,7 +1721,10 @@ totalEmissiveRadiance *= omnisNightMask * omnisEmissiveGain * uCityLightsEnabled
                 <div className="hidden sm:flex text-xs text-[var(--text-muted)] items-center gap-1 truncate omnis-tabular">
                   <MapPin className="w-3 h-3 shrink-0" />
                   <span className="truncate">
-                    {selectedCountry.capital} • Pop {(selectedCountry.population / 1e6).toFixed(0)}M
+                    {selectedCountry.capital} •{" "}
+                    {selectedCountry.population > 0
+                      ? `Pop ${(selectedCountry.population / 1e6).toFixed(0)}M`
+                      : "Pop N/A"}
                   </span>
                 </div>
               ) : null}
@@ -1777,7 +1821,7 @@ totalEmissiveRadiance *= omnisNightMask * omnisEmissiveGain * uCityLightsEnabled
       </div>
 
       {/* Mobile 1-Finger Touch Mode Toggle */}
-      <div className="sm:hidden absolute bottom-[64px] left-3 z-10">
+      <div className="sm:hidden absolute bottom-[76px] left-3 z-10">
         <button
           type="button"
           onClick={() => setTouchOrbitLocked((prev) => !prev)}

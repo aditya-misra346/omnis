@@ -6,8 +6,10 @@ import type { FocusedSignal } from "@/lib/intelligence/spatial-sync";
 import type { VerificationStatus } from "@/types/omnis";
 
 const memoryFallbackStorage = new Map<string, string>();
+export const MAX_PERSISTED_ASSISTANT_MESSAGES = 24;
+export const QUOTA_FALLBACK_ASSISTANT_MESSAGES = 4;
 
-const safeWebStorage: StateStorage = {
+export const safeWebStorage: StateStorage = {
   getItem: (name: string) => {
     if (typeof window === "undefined") return null;
     try {
@@ -21,7 +23,26 @@ const safeWebStorage: StateStorage = {
     try {
       window.localStorage.setItem(name, value);
     } catch {
-      // Fall back to in-memory persistence under QuotaExceededError or private-mode locks
+      // Prune assistantMessages down to latest 4 entries on QuotaExceededError and retry once
+      try {
+        const parsed = JSON.parse(value) as {
+          state?: { assistantMessages?: unknown[] };
+          [key: string]: unknown;
+        };
+        if (
+          parsed?.state &&
+          Array.isArray(parsed.state.assistantMessages) &&
+          parsed.state.assistantMessages.length > QUOTA_FALLBACK_ASSISTANT_MESSAGES
+        ) {
+          parsed.state.assistantMessages = parsed.state.assistantMessages.slice(
+            -QUOTA_FALLBACK_ASSISTANT_MESSAGES
+          );
+          window.localStorage.setItem(name, JSON.stringify(parsed));
+          return;
+        }
+      } catch {
+        // Ignore parse/retry errors and preserve state in memory fallback
+      }
       memoryFallbackStorage.set(name, value);
     }
   },
@@ -405,7 +426,7 @@ export const useOmnisStore = create<OmnisState>()(
         sidebarCollapsed: state.sidebarCollapsed,
         activeContextLabel: state.activeContextLabel,
         activeContextTopic: state.activeContextTopic,
-        assistantMessages: state.assistantMessages,
+        assistantMessages: state.assistantMessages.slice(-MAX_PERSISTED_ASSISTANT_MESSAGES),
         user: state.user,
         followedTopics: state.followedTopics,
         searchHistory: state.searchHistory,

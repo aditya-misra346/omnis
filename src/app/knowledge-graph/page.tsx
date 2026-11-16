@@ -79,29 +79,38 @@ function KnowledgeGraphContent() {
 
   const [topicInput, setTopicInput] = useState(initialTopic);
   const [activeTopic, setActiveTopic] = useState(initialTopic);
-
-  useEffect(() => {
-    if (urlTopicParam) {
-      setTopicInput(urlTopicParam);
-      setExpandTargetId(undefined);
-      setActiveTopic(urlTopicParam);
-    }
-  }, [urlTopicParam]);
   const [layoutMode, setLayoutMode] = useState<GraphLayoutMode>("force");
   const [relFilter, setRelFilter] = useState<RelationshipType | "ALL">("ALL");
   const [nodeSearch, setNodeSearch] = useState("");
   const [maxNodes, setMaxNodes] = useState(24);
   const [expandTargetId, setExpandTargetId] = useState<string | undefined>(undefined);
   const [savedToast, setSavedToast] = useState(false);
-  const [liveWorks, setLiveWorks] = useState<import("@/types/omnis").ResearchSourceItem[]>([]);
-  const [wikiSummary, setWikiSummary] = useState<{
-    title: string;
-    extract: string;
-    url: string;
+  const [liveGraphFetch, setLiveGraphFetch] = useState<{
+    topic: string;
+    works: import("@/types/omnis").ResearchSourceItem[];
+    wiki: { title: string; extract: string; url: string } | null;
+    state: "verified" | "offline-fallback";
   } | null>(null);
-  const [liveFetchState, setLiveFetchState] = useState<
-    "loading" | "verified" | "offline-fallback"
-  >("loading");
+  const liveWorks = useMemo(
+    () => (liveGraphFetch?.topic === activeTopic ? liveGraphFetch.works : []),
+    [liveGraphFetch, activeTopic]
+  );
+  const wikiSummary = useMemo(
+    () => (liveGraphFetch?.topic === activeTopic ? liveGraphFetch.wiki : null),
+    [liveGraphFetch, activeTopic]
+  );
+  const liveFetchState: "loading" | "verified" | "offline-fallback" =
+    liveGraphFetch?.topic === activeTopic ? liveGraphFetch.state : "loading";
+
+  const [prevUrlTopicParam, setPrevUrlTopicParam] = useState(urlTopicParam);
+  if (urlTopicParam !== prevUrlTopicParam) {
+    setPrevUrlTopicParam(urlTopicParam);
+    if (urlTopicParam) {
+      setTopicInput(urlTopicParam);
+      setExpandTargetId(undefined);
+      setActiveTopic(urlTopicParam);
+    }
+  }
   const [pathTargetId, setPathTargetId] = useState<string>("");
   const [mobileInspectorOpen, setMobileInspectorOpen] = useState(false);
   const filterInputRef = useRef<HTMLInputElement | null>(null);
@@ -113,30 +122,50 @@ function KnowledgeGraphContent() {
     setFocusedSignal,
     clearFocusedSignal,
   } = useOmnisStore();
-  const activeFocusedSignal = useMemo(
-    () => (urlFocusParam ? { topic: urlFocusParam, label: urlFocusParam } : focusedSignal),
-    [urlFocusParam, focusedSignal]
-  );
+  const lastAppliedUrlFocusRef = useRef<string | null>(null);
+  const activeFocusedSignal = focusedSignal;
+
+  useEffect(() => {
+    if (!urlFocusParam) {
+      lastAppliedUrlFocusRef.current = null;
+      return;
+    }
+    if (lastAppliedUrlFocusRef.current !== urlFocusParam) {
+      lastAppliedUrlFocusRef.current = urlFocusParam;
+      setFocusedSignal({
+        topic: urlFocusParam,
+        label: urlFocusParam,
+        source: "url",
+        updatedAt: Date.now(),
+      });
+    }
+  }, [urlFocusParam, setFocusedSignal]);
 
   useEffect(() => {
     let cancelled = false;
-    setLiveFetchState("loading");
-    setLiveWorks([]);
-    setWikiSummary(null);
+    const targetTopic = activeTopic;
     Promise.all([
-      fetchOpenAlexSources(activeTopic, 5),
-      fetchWikimediaSummary(activeTopic),
+      fetchOpenAlexSources(targetTopic, 5),
+      fetchWikimediaSummary(targetTopic),
     ])
       .then(([works, wiki]) => {
         if (cancelled) return;
-        setLiveWorks(works);
-        setWikiSummary(wiki);
-        setLiveFetchState(
-          works.length > 0 || Boolean(wiki) ? "verified" : "offline-fallback"
-        );
+        setLiveGraphFetch({
+          topic: targetTopic,
+          works,
+          wiki,
+          state: works.length > 0 || Boolean(wiki) ? "verified" : "offline-fallback",
+        });
       })
       .catch(() => {
-        if (!cancelled) setLiveFetchState("offline-fallback");
+        if (!cancelled) {
+          setLiveGraphFetch({
+            topic: targetTopic,
+            works: [],
+            wiki: null,
+            state: "offline-fallback",
+          });
+        }
       });
     return () => {
       cancelled = true;
@@ -155,15 +184,13 @@ function KnowledgeGraphContent() {
     [activeTopic, maxNodes, expandTargetId, liveWorks, wikiSummary]
   );
 
-  const [selectedNodeId, setSelectedNodeId] = useState<string>(
+  const [rawSelectedNodeId, setSelectedNodeId] = useState<string>(
     graphData.nodes[0]?.id ?? "artificial-intelligence"
   );
-
-  useEffect(() => {
-    if (graphData.nodes.length > 0 && !graphData.nodes.some((n) => n.id === selectedNodeId)) {
-      setSelectedNodeId(graphData.nodes[0].id);
-    }
-  }, [graphData, selectedNodeId]);
+  const selectedNodeId =
+    graphData.nodes.length > 0 && !graphData.nodes.some((n) => n.id === rawSelectedNodeId)
+      ? graphData.nodes[0].id
+      : rawSelectedNodeId;
 
   useEffect(() => {
     setActiveContext("Infinite Knowledge Graph", activeTopic);
@@ -361,6 +388,23 @@ function KnowledgeGraphContent() {
         {activeFocusedSignal ? (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold omnis-mono badge-tone-warning">
             <span>Synced Focus: {activeFocusedSignal.label ?? activeFocusedSignal.topic}</span>
+            {urlFocusParam &&
+            activeFocusedSignal.topic.toLowerCase() !== urlFocusParam.toLowerCase() ? (
+              <button
+                type="button"
+                onClick={() =>
+                  setFocusedSignal({
+                    topic: urlFocusParam,
+                    label: urlFocusParam,
+                    source: "url",
+                    updatedAt: Date.now(),
+                  })
+                }
+                className="underline text-[11px] px-1 cursor-pointer hover:opacity-80"
+              >
+                Reset Focus
+              </button>
+            ) : null}
             <button
               type="button"
               aria-label="Clear synced spatial focus"
@@ -504,10 +548,11 @@ function KnowledgeGraphContent() {
                       edge.source === selectedNode.id ? edge.target : edge.source;
                     const otherNode = graphData.nodes.find((n) => n.id === otherId);
                     return (
-                      <div
+                      <button
                         key={edge.id}
+                        type="button"
                         onClick={() => setSelectedNodeId(otherId)}
-                        className="py-2.5 px-1 text-[13.5px] space-y-1 cursor-pointer hover:bg-[var(--bg-slate)]/60 transition-colors"
+                        className="w-full text-left py-2.5 px-1 text-[13.5px] space-y-1 cursor-pointer hover:bg-[var(--bg-slate)]/60 transition-colors rounded-md focus-visible:ring-2 focus-visible:ring-[var(--accent-blue)]"
                       >
                         <div className="flex items-center justify-between gap-2">
                           <span className="omnis-mono text-[11px] px-1.5 py-0.5 rounded-md badge-tone-blue font-semibold">
@@ -527,7 +572,7 @@ function KnowledgeGraphContent() {
                         <div className="text-[13px] text-[var(--text-secondary)] leading-snug">
                           {edge.evidence}
                         </div>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>

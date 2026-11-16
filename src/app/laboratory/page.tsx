@@ -181,7 +181,7 @@ function LaboratoryContent() {
   const [p1, setP1] = useState(() => parseLabParam(searchParams.get("p1"), exp.param1));
   const [p2, setP2] = useState(() => parseLabParam(searchParams.get("p2"), exp.param2));
   const [p3, setP3] = useState(() => parseLabParam(searchParams.get("p3"), exp.param3));
-  const lastSyncedLabQueryRef = useRef<string | null>(null);
+  const [lastSyncedLabQuery, setLastSyncedLabQuery] = useState<string | null>(null);
   const hasMountedLabRef = useRef(false);
 
   const { theme, motionPaused, addWorkspaceItem, setActiveContext } = useOmnisStore();
@@ -194,6 +194,8 @@ function LaboratoryContent() {
   const [hoverTrussPanel, setHoverTrussPanel] = useState<number | null>(null);
   const [interactiveReadout, setInteractiveReadout] = useState<string | null>(null);
   const [manualDrawTick, setManualDrawTick] = useState(0);
+  const [isCanvasVisible, setIsCanvasVisible] = useState(true);
+  const [isTabActive, setIsTabActive] = useState(true);
   const labLiveRef = useRef({
     activeId,
     p1,
@@ -205,8 +207,26 @@ function LaboratoryContent() {
     canvasSize,
     activeTrussPanel,
     hoverTrussPanel,
+    isCanvasVisible,
+    isTabActive,
   });
-  labLiveRef.current = {
+
+  useEffect(() => {
+    labLiveRef.current = {
+      activeId,
+      p1,
+      p2,
+      p3,
+      running,
+      motionPaused,
+      theme,
+      canvasSize,
+      activeTrussPanel,
+      hoverTrussPanel,
+      isCanvasVisible,
+      isTabActive,
+    };
+  }, [
     activeId,
     p1,
     p2,
@@ -217,7 +237,29 @@ function LaboratoryContent() {
     canvasSize,
     activeTrussPanel,
     hoverTrussPanel,
-  };
+    isCanvasVisible,
+    isTabActive,
+  ]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const onVis = () => setIsTabActive(document.visibilityState === "visible");
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry) setIsCanvasVisible(entry.isIntersecting);
+      },
+      { threshold: 0.05 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
 
   useEffect(() => {
     const el = canvasRef.current;
@@ -245,23 +287,24 @@ function LaboratoryContent() {
   const urlP2 = searchParams.get("p2");
   const urlP3 = searchParams.get("p3");
 
-  useEffect(() => {
-    const currentQs = searchParams.toString();
-    if (lastSyncedLabQueryRef.current !== null && currentQs === lastSyncedLabQueryRef.current) {
-      return;
+  const labQueryKey = searchParams.toString();
+  const [prevLabQueryKey, setPrevLabQueryKey] = useState(labQueryKey);
+  if (labQueryKey !== prevLabQueryKey) {
+    setPrevLabQueryKey(labQueryKey);
+    if (lastSyncedLabQuery === null || labQueryKey !== lastSyncedLabQuery) {
+      if (resolvedUrlCat && resolvedUrlCat !== activeId) {
+        const targetExp = LAB_EXPERIMENTS.find((e) => e.id === resolvedUrlCat) ?? LAB_EXPERIMENTS[0];
+        setActiveId(resolvedUrlCat);
+        setP1(parseLabParam(urlP1, targetExp.param1));
+        setP2(parseLabParam(urlP2, targetExp.param2));
+        setP3(parseLabParam(urlP3, targetExp.param3));
+      } else if (urlP1 !== null || urlP2 !== null || urlP3 !== null) {
+        if (urlP1 !== null) setP1(parseLabParam(urlP1, exp.param1));
+        if (urlP2 !== null) setP2(parseLabParam(urlP2, exp.param2));
+        if (urlP3 !== null) setP3(parseLabParam(urlP3, exp.param3));
+      }
     }
-    if (resolvedUrlCat && resolvedUrlCat !== activeId) {
-      const targetExp = LAB_EXPERIMENTS.find((e) => e.id === resolvedUrlCat) ?? LAB_EXPERIMENTS[0];
-      setActiveId(resolvedUrlCat);
-      setP1(parseLabParam(urlP1, targetExp.param1));
-      setP2(parseLabParam(urlP2, targetExp.param2));
-      setP3(parseLabParam(urlP3, targetExp.param3));
-    } else if (urlP1 !== null || urlP2 !== null || urlP3 !== null) {
-      if (urlP1 !== null) setP1(parseLabParam(urlP1, exp.param1));
-      if (urlP2 !== null) setP2(parseLabParam(urlP2, exp.param2));
-      if (urlP3 !== null) setP3(parseLabParam(urlP3, exp.param3));
-    }
-  }, [searchParams, resolvedUrlCat, urlP1, urlP2, urlP3, activeId, exp]);
+  }
 
   useEffect(() => {
     setActiveContext("Digital World Laboratory", exp.title);
@@ -272,15 +315,18 @@ function LaboratoryContent() {
       hasMountedLabRef.current = true;
       return;
     }
-    const params = new URLSearchParams({
-      cat: activeId,
-      p1: String(p1),
-      p2: String(p2),
-      p3: String(p3),
-    });
-    const qs = params.toString();
-    lastSyncedLabQueryRef.current = qs;
-    router.replace(`/laboratory?${qs}`, { scroll: false });
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams({
+        cat: activeId,
+        p1: String(p1),
+        p2: String(p2),
+        p3: String(p3),
+      });
+      const qs = params.toString();
+      setLastSyncedLabQuery(qs);
+      router.replace(`/laboratory?${qs}`, { scroll: false });
+    }, 30);
+    return () => window.clearTimeout(timer);
   }, [activeId, p1, p2, p3, router]);
 
   const handleSelectDiscipline = (nextId: LabCategoryId) => {
@@ -392,7 +438,12 @@ function LaboratoryContent() {
       };
 
       const isAnimating =
-        snap.running && !snap.motionPaused && !pendulumRef.current.dragging && !orbitDraggingRef.current;
+        snap.running &&
+        !snap.motionPaused &&
+        snap.isCanvasVisible &&
+        snap.isTabActive &&
+        !pendulumRef.current.dragging &&
+        !orbitDraggingRef.current;
       const { p1: curP1, p2: curP2, p3: curP3 } = snap;
       const dt = Math.min(0.033, Math.max(0.001, (now - lastFrameTime) / 1000)) * 60;
       lastFrameTime = now;
@@ -430,7 +481,8 @@ function LaboratoryContent() {
         const theta = pendulumRef.current.theta;
         const pivotX = W * 0.28;
         const pivotY = 56;
-        const rodPx = Math.min(200, curP2 * 52);
+        const maxSafeRod = Math.max(80, H - pivotY - 46);
+        const rodPx = Math.min(maxSafeRod, curP2 * (maxSafeRod / 4));
         const bobX = pivotX + rodPx * Math.sin(theta);
         const bobY = pivotY + rodPx * Math.cos(theta);
 
@@ -474,17 +526,21 @@ function LaboratoryContent() {
           Math.min(H - 12, bobY + 34)
         );
 
-        // Harmonic wave trace on right side
+        // Harmonic wave trace on right side (clipped cleanly to viewport width)
         ctx.strokeStyle = palette.emerald;
         ctx.lineWidth = 2.4;
         ctx.beginPath();
-        for (let i = 0; i < 270; i++) {
-          const wx = W * 0.52 + i;
+        const waveStartX = W * 0.52;
+        const waveSpan = Math.max(40, Math.floor(W - waveStartX - 16));
+        const waveStep = 2;
+        for (let i = 0; i <= waveSpan; i += waveStep) {
+          const wx = waveStartX + i;
+          const phaseIdx = i * (260 / waveSpan);
           const wy =
             H / 2 +
-            Math.sin(t * Math.sqrt(curP1 / curP2) - i * 0.04) *
-              68 *
-              Math.exp(-curP3 * (i / 90));
+            Math.sin(t * Math.sqrt(curP1 / curP2) - phaseIdx * 0.04) *
+              62 *
+              Math.exp(-curP3 * (phaseIdx / 90));
           if (i === 0) ctx.moveTo(wx, wy);
           else ctx.lineTo(wx, wy);
         }
@@ -721,19 +777,28 @@ function LaboratoryContent() {
       }
     };
 
-    if (isContinuous && running && !motionPaused && !pendulumRef.current.dragging && !orbitDraggingRef.current) {
+    if (
+      isContinuous &&
+      running &&
+      !motionPaused &&
+      isCanvasVisible &&
+      isTabActive &&
+      !pendulumRef.current.dragging &&
+      !orbitDraggingRef.current
+    ) {
       frameId = requestAnimationFrame(render);
     } else {
       render();
     }
     return () => cancelAnimationFrame(frameId);
-  }, [activeId, running, motionPaused, canvasSize, manualDrawTick]);
+  }, [activeId, running, motionPaused, canvasSize, manualDrawTick, isCanvasVisible, isTabActive]);
 
   // Trigger a lightweight single canvas paint (without resizing bitmap) when parameters update in paused or discrete states
   useEffect(() => {
     const isContinuous = activeId === "physics" || activeId === "space";
     if (!isContinuous || !running || motionPaused) {
-      setManualDrawTick((k) => k + 1);
+      const id = requestAnimationFrame(() => setManualDrawTick((k) => k + 1));
+      return () => cancelAnimationFrame(id);
     }
   }, [activeId, running, motionPaused, p1, p2, p3, theme, activeTrussPanel, hoverTrussPanel]);
 
@@ -984,7 +1049,11 @@ function LaboratoryContent() {
                 onPointerUp={handleCanvasPointerUp}
                 onPointerCancel={handleCanvasPointerUp}
                 onPointerLeave={handleCanvasPointerUp}
-                className="w-full h-72 block touch-none cursor-crosshair"
+                className={`w-full h-72 block ${
+                  activeId === "physics" || activeId === "space" || activeId === "engineering"
+                    ? "touch-none cursor-crosshair"
+                    : "touch-pan-y cursor-default"
+                }`}
               />
               {motionPaused ? (
                 <span className="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-md omnis-hud-pill text-xs omnis-mono font-semibold tone-warning">

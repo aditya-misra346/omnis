@@ -38,9 +38,8 @@ export function ElasticMagneticText({
 
   // Store refs per segment cleanly so unified spring operates seamlessly across plain + ink segments
   const segmentGlyphElsRef = useRef<HTMLSpanElement[][]>(segments.map(() => []));
-  const inkTransformsRefs = useRef<React.MutableRefObject<GlyphSpringTransform[]>[]>(
-    segments.map(() => ({ current: [] }))
-  );
+  const inkTransformsMatrixRef = useRef<GlyphSpringTransform[][]>(segments.map(() => []));
+  const stepSpringsRef = useRef<(now: number) => void>(() => {});
 
   const glyphCentersRef = useRef<CachedGlyphCenter[]>([]);
   const fontSizeRef = useRef<number>(48);
@@ -104,7 +103,9 @@ export function ElasticMagneticText({
 
     segments.forEach((seg, sIdx) => {
       const len = segmentGlyphElsRef.current[sIdx]?.length ?? 0;
-      const arr = inkTransformsRefs.current[sIdx].current;
+      const matrix = inkTransformsMatrixRef.current;
+      if (!matrix[sIdx]) matrix[sIdx] = [];
+      const arr = matrix[sIdx];
       while (arr.length < len) {
         arr.push({ x: 0, y: 0, rot: 0, sx: 1, sy: 1 });
       }
@@ -130,7 +131,7 @@ export function ElasticMagneticText({
       if (springsRef.current[i]) {
         springsRef.current[i] = { x: 0, y: 0, rot: 0, sx: 1, sy: 1, vx: 0, vy: 0 };
       }
-      const inkArr = inkTransformsRefs.current[segmentIndex]?.current;
+      const inkArr = inkTransformsMatrixRef.current[segmentIndex];
       if (inkArr && inkArr[localIndex]) {
         inkArr[localIndex] = { x: 0, y: 0, rot: 0, sx: 1, sy: 1 };
       }
@@ -213,24 +214,30 @@ export function ElasticMagneticText({
           )}px, 0) rotate(${(s.rot).toFixed(2)}deg) scale(${s.sx.toFixed(3)}, ${s.sy.toFixed(3)})`;
         }
 
-        const inkArr = inkTransformsRefs.current[segmentIndex]?.current;
+        const inkArr = inkTransformsMatrixRef.current[segmentIndex];
         if (inkArr && inkArr[localIndex]) {
-          inkArr[localIndex].x = s.x;
-          inkArr[localIndex].y = s.y;
-          inkArr[localIndex].rot = s.rot;
-          inkArr[localIndex].sx = s.sx;
-          inkArr[localIndex].sy = s.sy;
+          inkArr[localIndex] = {
+            x: s.x,
+            y: s.y,
+            rot: s.rot,
+            sx: s.sx,
+            sy: s.sy,
+          };
         }
       }
 
       if (pointerNearRef.current || activeEnergy > 0.02) {
-        rafIdRef.current = requestAnimationFrame(stepSprings);
+        rafIdRef.current = requestAnimationFrame((ts) => stepSpringsRef.current(ts));
       } else {
         lastFrameRef.current = 0;
       }
     },
     [getAllFlatGlyphs, resetAllSprings]
   );
+
+  useEffect(() => {
+    stepSpringsRef.current = stepSprings;
+  }, [stepSprings]);
 
   // Immediately reset if motion is paused
   useEffect(() => {
@@ -349,7 +356,7 @@ export function ElasticMagneticText({
                 editorial={seg.editorial}
                 className={seg.className}
                 ariaLabel={seg.text}
-                externalTransformsRef={inkTransformsRefs.current[sIdx]}
+                getExternalTransforms={() => inkTransformsMatrixRef.current[sIdx] ?? []}
                 onGlyphElementsReady={(els) => {
                   segmentGlyphElsRef.current[sIdx] = els;
                   cacheGlyphCenters();

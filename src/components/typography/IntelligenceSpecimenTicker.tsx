@@ -174,7 +174,7 @@ export function IntelligenceSpecimenTicker() {
             key={row.rowLabel}
             className="omnis-ticker-row relative flex items-center gap-3 overflow-hidden py-1 border-b border-[var(--border-subtle)]/70 last:border-b-0"
           >
-            <div className="shrink-0 w-40 sm:w-48 text-[11.5px] sm:text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono z-10 bg-[var(--bg-obsidian)] pr-2">
+            <div className="shrink-0 w-28 sm:w-44 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono z-10 bg-[var(--bg-obsidian)] pr-2 truncate">
               {row.rowLabel}
             </div>
 
@@ -204,7 +204,7 @@ export function IntelligenceSpecimenTicker() {
                               tabIndex={isClone ? -1 : 0}
                               onMouseEnter={() => setActiveItem(item)}
                               onFocus={() => setActiveItem(item)}
-                              className={`px-3 py-1 rounded-full text-sm transition-all whitespace-nowrap border focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-blue)] ${
+                              className={`min-h-[44px] md:min-h-0 inline-flex items-center px-3 py-2 md:py-1 rounded-full text-sm transition-all whitespace-nowrap border focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-blue)] ${
                                 isEditorial
                                   ? "omnis-editorial text-[18px] leading-none"
                                   : "font-display font-semibold text-[13px] sm:text-sm"

@@ -110,6 +110,11 @@ function ResearchContent() {
   const [citationAlign, setCitationAlign] = useState<"left" | "center" | "right">("center");
   const sourceRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
+  const clearCitationPopovers = useCallback(() => {
+    setPinnedCitationKey(null);
+    setHoveredCitationKey(null);
+  }, []);
+
   const inspectCitation = (
     sourceId: string,
     claimMeta?: {
@@ -121,7 +126,7 @@ function ResearchContent() {
   ) => {
     setActiveSourceId(sourceId);
     if (claimMeta) setActiveClaimMeta(claimMeta);
-    setPinnedCitationKey(null);
+    clearCitationPopovers();
     const card = sourceRefs.current[sourceId];
     if (card) {
       card.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -137,7 +142,8 @@ function ResearchContent() {
       sourceIds: string[];
       verificationStatus: VerificationStatus;
       methodologyNote: string;
-    }
+    },
+    mode: "hover" | "pin" = "hover"
   ) => {
     setActiveSourceId(sourceId);
     if (claimMeta) setActiveClaimMeta(claimMeta);
@@ -147,22 +153,27 @@ function ResearchContent() {
       else if (window.innerWidth - rect.right < 180) setCitationAlign("right");
       else setCitationAlign("center");
     }
-    setHoveredCitationKey(citKey);
+    if (mode === "pin") {
+      setPinnedCitationKey((prev) => (prev === citKey ? null : citKey));
+      setHoveredCitationKey(null);
+    } else {
+      setHoveredCitationKey(citKey);
+    }
   };
 
   useEffect(() => {
-    if (!pinnedCitationKey) return;
+    if (!pinnedCitationKey && !hoveredCitationKey) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setPinnedCitationKey(null);
+      if (e.key === "Escape") clearCitationPopovers();
     };
-    const onOutside = () => setPinnedCitationKey(null);
+    const onOutside = () => clearCitationPopovers();
     document.addEventListener("keydown", onKey);
     document.addEventListener("pointerdown", onOutside);
     return () => {
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("pointerdown", onOutside);
     };
-  }, [pinnedCitationKey]);
+  }, [pinnedCitationKey, hoveredCitationKey, clearCitationPopovers]);
 
   const { addWorkspaceItem, addSearchQuery, setActiveContext } = useOmnisStore();
   const lastFetchedKeyRef = useRef<string | null>(null);
@@ -179,6 +190,7 @@ function ResearchContent() {
           { scroll: false }
         );
       }
+      await Promise.resolve();
       setLoading(true);
       setErrorMsg(null);
       try {
@@ -204,12 +216,18 @@ function ResearchContent() {
     [router, setActiveContext]
   );
 
-  useEffect(() => {
-    const reqKey = `${initialQuery.trim()}::${resolvedInitialMode}`;
+  const researchUrlKey = `${initialQuery.trim()}::${resolvedInitialMode}`;
+  const [prevResearchUrlKey, setPrevResearchUrlKey] = useState(researchUrlKey);
+  if (researchUrlKey !== prevResearchUrlKey) {
+    setPrevResearchUrlKey(researchUrlKey);
     setQueryInput(initialQuery);
     setMode(resolvedInitialMode);
+  }
+
+  useEffect(() => {
+    const reqKey = `${initialQuery.trim()}::${resolvedInitialMode}`;
     if (lastFetchedKeyRef.current === reqKey) return;
-    runResearch(initialQuery, resolvedInitialMode, false);
+    void runResearch(initialQuery, resolvedInitialMode, false);
   }, [initialQuery, resolvedInitialMode, runResearch]);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -519,8 +537,8 @@ ${report.sources
                       </p>
                       <div className="text-[13px] text-[var(--text-muted)] flex flex-wrap items-center gap-1.5">
                         <span>Methodology: {claim.methodologyNote} • Linked Sources:</span>
-                        {claim.sourceIds.map((sid) => {
-                          const citKey = `${claim.id}-${sid}`;
+                        {Array.from(new Set(claim.sourceIds)).map((sid, sIdx) => {
+                          const citKey = `${claim.id}-${sid}-${sIdx}`;
                           const matchedSource = report.sources.find((s) => s.id === sid);
                           const claimMeta = {
                             claimId: claim.id,
@@ -538,35 +556,41 @@ ${report.sources
                                 : "sm:left-1/2 sm:-translate-x-1/2";
                           return (
                             <span
-                              key={sid}
+                              key={`${sid}-${sIdx}`}
                               className="relative inline-block"
                               onPointerDown={(e) => e.stopPropagation()}
                             >
                               <button
                                 type="button"
                                 aria-expanded={isOpen}
-                                onMouseEnter={(e) =>
-                                  openCitationPopover(citKey, sid, e.currentTarget, claimMeta)
-                                }
-                                onMouseLeave={() => setHoveredCitationKey(null)}
-                                onFocus={(e) =>
-                                  openCitationPopover(citKey, sid, e.currentTarget, claimMeta)
-                                }
-                                onBlur={() => setHoveredCitationKey(null)}
-                                onClick={(e) => {
+                                onPointerEnter={(e) => {
+                                  if (e.pointerType !== "mouse") return;
+                                  openCitationPopover(citKey, sid, e.currentTarget, claimMeta, "hover");
+                                }}
+                                onPointerLeave={(e) => {
+                                  if (e.pointerType === "mouse") setHoveredCitationKey(null);
+                                }}
+                                onFocus={(e) => {
                                   if (
                                     typeof window !== "undefined" &&
-                                    window.innerWidth < 640
+                                    window.matchMedia?.("(hover: hover) and (pointer: fine)").matches
                                   ) {
-                                    openCitationPopover(citKey, sid, e.currentTarget, claimMeta);
-                                    setPinnedCitationKey((prev) =>
-                                      prev === citKey ? null : citKey
-                                    );
+                                    openCitationPopover(citKey, sid, e.currentTarget, claimMeta, "hover");
+                                  }
+                                }}
+                                onBlur={() => setHoveredCitationKey(null)}
+                                onClick={(e) => {
+                                  const isTouchViewport =
+                                    typeof window !== "undefined" &&
+                                    (window.innerWidth < 640 ||
+                                      !window.matchMedia?.("(hover: hover) and (pointer: fine)").matches);
+                                  if (isTouchViewport) {
+                                    openCitationPopover(citKey, sid, e.currentTarget, claimMeta, "pin");
                                   } else {
                                     inspectCitation(sid, claimMeta);
                                   }
                                 }}
-                                className={`px-2 py-0.5 rounded text-xs omnis-mono font-semibold border transition-colors cursor-pointer ${
+                                className={`min-h-[44px] sm:min-h-0 px-2.5 sm:px-2 py-1.5 sm:py-0.5 rounded text-xs omnis-mono font-semibold border transition-colors cursor-pointer ${
                                   activeSourceId === sid
                                     ? "badge-tone-blue border-[var(--accent-blue)]"
                                     : "bg-[var(--bg-graphite)] border-[var(--border-subtle)] text-[var(--text-primary)] hover:border-[var(--accent-blue)]"
@@ -601,17 +625,14 @@ ${report.sources
                                     <button
                                       type="button"
                                       onClick={() => inspectCitation(sid, claimMeta)}
-                                      className="px-2.5 py-1.5 rounded-lg bg-[var(--accent-blue-solid)] text-white text-xs font-semibold cursor-pointer"
+                                      className="min-h-[44px] px-3 py-2 rounded-lg bg-[var(--accent-blue-solid)] text-white text-xs font-semibold cursor-pointer"
                                     >
                                       View in Registry ↓
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={() => {
-                                        setPinnedCitationKey(null);
-                                        setHoveredCitationKey(null);
-                                      }}
-                                      className="px-2.5 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-xs text-[var(--text-secondary)] cursor-pointer"
+                                      onClick={clearCitationPopovers}
+                                      className="min-h-[44px] px-3 py-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-xs text-[var(--text-secondary)] cursor-pointer"
                                     >
                                       Dismiss
                                     </button>
@@ -696,28 +717,34 @@ ${report.sources
                               <button
                                 type="button"
                                 aria-expanded={isOpen}
-                                onMouseEnter={(e) =>
-                                  openCitationPopover(citKey, stat.sourceId, e.currentTarget)
-                                }
-                                onMouseLeave={() => setHoveredCitationKey(null)}
-                                onFocus={(e) =>
-                                  openCitationPopover(citKey, stat.sourceId, e.currentTarget)
-                                }
-                                onBlur={() => setHoveredCitationKey(null)}
-                                onClick={(e) => {
+                                onPointerEnter={(e) => {
+                                  if (e.pointerType !== "mouse") return;
+                                  openCitationPopover(citKey, stat.sourceId, e.currentTarget, undefined, "hover");
+                                }}
+                                onPointerLeave={(e) => {
+                                  if (e.pointerType === "mouse") setHoveredCitationKey(null);
+                                }}
+                                onFocus={(e) => {
                                   if (
                                     typeof window !== "undefined" &&
-                                    window.innerWidth < 640
+                                    window.matchMedia?.("(hover: hover) and (pointer: fine)").matches
                                   ) {
-                                    openCitationPopover(citKey, stat.sourceId, e.currentTarget);
-                                    setPinnedCitationKey((prev) =>
-                                      prev === citKey ? null : citKey
-                                    );
+                                    openCitationPopover(citKey, stat.sourceId, e.currentTarget, undefined, "hover");
+                                  }
+                                }}
+                                onBlur={() => setHoveredCitationKey(null)}
+                                onClick={(e) => {
+                                  const isTouchViewport =
+                                    typeof window !== "undefined" &&
+                                    (window.innerWidth < 640 ||
+                                      !window.matchMedia?.("(hover: hover) and (pointer: fine)").matches);
+                                  if (isTouchViewport) {
+                                    openCitationPopover(citKey, stat.sourceId, e.currentTarget, undefined, "pin");
                                   } else {
                                     inspectCitation(stat.sourceId);
                                   }
                                 }}
-                                className="tone-blue hover:underline omnis-mono cursor-pointer"
+                                className="min-h-[44px] sm:min-h-0 inline-flex items-center px-1.5 sm:px-0 tone-blue hover:underline omnis-mono cursor-pointer"
                               >
                                 Ref: [{stat.sourceId}]
                               </button>
@@ -737,17 +764,14 @@ ${report.sources
                                     <button
                                       type="button"
                                       onClick={() => inspectCitation(stat.sourceId)}
-                                      className="px-2.5 py-1.5 rounded-lg bg-[var(--accent-blue-solid)] text-white text-xs font-semibold cursor-pointer"
+                                      className="min-h-[44px] px-3 py-2 rounded-lg bg-[var(--accent-blue-solid)] text-white text-xs font-semibold cursor-pointer"
                                     >
                                       View in Registry ↓
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={() => {
-                                        setPinnedCitationKey(null);
-                                        setHoveredCitationKey(null);
-                                      }}
-                                      className="px-2.5 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-xs text-[var(--text-secondary)] cursor-pointer"
+                                      onClick={clearCitationPopovers}
+                                      className="min-h-[44px] px-3 py-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-xs text-[var(--text-secondary)] cursor-pointer"
                                     >
                                       Dismiss
                                     </button>

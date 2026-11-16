@@ -158,7 +158,7 @@ export default function CommandCenterPage() {
             <Link
               key={pill.href}
               href={pill.href}
-              className="px-2.5 py-1 rounded-full bg-[var(--bg-slate)] hover:border-[var(--border-strong)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+              className="min-h-[44px] md:min-h-[32px] inline-flex items-center px-3 md:px-2.5 py-2 md:py-1 rounded-full bg-[var(--bg-slate)] hover:border-[var(--border-strong)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
             >
               {pill.label}
             </Link>
@@ -194,7 +194,7 @@ export default function CommandCenterPage() {
                   <button
                     type="button"
                     onClick={() => toggleWidgetVisibility(w.id)}
-                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-md font-semibold cursor-pointer ${
+                    className={`min-h-[44px] md:min-h-[32px] inline-flex items-center gap-1 px-3 md:px-2 py-1.5 md:py-1 rounded-md font-semibold cursor-pointer ${
                       w.visible ? "badge-tone-verified" : "badge-tone-danger"
                     }`}
                   >
@@ -206,7 +206,7 @@ export default function CommandCenterPage() {
                       type="button"
                       disabled={idx === 0}
                       onClick={() => moveWidget(w.id, "up")}
-                      className="p-1 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-slate)] disabled:opacity-30 cursor-pointer"
+                      className="min-h-[44px] min-w-[44px] md:min-h-[30px] md:min-w-[30px] inline-flex items-center justify-center p-1 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-slate)] disabled:opacity-30 cursor-pointer"
                       aria-label={`Move ${w.title} Up`}
                     >
                       <ArrowUp className="w-3 h-3" />
@@ -215,7 +215,7 @@ export default function CommandCenterPage() {
                       type="button"
                       disabled={idx === sortedWidgets.length - 1}
                       onClick={() => moveWidget(w.id, "down")}
-                      className="p-1 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-slate)] disabled:opacity-30 cursor-pointer"
+                      className="min-h-[44px] min-w-[44px] md:min-h-[30px] md:min-w-[30px] inline-flex items-center justify-center p-1 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-slate)] disabled:opacity-30 cursor-pointer"
                       aria-label={`Move ${w.title} Down`}
                     >
                       <ArrowDown className="w-3 h-3" />

@@ -1,5 +1,11 @@
 import { COUNTRIES_DATA } from "@/lib/data/global-intelligence";
-import { formatSignedPct } from "@/lib/formatters";
+import { buildPlaceholderCountryProfile } from "@/lib/data/world-catalog";
+import {
+  formatCountryMetricOrNa,
+  formatSignedPct,
+  getEffectiveGdpUsdBn,
+  getEffectiveGdpYear,
+} from "@/lib/formatters";
 import { matchCountryCatalogFromText } from "@/lib/intelligence/spatial-sync";
 import {
   fetchLiveCountryIntelligence,
@@ -30,12 +36,29 @@ export async function POST(request: Request) {
     const intentInfo = classifyQueryIntent(`${msg} ${contextTopic}`);
     const matchedCatalog = matchCountryCatalogFromText(msg, contextTopic);
 
+    const resolveCountryWithFallback = async (iso3: string) => {
+      if (COUNTRIES_DATA[iso3]) {
+        return await fetchLiveCountryIntelligence(iso3).catch(() => COUNTRIES_DATA[iso3]) ?? COUNTRIES_DATA[iso3];
+      }
+      const live = await fetchLiveCountryIntelligence(iso3).catch(() => null);
+      if (live) return live;
+      const fallback = buildPlaceholderCountryProfile(iso3);
+      if (!fallback) return null;
+      return {
+        ...fallback,
+        provenance: {
+          ...fallback.provenance,
+          source: "OMNIS Static Catalog Fallback (Upstream Timeout)",
+          methodology:
+            "Static catalog coordinate fallback used after live World Bank / REST Countries timeout; sector metrics withheld.",
+          missingData: true,
+          verificationStatus: "unverified" as const,
+        },
+      };
+    };
+
     const [matchedCountry, openAlexWorks, wikiSummary] = await Promise.all([
-      matchedCatalog
-        ? COUNTRIES_DATA[matchedCatalog.iso3]
-          ? Promise.resolve(COUNTRIES_DATA[matchedCatalog.iso3])
-          : fetchLiveCountryIntelligence(matchedCatalog.iso3)
-        : Promise.resolve(null),
+      matchedCatalog ? resolveCountryWithFallback(matchedCatalog.iso3) : Promise.resolve(null),
       fetchOpenAlexSources(msg, 3),
       fetchWikimediaSummary(matchedCatalog?.name ?? msg),
     ]);
@@ -47,13 +70,41 @@ export async function POST(request: Request) {
       : null;
 
     if (matchedCountry) {
-      const growthLabel = formatSignedPct(matchedCountry.gdpGrowthPct);
+      const effectiveGdp = getEffectiveGdpUsdBn(matchedCountry);
+      const liveYear = getEffectiveGdpYear(matchedCountry);
+      const gdpLabel =
+        effectiveGdp > 0
+          ? `$${effectiveGdp.toLocaleString()}B${liveYear ? ` (Live WDI ${liveYear})` : ""}`
+          : "N/A";
+      const perCapitaLabel =
+        matchedCountry.gdpPerCapitaUsd > 0
+          ? `$${matchedCountry.gdpPerCapitaUsd.toLocaleString()}/capita`
+          : "N/A";
+      const growthLabel =
+        matchedCountry.provenance.missingData && matchedCountry.gdpGrowthPct === 0 && effectiveGdp === 0
+          ? "N/A"
+          : formatSignedPct(matchedCountry.gdpGrowthPct);
+      const cpiLabel = formatCountryMetricOrNa(matchedCountry, matchedCountry.inflationPct, (v) => `${v}%`);
+      const renewLabel =
+        !matchedCountry.provenance.missingData || matchedCountry.energyProfile.renewableSharePct > 0
+          ? `${matchedCountry.energyProfile.renewableSharePct}%`
+          : "N/A";
+      const nuclearLabel = formatCountryMetricOrNa(
+        matchedCountry,
+        matchedCountry.energyProfile.nuclearSharePct,
+        (v) => `${v}%`
+      );
+      const rdLabel = formatCountryMetricOrNa(
+        matchedCountry,
+        matchedCountry.technologyProfile.rdSpendPctGdp,
+        (v) => `${v}% of GDP`
+      );
       reply =
         `Retrieved Country Profile — **${matchedCountry.name} (${matchedCountry.iso3})** [Context: ${
           body.contextLabel ?? "OMNIS"
         }]:\n\n` +
-        `• **Macroeconomic Baseline**: Nominal GDP $${matchedCountry.gdpUsdBn.toLocaleString()}B ($${matchedCountry.gdpPerCapitaUsd.toLocaleString()}/capita), ${growthLabel} real annual growth, ${matchedCountry.inflationPct}% CPI inflation.\n` +
-        `• **Energy & R&D**: Renewable electricity ${matchedCountry.energyProfile.renewableSharePct}% (Nuclear ${matchedCountry.energyProfile.nuclearSharePct}%), R&D spend ${matchedCountry.technologyProfile.rdSpendPctGdp}% of GDP.\n` +
+        `• **Macroeconomic Baseline**: Nominal GDP ${gdpLabel} (${perCapitaLabel}), ${growthLabel} real annual growth, ${cpiLabel} CPI inflation.\n` +
+        `• **Energy & R&D**: Renewable electricity ${renewLabel} (Nuclear ${nuclearLabel}), R&D spend ${rdLabel}.\n` +
         `• **Source Provenance**: ${matchedCountry.provenance.source} (${provenanceMethodology}).`;
     } else if (openAlexWorks.length > 0 || wikiSummary) {
       const topWork = openAlexWorks[0];

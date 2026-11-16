@@ -123,6 +123,7 @@ function SimulationsContent() {
   );
   const [horizonYears, setHorizonYears] = useState(initialHorizon);
   const [seed, setSeed] = useState(initialSeed);
+  const [seedInput, setSeedInput] = useState(String(initialSeed));
   const [overrides, setOverrides] = useState<Record<string, number>>({});
   const [savedNotice, setSavedNotice] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -131,7 +132,7 @@ function SimulationsContent() {
   >({});
   const [hydratingCountryIso, setHydratingCountryIso] = useState<string | null>(null);
   const hydratedRef = useRef<Record<string, CountryIntelligenceProfile>>({});
-  const lastSyncedQueryRef = useRef<string | null>(null);
+  const [lastSyncedQuery, setLastSyncedQuery] = useState<string | null>(null);
 
   const { addWorkspaceItem, setActiveContext } = useOmnisStore();
 
@@ -200,62 +201,60 @@ function SimulationsContent() {
     };
   }, [countryBaselineIso3]);
 
-  useEffect(() => {
-    const currentQs = searchParams.toString();
-    if (
-      lastSyncedQueryRef.current !== null &&
-      currentQs === lastSyncedQueryRef.current
-    ) {
-      return;
-    }
-    const urlCat = resolveScenarioCategory(
-      searchParams.get("category"),
-      searchParams.get("model")
-    );
-    if (urlCat && CATEGORIES.some((c) => c.id === urlCat)) {
-      setCategory(urlCat);
-    }
-    const urlCountry = searchParams.get("country")?.toUpperCase();
-    if (urlCountry === "GLOBAL" || isSupportedBaselineCountry(urlCountry)) {
-      setCountryBaselineIso3(urlCountry);
-    }
-    const urlHorizon = Number(searchParams.get("horizon"));
-    if (searchParams.get("horizon") !== null && Number.isFinite(urlHorizon)) {
-      setHorizonYears(Math.max(5, Math.min(35, Math.round(urlHorizon))));
-    }
-    const urlSeed = Number(searchParams.get("seed"));
-    if (searchParams.get("seed") !== null && Number.isFinite(urlSeed)) {
-      setSeed(Math.round(urlSeed));
-    }
-  }, [searchParams]);
-
-  // Reset overrides when category changes or external URL query changes
-  useEffect(() => {
-    const currentQs = searchParams.toString();
-    if (
-      lastSyncedQueryRef.current !== null &&
-      currentQs === lastSyncedQueryRef.current
-    ) {
-      return;
-    }
-    const defaults: Record<string, number> = {};
-    for (const p of activeSpec.parameters) {
-      defaults[p.key] = p.defaultModifiedValue;
-    }
-    if (activeSpec.category === "economics" && parsedOilShock !== null) {
-      defaults.oilPriceShockPct = parsedOilShock;
-    }
-    for (const [k, v] of Object.entries(parsedPrompt.overrides)) {
-      if (k in defaults) defaults[k] = v;
-    }
-    for (const p of activeSpec.parameters) {
-      const raw = searchParams.get(p.key);
-      if (raw !== null && Number.isFinite(Number(raw))) {
-        defaults[p.key] = Math.max(p.min, Math.min(p.max, Number(raw)));
+  const simQueryKey = searchParams.toString();
+  const [prevSimQueryKey, setPrevSimQueryKey] = useState(simQueryKey);
+  if (simQueryKey !== prevSimQueryKey) {
+    setPrevSimQueryKey(simQueryKey);
+    if (lastSyncedQuery === null || simQueryKey !== lastSyncedQuery) {
+      const urlCat = resolveScenarioCategory(
+        searchParams.get("category"),
+        searchParams.get("model")
+      );
+      if (urlCat && CATEGORIES.some((c) => c.id === urlCat)) {
+        setCategory(urlCat);
+      }
+      const urlCountry = searchParams.get("country")?.toUpperCase();
+      if (urlCountry === "GLOBAL" || isSupportedBaselineCountry(urlCountry)) {
+        setCountryBaselineIso3(urlCountry);
+      }
+      const urlHorizon = Number(searchParams.get("horizon"));
+      if (searchParams.get("horizon") !== null && Number.isFinite(urlHorizon)) {
+        setHorizonYears(Math.max(5, Math.min(35, Math.round(urlHorizon))));
+      }
+      const urlSeed = Number(searchParams.get("seed"));
+      if (searchParams.get("seed") !== null && Number.isFinite(urlSeed)) {
+        const clampedSeed = Math.max(0, Math.min(999999, Math.round(urlSeed)));
+        setSeed(clampedSeed);
+        setSeedInput(String(clampedSeed));
       }
     }
-    setOverrides(defaults);
-  }, [activeSpec, parsedOilShock, parsedPrompt.overrides, searchParams]);
+  }
+
+  const simOverrideKey = `${activeSpec.category}::${parsedOilShock ?? ""}::${searchParams.toString()}`;
+  const [prevSimOverrideKey, setPrevSimOverrideKey] = useState(simOverrideKey);
+  if (simOverrideKey !== prevSimOverrideKey) {
+    setPrevSimOverrideKey(simOverrideKey);
+    const currentQs = searchParams.toString();
+    if (lastSyncedQuery === null || currentQs !== lastSyncedQuery) {
+      const defaults: Record<string, number> = {};
+      for (const p of activeSpec.parameters) {
+        defaults[p.key] = p.defaultModifiedValue;
+      }
+      if (activeSpec.category === "economics" && parsedOilShock !== null) {
+        defaults.oilPriceShockPct = parsedOilShock;
+      }
+      for (const [k, v] of Object.entries(parsedPrompt.overrides)) {
+        if (k in defaults) defaults[k] = v;
+      }
+      for (const p of activeSpec.parameters) {
+        const raw = searchParams.get(p.key);
+        if (raw !== null && Number.isFinite(Number(raw))) {
+          defaults[p.key] = Math.max(p.min, Math.min(p.max, Number(raw)));
+        }
+      }
+      setOverrides(defaults);
+    }
+  }
 
   const activeCountryProfile = useMemo(() => {
     if (countryBaselineIso3 === "GLOBAL") return undefined;
@@ -337,7 +336,7 @@ function SimulationsContent() {
   }) => {
     const params = buildShareQueryParams(opts);
     const qs = params.toString();
-    lastSyncedQueryRef.current = qs;
+    setLastSyncedQuery(qs);
     router.replace(`/simulations?${qs}`, { scroll: false });
   };
 
@@ -410,13 +409,22 @@ function SimulationsContent() {
         params.set(p.key, String(overrides[p.key] ?? p.defaultModifiedValue));
       }
       const qs = params.toString();
-      if (qs !== lastSyncedQueryRef.current) {
-        lastSyncedQueryRef.current = qs;
+      if (qs !== lastSyncedQuery) {
+        setLastSyncedQuery(qs);
         router.replace(`/simulations?${qs}`, { scroll: false });
       }
     }, 150);
     return () => clearTimeout(timer);
-  }, [category, countryBaselineIso3, horizonYears, seed, overrides, activeSpec, router]);
+  }, [
+    category,
+    countryBaselineIso3,
+    horizonYears,
+    seed,
+    overrides,
+    activeSpec,
+    lastSyncedQuery,
+    router,
+  ]);
 
   const handleSaveExperiment = () => {
     const params = buildShareQueryParams();
@@ -533,7 +541,7 @@ function SimulationsContent() {
             <button
               type="button"
               onClick={handleRevertGlobalDefault}
-              className="text-xs font-semibold underline cursor-pointer"
+              className="min-h-[44px] md:min-h-0 inline-flex items-center px-2 md:px-0 text-xs font-semibold underline cursor-pointer"
             >
               Revert to Default Baseline
             </button>
@@ -552,7 +560,7 @@ function SimulationsContent() {
             <button
               type="button"
               onClick={handleReset}
-              className="inline-flex items-center gap-1 text-[13px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+              className="min-h-[44px] md:min-h-0 inline-flex items-center gap-1 px-2 md:px-0 text-[13px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               Reset Baseline
@@ -632,10 +640,31 @@ function SimulationsContent() {
                 </span>
                 <input
                   type="number"
-                  value={seed}
+                  min={0}
+                  max={999999}
+                  value={seedInput}
                   aria-label="Monte Carlo Seed"
-                  onChange={(e) => setSeed(Number(e.target.value) || 42)}
-                  className="w-20 px-2.5 py-1 rounded-md bg-[var(--bg-graphite)] border border-[var(--border-subtle)] text-base md:text-sm font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]"
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    setSeedInput(raw);
+                    if (raw.trim() === "") return;
+                    const parsed = Number(raw);
+                    if (Number.isInteger(parsed) && parsed >= 0 && parsed <= 999999) {
+                      setSeed(parsed);
+                    }
+                  }}
+                  onBlur={() => {
+                    const parsed = Number(seedInput);
+                    if (seedInput.trim() === "" || !Number.isFinite(parsed) || parsed < 0) {
+                      setSeed(42);
+                      setSeedInput("42");
+                    } else {
+                      const clean = Math.min(999999, Math.max(0, Math.round(parsed)));
+                      setSeed(clean);
+                      setSeedInput(String(clean));
+                    }
+                  }}
+                  className="w-24 px-2.5 py-1.5 rounded-md bg-[var(--bg-graphite)] border border-[var(--border-subtle)] text-base md:text-sm font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]"
                 />
               </div>
             </div>
@@ -722,7 +751,7 @@ function SimulationsContent() {
                                   [specParam.key]: specParam.max,
                                 }))
                               }
-                              className="px-2 py-0.5 rounded border border-[var(--border-subtle)] bg-[var(--bg-slate)] hover:border-[var(--accent-blue)] text-[11.5px] sm:text-xs tone-blue cursor-pointer"
+                              className="min-h-[44px] md:min-h-[32px] inline-flex items-center px-3 md:px-2 py-1 md:py-0.5 rounded border border-[var(--border-subtle)] bg-[var(--bg-slate)] hover:border-[var(--accent-blue)] text-[11.5px] sm:text-xs tone-blue cursor-pointer"
                             >
                               Stress Max
                             </button>

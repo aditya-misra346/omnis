@@ -50,13 +50,12 @@ const ERAS: { id: TimelineEra | "all"; label: string; range: string }[] = [
   { id: "contemporary", label: "Contemporary Era", range: "1945 CE – Present" },
 ];
 
+const TIMELINE_CATEGORIES = ["all", ...Array.from(new Set(TIMELINE_EVENTS.map((e) => e.category)))];
+
 function TimelineContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const categories = useMemo(
-    () => ["all", ...Array.from(new Set(TIMELINE_EVENTS.map((e) => e.category)))],
-    []
-  );
+  const categories = TIMELINE_CATEGORIES;
 
   const urlEventParam = searchParams.get("event")?.trim() || "";
   const urlEraParam = searchParams.get("era")?.trim() || "";
@@ -86,8 +85,13 @@ function TimelineContent() {
   const [scrubbing, setScrubbing] = useState(false);
   const [mobileDossierOpen, setMobileDossierOpen] = useState(false);
   const scrubberRef = React.useRef<HTMLDivElement | null>(null);
-  const lastSyncedTimelineQueryRef = React.useRef<string | null>(null);
+  const [lastSyncedTimelineQuery, setLastSyncedTimelineQuery] = useState<string | null>(null);
   const urlFocusParam = searchParams.get("focus")?.trim() || "";
+  const { addWorkspaceItem, setActiveContext, focusedSignal } = useOmnisStore();
+  const activeFocusedSignal = useMemo(
+    () => (urlFocusParam ? { topic: urlFocusParam } : focusedSignal),
+    [urlFocusParam, focusedSignal]
+  );
 
   const syncTimelineUrl = (overrides?: {
     era?: TimelineEra | "all";
@@ -95,12 +99,14 @@ function TimelineContent() {
     q?: string;
     milestones?: boolean;
     eventId?: string;
+    focus?: string | null;
   }) => {
     const nextEra = overrides?.era ?? selectedEra;
     const nextCat = overrides?.cat ?? selectedCategory;
     const nextQ = overrides?.q ?? searchQuery;
     const nextMilestones = overrides?.milestones ?? milestonesOnly;
     const nextEvent = overrides?.eventId ?? selectedEventId;
+    const nextFocus = overrides?.focus !== undefined ? overrides.focus : urlFocusParam;
 
     const params = new URLSearchParams();
     if (nextEra !== "all") params.set("era", nextEra);
@@ -108,9 +114,10 @@ function TimelineContent() {
     if (nextQ.trim()) params.set("q", nextQ.trim());
     if (nextMilestones) params.set("milestones", "1");
     if (nextEvent) params.set("event", nextEvent);
+    if (nextFocus) params.set("focus", nextFocus);
 
     const qs = params.toString();
-    lastSyncedTimelineQueryRef.current = qs;
+    setLastSyncedTimelineQuery(qs);
     router.replace(qs ? `/timeline?${qs}` : "/timeline", { scroll: false });
   };
 
@@ -119,49 +126,33 @@ function TimelineContent() {
     syncTimelineUrl({ eventId });
   };
 
-  useEffect(() => {
-    const currentQs = searchParams.toString();
-    if (
-      lastSyncedTimelineQueryRef.current !== null &&
-      currentQs === lastSyncedTimelineQueryRef.current
-    ) {
-      return;
-    }
-    const nextEra: TimelineEra | "all" = ERAS.some((e) => e.id === urlEraParam)
-      ? (urlEraParam as TimelineEra | "all")
-      : "all";
-    const nextCat = urlCatParam && categories.includes(urlCatParam) ? urlCatParam : "all";
-    const nextMilestones = urlMilestonesParam === "1" || urlMilestonesParam === "true";
+  const timelineQueryKey = searchParams.toString();
+  const [prevTimelineQueryKey, setPrevTimelineQueryKey] = useState(timelineQueryKey);
+  if (timelineQueryKey !== prevTimelineQueryKey) {
+    setPrevTimelineQueryKey(timelineQueryKey);
+    if (lastSyncedTimelineQuery === null || timelineQueryKey !== lastSyncedTimelineQuery) {
+      const nextEra: TimelineEra | "all" = ERAS.some((e) => e.id === urlEraParam)
+        ? (urlEraParam as TimelineEra | "all")
+        : "all";
+      const nextCat = urlCatParam && categories.includes(urlCatParam) ? urlCatParam : "all";
+      const nextMilestones = urlMilestonesParam === "1" || urlMilestonesParam === "true";
 
-    setSelectedEra(nextEra);
-    setSelectedCategory(nextCat);
-    setSearchQuery(urlQParam);
-    setMilestonesOnly(nextMilestones);
+      setSelectedEra(nextEra);
+      setSelectedCategory(nextCat);
+      setSearchQuery(urlQParam);
+      setMilestonesOnly(nextMilestones);
 
-    if (urlEventParam && TIMELINE_EVENTS.some((e) => e.id === urlEventParam)) {
-      setSelectedEventId(urlEventParam);
-      if (!urlEraParam && !urlCatParam && !urlQParam && !urlMilestonesParam) {
-        setSelectedEra("all");
-        setSelectedCategory("all");
-        setSearchQuery("");
-        setMilestonesOnly(false);
+      if (urlEventParam && TIMELINE_EVENTS.some((e) => e.id === urlEventParam)) {
+        setSelectedEventId(urlEventParam);
+        if (!urlEraParam && !urlCatParam && !urlQParam && !urlMilestonesParam) {
+          setSelectedEra("all");
+          setSelectedCategory("all");
+          setSearchQuery("");
+          setMilestonesOnly(false);
+        }
       }
     }
-  }, [
-    searchParams,
-    urlEventParam,
-    urlEraParam,
-    urlCatParam,
-    urlQParam,
-    urlMilestonesParam,
-    categories,
-  ]);
-
-  const { addWorkspaceItem, setActiveContext, focusedSignal } = useOmnisStore();
-  const activeFocusedSignal = useMemo(
-    () => (urlFocusParam ? { topic: urlFocusParam } : focusedSignal),
-    [urlFocusParam, focusedSignal]
-  );
+  }
 
   const filteredEvents = useMemo(() => {
     return TIMELINE_EVENTS.filter((evt) => {
@@ -471,8 +462,8 @@ function TimelineContent() {
                         selectEvent(evt.id);
                       }}
                       style={{ left: `${pct}%` }}
-                      className={`group absolute top-1/2 -translate-x-1/2 -translate-y-1/2 min-w-[32px] min-h-[44px] flex items-center justify-center cursor-pointer ${
-                        isActive ? "z-20" : isFocusMatch ? "z-15" : "z-10"
+                      className={`group absolute top-1/2 -translate-x-1/2 -translate-y-1/2 min-w-[44px] min-h-[44px] flex items-center justify-center cursor-pointer ${
+                        isActive ? "z-20" : isFocusMatch ? "z-[15]" : "z-10"
                       }`}
                     >
                       {isFocusMatch && !isActive ? (
@@ -503,15 +494,15 @@ function TimelineContent() {
               </div>
             </div>
 
-            <div className="relative h-5 text-[11px] sm:text-xs omnis-mono omnis-tabular text-[var(--text-muted)]">
-              <span className="absolute left-0">3000 BCE</span>
-              <span className="absolute left-[25%] sm:left-[22%] -translate-x-1/2">
+            <div className="relative h-5 mx-3 text-[10px] tracking-tight sm:text-xs sm:tracking-normal omnis-mono omnis-tabular text-[var(--text-muted)]">
+              <span className="absolute left-0 -ml-3 sm:ml-0">3000 BCE</span>
+              <span style={{ left: "22%" }} className="absolute -translate-x-1/2">
                 500 CE
               </span>
               <span style={{ left: "45%" }} className="absolute -translate-x-1/2">
                 1800 CE
               </span>
-              <span className="absolute right-0">2026 CE</span>
+              <span className="absolute right-0 -mr-3 sm:mr-0">2026 CE</span>
             </div>
           </div>
         );
@@ -528,10 +519,11 @@ function TimelineContent() {
             {filteredEvents.map((evt) => {
               const active = evt.id === activeEvent.id;
               return (
-                <div
+                <button
                   key={evt.id}
+                  type="button"
                   onClick={() => selectEvent(evt.id)}
-                  className={`relative p-3.5 rounded-xl border cursor-pointer transition-all ${
+                  className={`w-full text-left relative p-3.5 rounded-xl border cursor-pointer transition-all focus-visible:ring-2 focus-visible:ring-[var(--accent-blue)] ${
                     active
                       ? "bg-[var(--bg-elevated)] border-[var(--accent-blue)] shadow-sm"
                       : "bg-[var(--bg-slate)] border-[var(--border-subtle)] hover:border-[var(--border-strong)]"
@@ -552,7 +544,7 @@ function TimelineContent() {
                   </div>
                   <h3 className="text-[15px] font-bold mt-1 text-[var(--text-primary)]">{evt.title}</h3>
                   <div className="text-xs text-[var(--text-muted)] mt-0.5">{evt.location}</div>
-                </div>
+                </button>
               );
             })}
           </div>
