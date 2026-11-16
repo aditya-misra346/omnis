@@ -174,7 +174,7 @@ function GlobalAtlasContent() {
       <OmnisModuleHeader
         moduleTag="MODULE 01 • GLOBAL INTELLIGENCE GLOBE & SOVEREIGN ATLAS"
         title="Interactive 3D Earth & Country Intelligence Experience"
-        subtitle="Explore Natural Earth country geometry, day/night illumination, and deep sovereign indicators across 7 calibrated analytical lenses."
+        subtitle="Explore Survey of India & sovereign geodesic country geometry, day/night illumination, and deep sovereign indicators across 7 calibrated analytical lenses."
         icon={<Globe2 className="w-3.5 h-3.5" />}
         mobileFilterLabel={`Layer: ${LAYERS.find((l) => l.id === activeLayer)?.label ?? "Layers"}`}
         actions={

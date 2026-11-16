@@ -19,6 +19,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { ISO3_TO_NUMERIC, NUMERIC_TO_ISO3 } from "@/lib/data/world-catalog";
+import { applyOfficialSurveyOfIndiaBoundaries } from "@/lib/data/india-soi-official";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 import { dateFromUtcMinutes, getSunVectorInEarthFrame } from "@/lib/solarTime";
 import { CountrySolarClockBadge, SolarSyncHudControl } from "@/components/solar/SolarBadges";
@@ -38,9 +39,17 @@ interface PickCountryEntry {
 const CITY_NIGHT_CLUSTERS: [number, number, number][] = [
   [28.61, 77.2, 1.0],
   [19.07, 72.87, 1.0],
-  [12.97, 77.59, 0.9],
-  [22.57, 88.36, 0.85],
-  [13.08, 80.27, 0.85],
+  [12.97, 77.59, 0.92],
+  [22.57, 88.36, 0.88],
+  [13.08, 80.27, 0.88],
+  [17.38, 78.48, 0.9],
+  [23.02, 72.57, 0.86],
+  [18.52, 73.85, 0.84],
+  [26.91, 75.78, 0.8],
+  [26.84, 80.94, 0.82],
+  [9.93, 76.26, 0.78],
+  [26.14, 91.73, 0.76],
+  [34.08, 74.79, 0.78],
   [40.71, -74.0, 1.0],
   [34.05, -118.24, 0.95],
   [41.87, -87.62, 0.85],
@@ -87,7 +96,9 @@ function latLngToVector3(lat: number, lng: number, radius: number): THREE.Vector
 }
 
 function latLngToGlobeAngles(lat: number, lng: number): { x: number; y: number } {
-  const x = Math.max(-0.85, Math.min(0.85, ((lat * Math.PI) / 180) * 0.65));
+  // Pitch by full latitude + 3.5° downward optical framing offset so northern crowns clear the top HUD bar
+  const opticalLat = lat + 3.5;
+  const x = Math.max(-0.95, Math.min(0.95, (opticalLat * Math.PI) / 180));
   const y = -((lng + 90) * Math.PI) / 180;
   return { x, y };
 }
@@ -195,6 +206,7 @@ interface GlobeSceneHandle {
   sunLight: THREE.DirectionalLight;
   rimLight: THREE.DirectionalLight;
   globeGroup: THREE.Group;
+  bordersGroup: THREE.Group;
   markersGroup: THREE.Group;
   arcsGroup: THREE.Group;
   atlasCountries: GeoJSON.FeatureCollection<GeoJSON.Geometry, { name?: string }>;
@@ -249,11 +261,13 @@ export function InteractiveGlobe3D({
   } | null>(null);
 
   const geoCentroids = useMemo(() => {
-    const atlas = feature(
-      worldAtlas as unknown as Parameters<typeof feature>[0],
-      (worldAtlas as unknown as { objects: { countries: Parameters<typeof feature>[1] } }).objects
-        .countries
-    ) as unknown as GeoJSON.FeatureCollection<GeoJSON.Geometry, { name?: string }>;
+    const atlas = applyOfficialSurveyOfIndiaBoundaries(
+      feature(
+        worldAtlas as unknown as Parameters<typeof feature>[0],
+        (worldAtlas as unknown as { objects: { countries: Parameters<typeof feature>[1] } }).objects
+          .countries
+      ) as unknown as GeoJSON.FeatureCollection<GeoJSON.Geometry, { name?: string }>
+    );
     const map: Record<string, { lat: number; lng: number; name: string }> = {};
     for (const feat of atlas.features) {
       const numId = String(feat.id ?? "").padStart(3, "0");
@@ -468,46 +482,67 @@ export function InteractiveGlobe3D({
         ctx.fillRect(0, 0, texW, texH);
 
         const pathGen = geoPath(projection, ctx);
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
         ctx.beginPath();
         pathGen(geoGraticule10());
         ctx.strokeStyle = isLight ? "rgba(29, 78, 216, 0.12)" : "rgba(96, 165, 250, 0.14)";
-        ctx.lineWidth = 0.9;
+        ctx.lineWidth = 1.6;
         ctx.stroke();
 
         const selectedNumId = ISO3_TO_NUMERIC[currentSelectedIso3];
         const hoveredNumId = currentHoveredIso3 ? ISO3_TO_NUMERIC[currentHoveredIso3] : undefined;
+        let targetFeat: GeoJSON.Feature<GeoJSON.Geometry, { name?: string }> | null = null;
+        let hoveredFeat: GeoJSON.Feature<GeoJSON.Geometry, { name?: string }> | null = null;
+
+        // Pass 1: Render all base sovereign landmasses and borders
         for (const feat of atlasCountries.features) {
           const featId = String(feat.id ?? "").padStart(3, "0");
           const isTarget = Boolean(selectedNumId && featId === selectedNumId);
           const isHovered = Boolean(hoveredNumId && !isTarget && featId === hoveredNumId);
+          if (isTarget) {
+            targetFeat = feat;
+            continue;
+          }
+          if (isHovered) {
+            hoveredFeat = feat;
+            continue;
+          }
           ctx.beginPath();
           pathGen(feat);
-          if (isTarget) {
-            ctx.fillStyle = isLight ? "#1d4ed8" : "#2563eb";
-            ctx.fill();
-            ctx.strokeStyle = isLight ? "#ffffff" : "#93c5fd";
-            ctx.lineWidth = 2.0;
-            ctx.stroke();
-          } else if (isHovered) {
-            ctx.fillStyle = isLight ? "rgba(29, 78, 216, 0.20)" : "rgba(96, 165, 250, 0.28)";
-            ctx.fill();
-            ctx.strokeStyle = isLight ? "#1D4ED8" : "#93C5FD";
-            ctx.lineWidth = 1.6;
-            ctx.stroke();
-          } else {
-            ctx.fillStyle = isLight ? "#F4F1EA" : "#10223b";
-            ctx.fill();
-            ctx.strokeStyle = isLight ? "rgba(71, 98, 128, 0.45)" : "rgba(125, 179, 252, 0.34)";
-            ctx.lineWidth = 0.85;
-            ctx.stroke();
-          }
+          ctx.fillStyle = isLight ? "#F4F1EA" : "#10223b";
+          ctx.fill();
+          ctx.strokeStyle = isLight ? "rgba(71, 98, 128, 0.48)" : "rgba(125, 179, 252, 0.38)";
+          ctx.lineWidth = 1.65;
+          ctx.stroke();
         }
 
-        ctx.beginPath();
-        pathGen(atlasCountries);
-        ctx.strokeStyle = isLight ? "rgba(30, 58, 138, 0.35)" : "rgba(147, 197, 253, 0.42)";
-        ctx.lineWidth = 1.05;
-        ctx.stroke();
+        // Pass 2: Render hovered country above base landmasses
+        if (hoveredFeat) {
+          ctx.beginPath();
+          pathGen(hoveredFeat);
+          ctx.fillStyle = isLight ? "rgba(29, 78, 216, 0.22)" : "rgba(96, 165, 250, 0.30)";
+          ctx.fill();
+          ctx.strokeStyle = isLight ? "#1D4ED8" : "#93C5FD";
+          ctx.lineWidth = 3.0;
+          ctx.stroke();
+        }
+
+        // Pass 3: Render selected sovereign country LAST on top of all neighbors with outer halo & crisp border
+        if (targetFeat) {
+          ctx.beginPath();
+          pathGen(targetFeat);
+          ctx.fillStyle = isLight ? "#1d4ed8" : "#2563eb";
+          ctx.fill();
+
+          ctx.strokeStyle = isLight ? "rgba(29, 78, 216, 0.32)" : "rgba(56, 189, 248, 0.44)";
+          ctx.lineWidth = 6.5;
+          ctx.stroke();
+
+          ctx.strokeStyle = isLight ? "#ffffff" : "#bae6fd";
+          ctx.lineWidth = 2.8;
+          ctx.stroke();
+        }
         earthTexture.needsUpdate = true;
       }
 
@@ -665,11 +700,11 @@ export function InteractiveGlobe3D({
     scene.add(globeGroup);
 
     const earthCanvas = document.createElement("canvas");
-    earthCanvas.width = 2048;
-    earthCanvas.height = 1024;
+    earthCanvas.width = 4096;
+    earthCanvas.height = 2048;
     const roughnessCanvas = document.createElement("canvas");
-    roughnessCanvas.width = 1024;
-    roughnessCanvas.height = 512;
+    roughnessCanvas.width = 2048;
+    roughnessCanvas.height = 1024;
     const nightCanvas = document.createElement("canvas");
     nightCanvas.width = 2048;
     nightCanvas.height = 1024;
@@ -679,16 +714,18 @@ export function InteractiveGlobe3D({
 
     const earthTexture = new THREE.CanvasTexture(earthCanvas);
     earthTexture.colorSpace = THREE.SRGBColorSpace;
-    earthTexture.anisotropy = 4;
+    earthTexture.anisotropy = Math.min(16, renderer.capabilities.getMaxAnisotropy() || 8);
     const roughnessTexture = new THREE.CanvasTexture(roughnessCanvas);
     const nightTexture = new THREE.CanvasTexture(nightCanvas);
     const cloudTexture = new THREE.CanvasTexture(cloudCanvas);
 
-    const atlasCountries = feature(
-      worldAtlas as unknown as Parameters<typeof feature>[0],
-      (worldAtlas as unknown as { objects: { countries: Parameters<typeof feature>[1] } }).objects
-        .countries
-    ) as unknown as GeoJSON.FeatureCollection<GeoJSON.Geometry, { name?: string }>;
+    const atlasCountries = applyOfficialSurveyOfIndiaBoundaries(
+      feature(
+        worldAtlas as unknown as Parameters<typeof feature>[0],
+        (worldAtlas as unknown as { objects: { countries: Parameters<typeof feature>[1] } }).objects
+          .countries
+      ) as unknown as GeoJSON.FeatureCollection<GeoJSON.Geometry, { name?: string }>
+    );
 
     // Build 1024x512 Country ID Pick Buffer once for universal 130-country hover/click selection
     const pickWidth = 1024;
@@ -881,8 +918,10 @@ totalEmissiveRadiance *= omnisNightMask * omnisEmissiveGain * uCityLightsEnabled
     const starsPoints = new THREE.Points(starsGeo, starsMat);
     scene.add(starsPoints);
 
+    const bordersGroup = new THREE.Group();
     const markersGroup = new THREE.Group();
     const arcsGroup = new THREE.Group();
+    globeGroup.add(bordersGroup);
     globeGroup.add(markersGroup);
     globeGroup.add(arcsGroup);
 
@@ -911,6 +950,7 @@ totalEmissiveRadiance *= omnisNightMask * omnisEmissiveGain * uCityLightsEnabled
       sunLight,
       rimLight,
       globeGroup,
+      bordersGroup,
       markersGroup,
       arcsGroup,
       atlasCountries,
@@ -1351,6 +1391,7 @@ totalEmissiveRadiance *= omnisNightMask * omnisEmissiveGain * uCityLightsEnabled
       domElem.removeEventListener("wheel", onWheel);
       window.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("pointercancel", onPointerCancel);
+      disposeGroupChildren(bordersGroup);
       disposeGroupChildren(markersGroup);
       disposeGroupChildren(arcsGroup);
       hitMeshesRef.current = [];
@@ -1387,10 +1428,46 @@ totalEmissiveRadiance *= omnisNightMask * omnisEmissiveGain * uCityLightsEnabled
     const handle = sceneHandleRef.current;
     if (!handle) return;
     const isLight = theme === "light";
-    const { markersGroup, arcsGroup } = handle;
+    const { bordersGroup, markersGroup, arcsGroup, atlasCountries } = handle;
 
+    disposeGroupChildren(bordersGroup);
     disposeGroupChildren(markersGroup);
     disposeGroupChildren(arcsGroup);
+
+    // Build native 3D geodesic sovereign boundary contour on the sphere (r = 1.0022) for the selected country
+    const selectedNumId = ISO3_TO_NUMERIC[selectedIso3];
+    if (selectedNumId) {
+      const selectedFeat = atlasCountries.features.find(
+        (f) => String(f.id ?? "").padStart(3, "0") === selectedNumId
+      );
+      if (selectedFeat?.geometry) {
+        const rings: number[][][] =
+          selectedFeat.geometry.type === "Polygon"
+            ? selectedFeat.geometry.coordinates
+            : selectedFeat.geometry.type === "MultiPolygon"
+              ? selectedFeat.geometry.coordinates.map((poly) => poly[0])
+              : [];
+        for (const ring of rings) {
+          if (!ring || ring.length < 10) continue;
+          const borderPoints: THREE.Vector3[] = [];
+          for (let i = 0; i < ring.length; i++) {
+            const [lng, lat] = ring[i];
+            if (Number.isFinite(lat) && Number.isFinite(lng)) {
+              borderPoints.push(latLngToVector3(lat, lng, 1.0022));
+            }
+          }
+          if (borderPoints.length >= 3) {
+            const borderGeo = new THREE.BufferGeometry().setFromPoints(borderPoints);
+            const borderMat = new THREE.LineBasicMaterial({
+              color: isLight ? 0xffffff : 0x7dd3fc,
+              transparent: true,
+              opacity: isLight ? 0.92 : 0.88,
+            });
+            bordersGroup.add(new THREE.LineLoop(borderGeo, borderMat));
+          }
+        }
+      }
+    }
 
     const newHits: THREE.Mesh[] = [];
     for (const c of countries) {
@@ -1407,11 +1484,11 @@ totalEmissiveRadiance *= omnisNightMask * omnisEmissiveGain * uCityLightsEnabled
       const spireMat = new THREE.LineBasicMaterial({
         color: isSelected ? (isLight ? 0x1d4ed8 : 0x38bdf8) : layerMeta.colorHex,
         transparent: true,
-        opacity: isSelected ? 0.95 : 0.72,
+        opacity: isSelected ? 0.92 : 0.68,
       });
       markersGroup.add(new THREE.Line(spireGeo, spireMat));
 
-      const markerGeo = new THREE.SphereGeometry(isSelected ? 0.028 : 0.019, 16, 16);
+      const markerGeo = new THREE.SphereGeometry(isSelected ? 0.015 : 0.011, 16, 16);
       const markerMat = new THREE.MeshBasicMaterial({
         color: isSelected ? (isLight ? 0x1d4ed8 : 0x7dd3fc) : layerMeta.colorHex,
       });
@@ -1421,12 +1498,12 @@ totalEmissiveRadiance *= omnisNightMask * omnisEmissiveGain * uCityLightsEnabled
       markersGroup.add(marker);
       newHits.push(marker);
 
-      const ringGeo = new THREE.RingGeometry(0.024, isSelected ? 0.052 : 0.035, 28);
+      const ringGeo = new THREE.RingGeometry(0.017, isSelected ? 0.029 : 0.022, 28);
       const ringMat = new THREE.MeshBasicMaterial({
         color: isSelected ? (isLight ? 0x1d4ed8 : 0x60a5fa) : layerMeta.colorHex,
         side: THREE.DoubleSide,
         transparent: true,
-        opacity: isSelected ? 0.88 : 0.45,
+        opacity: isSelected ? 0.72 : 0.42,
       });
       const ring = new THREE.Mesh(ringGeo, ringMat);
       ring.position.copy(latLngToVector3(c.lat, c.lng, 1.009));

@@ -2,6 +2,7 @@ import { geoCentroid } from "d3-geo";
 import { feature } from "topojson-client";
 import worldAtlas from "world-atlas/countries-110m.json";
 import { COUNTRIES_DATA } from "@/lib/data/global-intelligence";
+import { applyOfficialSurveyOfIndiaBoundaries } from "@/lib/data/india-soi-official";
 import type { CountryIntelligenceProfile } from "@/types/omnis";
 
 export const ISO3_TO_NUMERIC: Record<string, string> = {
@@ -182,11 +183,13 @@ export interface WorldCountryCatalogEntry {
   curated: boolean;
 }
 
-const atlasCollection = feature(
-  worldAtlas as unknown as Parameters<typeof feature>[0],
-  (worldAtlas as unknown as { objects: { countries: Parameters<typeof feature>[1] } }).objects
-    .countries
-) as unknown as GeoJSON.FeatureCollection<GeoJSON.Geometry, { name?: string }>;
+const atlasCollection = applyOfficialSurveyOfIndiaBoundaries(
+  feature(
+    worldAtlas as unknown as Parameters<typeof feature>[0],
+    (worldAtlas as unknown as { objects: { countries: Parameters<typeof feature>[1] } }).objects
+      .countries
+  ) as unknown as GeoJSON.FeatureCollection<GeoJSON.Geometry, { name?: string }>
+);
 
 const catalogByIso3 = new Map<string, WorldCountryCatalogEntry>();
 
