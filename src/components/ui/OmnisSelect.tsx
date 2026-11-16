@@ -233,7 +233,7 @@ export function OmnisSelect({
           role="listbox"
           aria-label={ariaLabel}
           onKeyDown={handleKeyDown}
-          className={`absolute z-40 min-w-full w-max max-w-[min(320px,85vw)] max-h-64 overflow-y-auto rounded-lg bg-[var(--bg-graphite)] border border-[var(--border-subtle)] p-1 shadow-[var(--surface-shadow-hover)] ${
+          className={`absolute z-30 min-w-full w-max max-w-[min(320px,85vw)] max-h-64 overflow-y-auto rounded-lg bg-[var(--bg-graphite)] border border-[var(--border-subtle)] p-1 shadow-[var(--surface-shadow-hover)] ${
             openUpward ? "bottom-full mb-1.5" : "top-full mt-1.5"
           } ${resolvedAlign === "right" ? "right-0" : "left-0"}`}
         >

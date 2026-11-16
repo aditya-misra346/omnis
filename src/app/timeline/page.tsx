@@ -329,7 +329,7 @@ function TimelineContent() {
                     }`}
                     title="Filter timeline events matching your active Globe / Knowledge Graph focus"
                   >
-                    ◎ Focus: {activeFocusedSignal.topic}
+                    ◎ Focus: {activeFocusedSignal.label ?? activeFocusedSignal.topic}
                   </button>
                 ) : null}
               </div>

@@ -8,6 +8,7 @@ import {
 export interface FocusedSignal {
   iso3?: string;
   topic: string;
+  label?: string;
 }
 
 const STOPWORDS = new Set([

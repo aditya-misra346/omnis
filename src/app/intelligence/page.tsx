@@ -28,7 +28,11 @@ import { buildSovereignComparisonMatrix } from "@/lib/research/compare";
 import { fetchOpenAlexSources } from "@/lib/providers/live-data";
 import { ComparisonRadarChart } from "@/components/charts/OmnisCharts";
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
-import { OmnisButton, OmnisModuleHeader } from "@/components/ui/OmnisPrimitives";
+import {
+  OmnisButton,
+  OmnisModuleHeader,
+  OmnisSkeleton,
+} from "@/components/ui/OmnisPrimitives";
 import { OmnisSelect } from "@/components/ui/OmnisSelect";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 import type { CountryIntelligenceProfile, ResearchSourceItem } from "@/types/omnis";
@@ -517,20 +521,14 @@ function IntelligenceCompareContent() {
                       </td>
                       <td className="py-2.5 pr-3 font-bold">
                         {isHydratingRow && row.leftVal === 0 ? (
-                          <span
-                            aria-label="Syncing left sovereign indicator"
-                            className="inline-block h-4 w-20 rounded bg-[var(--bg-slate)] border border-[var(--border-subtle)] animate-pulse align-middle"
-                          />
+                          <OmnisSkeleton className="h-4 w-20 rounded" />
                         ) : (
                           `${row.leftVal.toLocaleString()} ${row.unit}`
                         )}
                       </td>
                       <td className="py-2.5 pr-3 font-bold">
                         {isHydratingRow && row.rightVal === 0 ? (
-                          <span
-                            aria-label="Syncing right sovereign indicator"
-                            className="inline-block h-4 w-20 rounded bg-[var(--bg-slate)] border border-[var(--border-subtle)] animate-pulse align-middle"
-                          />
+                          <OmnisSkeleton className="h-4 w-20 rounded" />
                         ) : (
                           `${row.rightVal.toLocaleString()} ${row.unit}`
                         )}
@@ -544,14 +542,7 @@ function IntelligenceCompareContent() {
                               : "tone-warning"
                         }`}
                       >
-                        {isHydratingRow ? (
-                          <span
-                            aria-label="Syncing comparative delta"
-                            className="inline-block h-4 w-14 rounded bg-[var(--bg-slate)] border border-[var(--border-subtle)] animate-pulse align-middle"
-                          />
-                        ) : (
-                          deltaText
-                        )}
+                        {isHydratingRow ? <OmnisSkeleton className="h-4 w-14 rounded" /> : deltaText}
                       </td>
                     </tr>
                   );

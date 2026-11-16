@@ -130,7 +130,11 @@ function GlobalAtlasContent() {
 
   useEffect(() => {
     setActiveContext("Global Atlas & Country Intelligence", `${country.name} (${country.iso3})`);
-    setFocusedSignal({ iso3: country.iso3, topic: country.name });
+    setFocusedSignal({
+      iso3: country.iso3,
+      topic: country.name,
+      label: `${country.name} (${country.iso3})`,
+    });
   }, [country.name, country.iso3, setActiveContext, setFocusedSignal]);
 
   useEffect(() => {

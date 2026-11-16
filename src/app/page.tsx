@@ -205,7 +205,11 @@ export default function LandingPage() {
     !hydratedCountries[selectedIso3];
 
   useEffect(() => {
-    setFocusedSignal({ iso3: activeCountry.iso3, topic: activeCountry.name });
+    setFocusedSignal({
+      iso3: activeCountry.iso3,
+      topic: activeCountry.name,
+      label: `${activeCountry.name} (${activeCountry.iso3})`,
+    });
   }, [activeCountry.iso3, activeCountry.name, setFocusedSignal]);
   const formattedCoords = `${Math.abs(activeCountry.lat).toFixed(2)}°${
     activeCountry.lat >= 0 ? "N" : "S"

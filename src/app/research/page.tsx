@@ -878,6 +878,7 @@ ${report.sources
                         : null;
                     return (
                       <div
+                        id={`source-${src.id}`}
                         key={src.id}
                         ref={(el) => {
                           sourceRefs.current[src.id] = el;

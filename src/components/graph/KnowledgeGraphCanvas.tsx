@@ -249,6 +249,7 @@ export function KnowledgeGraphCanvas({
   const [panningCanvas, setPanningCanvas] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [packetPhase, setPacketPhase] = useState(0);
+  const packetPhaseRef = useRef(0);
 
   const rootNodeId = nodes[0]?.id ?? "";
 
@@ -397,15 +398,16 @@ export function KnowledgeGraphCanvas({
       return;
     }
     let rafId = 0;
-    let start = performance.now();
+    let lastTime = performance.now();
     const tick = (now: number) => {
-      const elapsed = (now - start) / 1500;
-      setPacketPhase(elapsed % 1);
+      const dtSec = Math.min(0.1, Math.max(0, (now - lastTime) / 1000));
+      lastTime = now;
+      packetPhaseRef.current = (packetPhaseRef.current + dtSec / 1.5) % 1;
+      setPacketPhase(packetPhaseRef.current);
       rafId = requestAnimationFrame(tick);
     };
     rafId = requestAnimationFrame(tick);
     return () => {
-      start = 0;
       cancelAnimationFrame(rafId);
     };
   }, [hasActivePathTrace, motionPaused, isCanvasVisible, isTabActive]);

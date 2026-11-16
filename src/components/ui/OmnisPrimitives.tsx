@@ -352,6 +352,8 @@ export function OmnisMobileBottomSheet({
   onClose,
   eyebrow,
   title,
+  subtitle,
+  ariaLabel,
   closeAriaLabel = "Close panel",
   children,
 }: {
@@ -359,6 +361,8 @@ export function OmnisMobileBottomSheet({
   onClose: () => void;
   eyebrow?: React.ReactNode;
   title: string;
+  subtitle?: React.ReactNode;
+  ariaLabel?: string;
   closeAriaLabel?: string;
   children: React.ReactNode;
 }) {
@@ -426,7 +430,7 @@ export function OmnisMobileBottomSheet({
             ref={sheetRef}
             role="dialog"
             aria-modal="true"
-            aria-label={title}
+            aria-label={ariaLabel ?? title}
             initial={{ y: 36, opacity: 0 }}
             animate={{ y: 0, opacity: 1, transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] } }}
             exit={{ y: 32, opacity: 0, transition: { duration: 0.14, ease: "easeIn" } }}
@@ -439,6 +443,9 @@ export function OmnisMobileBottomSheet({
                   <div className="text-xs omnis-mono font-bold tone-blue truncate">{eyebrow}</div>
                 ) : null}
                 <div className="font-bold text-lg text-[var(--text-primary)] truncate">{title}</div>
+                {subtitle ? (
+                  <div className="text-xs text-[var(--text-muted)] truncate">{subtitle}</div>
+                ) : null}
               </div>
               <button
                 ref={closeBtnRef}

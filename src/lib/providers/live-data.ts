@@ -8,6 +8,7 @@ interface CacheEntry<T> {
 }
 
 const memoryCache = new Map<string, CacheEntry<unknown>>();
+const MAX_LIVE_CACHE_ENTRIES = 256;
 let openAlexCooldownUntil = 0;
 
 function getCached<T>(key: string): T | null {
@@ -21,7 +22,23 @@ function getCached<T>(key: string): T | null {
 }
 
 function setCached<T>(key: string, data: T, ttlMs = 300_000): void {
-  memoryCache.set(key, { data, expiresAt: Date.now() + ttlMs });
+  const now = Date.now();
+  if (memoryCache.has(key)) {
+    memoryCache.delete(key);
+  }
+  if (memoryCache.size >= MAX_LIVE_CACHE_ENTRIES) {
+    for (const [entryKey, entryVal] of memoryCache.entries()) {
+      if (now > entryVal.expiresAt) {
+        memoryCache.delete(entryKey);
+      }
+    }
+    while (memoryCache.size >= MAX_LIVE_CACHE_ENTRIES) {
+      const oldestKey = memoryCache.keys().next().value;
+      if (oldestKey === undefined) break;
+      memoryCache.delete(oldestKey);
+    }
+  }
+  memoryCache.set(key, { data, expiresAt: now + ttlMs });
 }
 
 export function clearLiveCountryCacheForTests(): void {

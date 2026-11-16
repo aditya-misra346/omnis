@@ -528,7 +528,7 @@ export default function CommandCenterPage() {
                       Open Workspace ({workspaceItems.length}) →
                     </Link>
                   </div>
-                  <div className="-mx-5 -mb-5 grid grid-cols-1 md:grid-cols-2 gap-px border-t border-[var(--border-subtle)] bg-[var(--border-subtle)] rounded-b-2xl overflow-hidden">
+                  <div className="-mx-5 -mb-5 grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[var(--border-subtle)] border-t border-[var(--border-subtle)] rounded-b-2xl overflow-hidden">
                     <div className="bg-[var(--bg-graphite)] p-4 space-y-2.5">
                       <div className="flex items-center justify-between">
                         <h3 className="text-[13px] font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono flex items-center gap-1.5">

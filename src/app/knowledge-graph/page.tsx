@@ -106,10 +106,15 @@ function KnowledgeGraphContent() {
   const [mobileInspectorOpen, setMobileInspectorOpen] = useState(false);
   const filterInputRef = useRef<HTMLInputElement | null>(null);
 
-  const { addWorkspaceItem, setActiveContext, focusedSignal, setFocusedSignal } =
-    useOmnisStore();
+  const {
+    addWorkspaceItem,
+    setActiveContext,
+    focusedSignal,
+    setFocusedSignal,
+    clearFocusedSignal,
+  } = useOmnisStore();
   const activeFocusedSignal = useMemo(
-    () => (urlFocusParam ? { topic: urlFocusParam } : focusedSignal),
+    () => (urlFocusParam ? { topic: urlFocusParam, label: urlFocusParam } : focusedSignal),
     [urlFocusParam, focusedSignal]
   );
 
@@ -353,12 +358,12 @@ function KnowledgeGraphContent() {
             </span>
             {activeFocusedSignal ? (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold omnis-mono badge-tone-warning">
-                <span>Synced Focus: {activeFocusedSignal.topic}</span>
+                <span>Synced Focus: {activeFocusedSignal.label ?? activeFocusedSignal.topic}</span>
                 <button
                   type="button"
                   aria-label="Clear synced spatial focus"
                   onClick={() => {
-                    setFocusedSignal(null);
+                    clearFocusedSignal();
                     if (urlFocusParam) {
                       const nextParams = new URLSearchParams(searchParams.toString());
                       nextParams.delete("focus");
@@ -394,6 +399,7 @@ function KnowledgeGraphContent() {
                 setFocusedSignal({
                   iso3: activeFocusedSignal?.iso3,
                   topic: clickedNode.label,
+                  label: clickedNode.label,
                 });
               }
             }}

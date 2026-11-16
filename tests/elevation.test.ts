@@ -868,6 +868,8 @@ describe("OMNIS Elevation & Credibility Regression Suite", () => {
           onClose: () => {},
           eyebrow: "Geopolitics",
           title: "Semiconductor Fab Chokepoints",
+          subtitle: "Interactive Inspector",
+          ariaLabel: "Semiconductor Inspector Sheet",
           closeAriaLabel: "Close Node Inspector",
           children: React.createElement("p", null, "Inspector body"),
         }
@@ -875,11 +877,20 @@ describe("OMNIS Elevation & Credibility Regression Suite", () => {
     );
     expect(sheetHtml).toContain('role="dialog"');
     expect(sheetHtml).toContain('aria-modal="true"');
+    expect(sheetHtml).toContain('aria-label="Semiconductor Inspector Sheet"');
     expect(sheetHtml).toContain("safe-area-inset-bottom");
     expect(sheetHtml).toContain("min-h-[44px] min-w-[44px]");
 
+    // Verify bounded FIFO cache implementation in live-data.ts
+    const liveDataSrc = fs.readFileSync(
+      path.resolve(process.cwd(), "src/lib/providers/live-data.ts"),
+      "utf8"
+    );
+    expect(liveDataSrc).toContain("MAX_LIVE_CACHE_ENTRIES = 256");
+    expect(liveDataSrc).toContain("memoryCache.keys().next().value");
+
     // Spatial Cross-Filter Sync matching across Globe -> Graph/Timeline
-    const indiaSignal = { iso3: "IND", topic: "India" };
+    const indiaSignal = { iso3: "IND", topic: "India", label: "India (IND)" };
     expect(
       doesSignalMatchCandidate(indiaSignal, {
         countryIso3: "IND",

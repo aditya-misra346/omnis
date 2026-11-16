@@ -81,6 +81,7 @@ function ExploreContent() {
     toggleSavedSearch,
     clearSearchHistory,
     setActiveContext,
+    setFocusedSignal,
   } = useOmnisStore();
 
   useEffect(() => {
@@ -114,7 +115,10 @@ function ExploreContent() {
 
   useEffect(() => {
     setActiveContext("Universal Search & Knowledge Explorer", activeQuery);
-  }, [activeQuery, setActiveContext]);
+    if (activeQuery.trim()) {
+      setFocusedSignal({ topic: activeQuery, label: activeQuery });
+    }
+  }, [activeQuery, setActiveContext, setFocusedSignal]);
 
   useEffect(() => {
     let active = true;

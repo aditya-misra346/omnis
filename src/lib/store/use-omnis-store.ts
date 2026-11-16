@@ -106,6 +106,7 @@ interface OmnisState {
   setActiveContext: (label: string, topic: string) => void;
   focusedSignal: FocusedSignal | null;
   setFocusedSignal: (signal: FocusedSignal | null) => void;
+  clearFocusedSignal: () => void;
   assistantMessages: AssistantMessage[];
   addAssistantMessage: (msg: AssistantMessage) => void;
   clearAssistantMessages: () => void;
@@ -216,6 +217,7 @@ export const useOmnisStore = create<OmnisState>()(
         set({ activeContextLabel, activeContextTopic }),
       focusedSignal: null,
       setFocusedSignal: (focusedSignal) => set({ focusedSignal }),
+      clearFocusedSignal: () => set({ focusedSignal: null }),
       assistantMessages: [
         {
           id: "msg-welcome",
