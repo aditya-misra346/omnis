@@ -25,7 +25,12 @@ import {
   parseSimulationQueryPrompt,
   SIMULATION_SCENARIOS,
 } from "@/lib/simulations/engine";
-import { formatSignedPct, formatSignedValue, escapeCsvCell } from "@/lib/formatters";
+import {
+  escapeCsvCell,
+  formatIndexContext,
+  formatSignedPct,
+  formatSignedValue,
+} from "@/lib/formatters";
 import { ProvenancePanel } from "@/components/ui/ProvenancePanel";
 import { MonteCarloFanChart, TornadoSensitivityChart } from "@/components/charts/OmnisCharts";
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
@@ -477,9 +482,9 @@ function SimulationsContent() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* Header & Category Tabs */}
       <OmnisModuleHeader
-        moduleTag="MODULE 03 • WHAT-IF SCENARIO & MONTE CARLO SIMULATION ENGINE"
+        moduleTag="What-If Scenarios"
         title={activeSpec.title}
-        subtitle={`${activeSpec.subtitle} • Governing Model: ${activeSpec.modelName}`}
+        subtitle={activeSpec.subtitle}
         icon={<Sliders className="w-3.5 h-3.5" />}
         mobileFilterLabel={`Model: ${CATEGORIES.find((c) => c.id === category)?.label.split(" ")[0] ?? "Category"}`}
         actions={
@@ -560,21 +565,21 @@ function SimulationsContent() {
             <button
               type="button"
               onClick={handleReset}
-              className="min-h-[44px] md:min-h-0 inline-flex items-center gap-1 px-2 md:px-0 text-[13px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+              className="shrink-0 whitespace-nowrap min-h-[44px] md:min-h-0 inline-flex items-center gap-1.5 px-2 md:px-0 text-[13px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              Reset Baseline
+              Reset
             </button>
           </div>
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-2">
-              <div className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
-                Country Baseline Calibration
+              <div className="text-xs font-semibold text-[var(--text-muted)]">
+                Starting Country Baseline
               </div>
               {hydratingCountryIso === countryBaselineIso3 && (
-                <span className="text-[11px] font-semibold omnis-mono tone-cyan animate-pulse">
-                  Syncing Live WDI…
+                <span className="text-[11px] font-semibold tone-cyan animate-pulse">
+                  Loading World Bank data…
                 </span>
               )}
             </div>
@@ -676,40 +681,60 @@ function SimulationsContent() {
           {/* Summary KPI Strip */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
             <OmnisStatTile
-              label={`Baseline (${2026 + horizonYears})`}
+              label={`Expected Trend (${2026 + horizonYears})`}
               value={String(simulationOutput.summaryMetrics.baselineTerminal)}
               subValue={simulationOutput.units}
               tone="default"
             />
             <OmnisStatTile
-              label="Modified Median (P50)"
+              label={`Your Scenario (${2026 + horizonYears})`}
               value={String(simulationOutput.summaryMetrics.modifiedMedianTerminal)}
-              subValue="500-Path Median"
+              subValue="Most likely path"
               tone="blue"
             />
             <OmnisStatTile
-              label="Divergence vs Baseline"
+              label="Impact vs Trend"
               value={formatSignedPct(simulationOutput.summaryMetrics.percentageDelta)}
-              subValue="Relative Shift"
+              subValue="Change at horizon"
               tone={simulationOutput.summaryMetrics.percentageDelta >= 0 ? "verified" : "warning"}
             />
             <OmnisStatTile
-              label="Uncertainty (P90 - P10)"
+              label="Likely Range (80% of runs)"
               value={`±${(simulationOutput.summaryMetrics.uncertaintySpreadP90MinusP10 / 2).toFixed(2)}`}
-              subValue="80% Confidence Envelope"
+              subValue="Low to high spread"
               tone="violet"
             />
           </div>
 
           {/* Interactive Trajectory Fan Chart */}
           <div className="omnis-card p-5 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 tone-blue" />
-                <h3 className="text-base font-bold text-[var(--text-primary)]">
-                  Historical Observations (2023–2025) vs Baseline & Stochastic Projection
-                </h3>
+            <div className="space-y-1.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-xs font-medium text-[var(--text-muted)]">
+                  <TrendingUp className="w-4 h-4 tone-blue shrink-0" />
+                  <span>{activeSpec.dependentVariableLabel} • 2023–{2026 + horizonYears}</span>
+                </div>
+                {simulationOutput.units.toLowerCase().includes("index") && (
+                  <span className="text-xs text-[var(--text-muted)]">
+                    100 = 2026 starting level; 155 means 55% larger than today
+                  </span>
+                )}
               </div>
+              <h3
+                className="text-lg sm:text-xl font-bold text-[var(--text-primary)] leading-snug"
+                style={{ fontFamily: "var(--font-editorial), Georgia, serif" }}
+              >
+                {simulationOutput.units.toLowerCase().includes("index")
+                  ? `These settings point to ${formatIndexContext(
+                      simulationOutput.summaryMetrics.baselineTerminal,
+                      simulationOutput.summaryMetrics.modifiedMedianTerminal
+                    )} by ${2026 + horizonYears}.`
+                  : `These settings move ${activeSpec.dependentVariableLabel.toLowerCase()} from ${
+                      simulationOutput.summaryMetrics.baselineTerminal
+                    } to ${simulationOutput.summaryMetrics.modifiedMedianTerminal} (${formatSignedPct(
+                      simulationOutput.summaryMetrics.percentageDelta
+                    )} vs trend) by ${2026 + horizonYears}.`}
+              </h3>
             </div>
 
             <MonteCarloFanChart
@@ -717,14 +742,14 @@ function SimulationsContent() {
               units={simulationOutput.units}
             />
 
-            {/* Interactive Parameter Elasticity Strip */}
+            {/* Biggest Drivers Strip */}
             <div className="pt-3 border-t border-[var(--border-subtle)] space-y-2.5">
-              <div className="flex items-center justify-between text-xs sm:text-[13px] omnis-mono">
-                <span className="font-bold uppercase tracking-wider tone-cyan">
-                  Parameter Sensitivity / Elasticity Strip
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs sm:text-[13px]">
+                <span className="font-semibold tone-cyan">
+                  Biggest Drivers
                 </span>
                 <span className="text-[var(--text-muted)]">
-                  Ranked by terminal variance across bounds
+                  Sorted by how strongly each setting moves the {2026 + horizonYears} result
                 </span>
               </div>
               <div className="space-y-2">
@@ -751,9 +776,9 @@ function SimulationsContent() {
                                   [specParam.key]: specParam.max,
                                 }))
                               }
-                              className="min-h-[44px] md:min-h-[32px] inline-flex items-center px-3 md:px-2 py-1 md:py-0.5 rounded border border-[var(--border-subtle)] bg-[var(--bg-slate)] hover:border-[var(--accent-blue)] text-[11.5px] sm:text-xs tone-blue cursor-pointer"
+                              className="min-h-[44px] md:min-h-[32px] inline-flex items-center px-3 md:px-2 py-1 md:py-0.5 rounded border border-[var(--border-subtle)] bg-[var(--bg-slate)] hover:border-[var(--accent-blue)] text-[11.5px] sm:text-xs tone-blue cursor-pointer font-sans font-medium"
                             >
-                              Stress Max
+                              Test Max
                             </button>
                           ) : null}
                         </div>
@@ -774,41 +799,53 @@ function SimulationsContent() {
               </div>
             </div>
 
-            <p className="text-[14.5px] sm:text-[15px] text-[var(--text-secondary)] leading-relaxed bg-[var(--bg-slate)] p-3.5 rounded-xl border border-[var(--border-subtle)]">
-              <strong className="text-[var(--text-primary)]">Analytical Interpretation:</strong>{" "}
+            <p className="border-l-2 border-[var(--accent-blue)] pl-4 py-1 text-[14.5px] sm:text-[15px] text-[var(--text-secondary)] leading-relaxed">
+              <strong className="text-[var(--text-primary)]">Plain-English Summary:</strong>{" "}
               {simulationOutput.analyticalExplanation}
             </p>
           </div>
 
-          {/* Tornado Sensitivity Analysis & Model Governance */}
+          {/* Tornado Sensitivity & Collapsible Methodology */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="omnis-card p-5 space-y-4">
-              <div className="flex items-center gap-2 text-[13px] font-bold uppercase tracking-wider tone-violet omnis-mono">
-                <BarChart3 className="w-4 h-4" />
-                <span>Tornado Parameter Sensitivity Analysis</span>
+            <div className="omnis-card p-5 space-y-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-sm font-bold text-[var(--text-primary)]">
+                  <BarChart3 className="w-4 h-4 tone-violet" />
+                  <span>Which Setting Changes the Outcome Most?</span>
+                </div>
+                <p className="text-xs text-[var(--text-muted)]">
+                  Longer bars show sliders that create the widest swing between their minimum and maximum settings.
+                </p>
               </div>
               <TornadoSensitivityChart sensitivity={simulationOutput.sensitivity} />
             </div>
 
             <div className="omnis-card p-5 space-y-3 text-[13.5px] sm:text-sm">
-              <div className="flex items-center gap-2 font-bold uppercase tracking-wider tone-warning omnis-mono">
-                <AlertCircle className="w-4 h-4" />
-                <span>Model Assumptions & Epistemic Limitations</span>
+              <div className="flex items-center gap-2 font-bold text-[var(--text-primary)]">
+                <AlertCircle className="w-4 h-4 tone-warning shrink-0" />
+                <span>What This Model Assumes</span>
               </div>
-              <OmnisMathBlock
-                latex={activeSpec.equationsLatex}
-                label="Stochastic Governing Law"
-              />
               <ul className="space-y-1.5 text-[var(--text-secondary)] list-disc pl-4 leading-relaxed">
                 {simulationOutput.initialAssumptions.map((a) => (
                   <li key={a}>{a}</li>
                 ))}
                 {simulationOutput.limitations.map((lim) => (
                   <li key={lim} className="tone-warning font-medium">
-                    Limitation: {lim}
+                    Caveat: {lim}
                   </li>
                 ))}
               </ul>
+              <details className="pt-2 border-t border-[var(--border-subtle)]">
+                <summary className="min-h-[44px] sm:min-h-0 inline-flex items-center gap-1.5 text-xs font-semibold tone-blue cursor-pointer select-none">
+                  <span>Model methodology &amp; formula ({activeSpec.modelName})</span>
+                </summary>
+                <div className="pt-2.5">
+                  <OmnisMathBlock
+                    latex={activeSpec.equationsLatex}
+                    label="Governing Equation"
+                  />
+                </div>
+              </details>
             </div>
           </div>
         </div>

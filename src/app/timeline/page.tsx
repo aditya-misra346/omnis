@@ -211,9 +211,9 @@ function TimelineContent() {
     <div className="p-4 pb-24 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* Header & Controls */}
       <OmnisModuleHeader
-        moduleTag="MODULE 04 • REALITY TIMELINE & CONNECTED HISTORY ENGINE"
-        title="Chronological Causal Chains Across Civilisations, Science & Economics"
-        subtitle="Trace primary historical milestones chronologically or horizontally and jump directly from historical inflection points into interactive causal Knowledge Graphs."
+        moduleTag="World Timeline"
+        title="How History Connects Across Science, Economies & Society"
+        subtitle="Explore key turning points in chronological or horizontal order and jump straight into each milestone's cause-and-effect map."
         icon={<Clock className="w-3.5 h-3.5" />}
         mobileFilterLabel="Era & Filters"
         actions={
@@ -386,15 +386,15 @@ function TimelineContent() {
           <div className="omnis-card p-4 sm:p-5 space-y-2.5">
             <div className="flex flex-wrap items-center justify-between gap-2 text-[13px]">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider tone-cyan omnis-mono">
-                  5,000-Year Logarithmic Temporal Scrubber
+                <span className="text-xs font-bold tone-cyan">
+                  Jump Through Time (3000 BCE – Today)
                 </span>
                 <span className="text-xs omnis-mono px-2 py-0.5 rounded badge-tone-blue font-semibold">
-                  Active: {activeEvent.dateDisplay}
+                  {activeEvent.dateDisplay}
                 </span>
               </div>
-              <span className="text-xs text-[var(--text-muted)] omnis-mono hidden sm:inline">
-                Drag track or tap milestone tick • Compressed Ancient → Expanded 1800–2026 CE
+              <span className="text-xs text-[var(--text-muted)] hidden sm:inline">
+                Earlier centuries are compressed so recent decades are easier to tap.
               </span>
             </div>
 
@@ -568,19 +568,19 @@ function TimelineContent() {
           </div>
 
           <div className="border-l-2 border-[var(--accent-blue)] pl-4 py-1 space-y-1.5 text-[13px]">
-            <div className="font-bold uppercase tracking-wider tone-blue omnis-mono">
-              Historical Context &amp; Structural Significance
+            <div className="font-bold tone-blue text-xs">
+              Why It Matters
             </div>
             <p className="omnis-prose text-[var(--text-secondary)]">
               {activeEvent.historicalContext}
             </p>
           </div>
 
-          {/* Causes & Consequences (Architectural Split Hairline Grid) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 border border-[var(--border-subtle)] rounded-xl overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-[var(--border-subtle)] text-[14.5px] sm:text-[15px] bg-[var(--bg-slate)]/60">
+          {/* Causes & Consequences */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 border border-[var(--border-subtle)] rounded-xl overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-[var(--border-subtle)] text-[14.5px] sm:text-[15px] bg-[var(--bg-slate)]/45">
             <div className="p-4 space-y-2">
-              <div className="font-bold uppercase tracking-wider tone-warning omnis-mono text-xs">
-                Antecedent Causes
+              <div className="font-bold tone-warning text-xs">
+                What Led to This
               </div>
               <ul className="space-y-1.5 list-disc pl-4 text-[var(--text-secondary)] leading-relaxed">
                 {activeEvent.causes.map((c) => (
@@ -589,8 +589,8 @@ function TimelineContent() {
               </ul>
             </div>
             <div className="p-4 space-y-2">
-              <div className="font-bold uppercase tracking-wider tone-verified omnis-mono text-xs">
-                Systemic Consequences
+              <div className="font-bold tone-verified text-xs">
+                Long-Term Impact
               </div>
               <ul className="space-y-1.5 list-disc pl-4 text-[var(--text-secondary)] leading-relaxed">
                 {activeEvent.consequences.map((c) => (
@@ -602,8 +602,8 @@ function TimelineContent() {
 
           {/* Major Participants */}
           <div className="space-y-2 text-[13px]">
-            <div className="font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
-              Major Historical Participants &amp; Institutions
+            <div className="font-semibold text-[var(--text-muted)] text-xs">
+              Key Figures &amp; Institutions
             </div>
             <div className="flex flex-wrap gap-2">
               {activeEvent.majorParticipants.map((p) => (

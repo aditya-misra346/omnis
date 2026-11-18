@@ -3,7 +3,7 @@ import { OmnisRouteLoadingSkeleton } from "@/components/ui/OmnisPrimitives";
 export default function AtlasLoading() {
   return (
     <OmnisRouteLoadingSkeleton
-      moduleTag="MODULE 01 • GLOBAL INTELLIGENCE GLOBE & SOVEREIGN ATLAS"
+      moduleTag="World Atlas"
       layout="split-map"
     />
   );

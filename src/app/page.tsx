@@ -18,7 +18,6 @@ import {
   CheckCircle2,
   Sparkles,
   Layers,
-  Terminal,
   BookOpen,
   BarChart3,
   Cpu,
@@ -30,8 +29,11 @@ import { COUNTRIES_DATA } from "@/lib/data/global-intelligence";
 import { buildPlaceholderCountryProfile } from "@/lib/data/world-catalog";
 import {
   formatCountryMetricOrNa,
+  formatIndexContext,
+  formatPopulationHuman,
   formatSignedPct,
   formatSignedValue,
+  formatUsdBnCompact,
   getEffectiveGdpUsdBn,
   getEffectiveGdpYear,
 } from "@/lib/formatters";
@@ -51,112 +53,112 @@ import type { CountryIntelligenceProfile, IntelligenceLayerId } from "@/types/om
 
 const FLAGSHIP_MODULES = [
   {
-    number: "MODULE 01",
-    title: "Global Intelligence Globe",
+    number: "Atlas",
+    title: "World Earth Globe",
     href: "/atlas",
     icon: Globe2,
     tone: "badge-tone-blue",
     accentText: "tone-blue",
     description:
-      "Interactive 3D Earth with Survey-Aligned country boundaries, Fresnel atmospheric scatter, day/night city illumination, and 7 toggleable overlays.",
-    metrics: "Curated Dossiers + Live World Bank & REST Countries",
+      "Spin an interactive 3D Earth with accurate country borders, live day-and-night sunlight, and instant country profiles across 7 topics.",
+    metrics: "Built-in Profiles + Live World Bank & UN Data",
   },
   {
-    number: "MODULE 02",
-    title: "Infinite Knowledge Graph",
+    number: "Topic Map",
+    title: "Connected Topic Map",
     href: "/knowledge-graph",
     icon: Network,
     tone: "badge-tone-violet",
     accentText: "tone-violet",
     description:
-      "Multi-layout semantic network engine (Force, Radial, Hierarchical, Circular, Tree, Clustered) with 11 typed causal relationships and hypothesis separation.",
-    metrics: "6 Layout Modes • Neighborhood Focus • SVG/JSON Export",
+      "See how ideas, technologies, and policies influence each other across 6 visual layouts—with unconfirmed scenarios kept separate from facts.",
+    metrics: "6 Views • Connection Tracer • SVG & JSON Export",
   },
   {
-    number: "MODULE 03",
-    title: "What-If Simulation Engine",
+    number: "What-If Lab",
+    title: "Scenario Projections",
     href: "/simulations",
     icon: Sliders,
     tone: "badge-tone-blue",
     accentText: "tone-blue",
     description:
-      "Quantitative scenario laboratory across Economics, Demographics, Energy, Technology, and Environment powered by 500-path Monte Carlo & ODE models.",
-    metrics: "P10/P50/P90 Uncertainty Bands • Tornado Sensitivity",
+      "Adjust oil prices, interest rates, clean energy growth, or carbon targets to see how outcomes shift with realistic uncertainty bands.",
+    metrics: "500 Simulated Runs • Sensitivity Driver Ranking",
   },
   {
-    number: "MODULE 04",
-    title: "Reality Timeline",
+    number: "History",
+    title: "World Timeline",
     href: "/timeline",
     icon: Clock,
     tone: "badge-tone-warning",
     accentText: "tone-warning",
     description:
-      "Chronological and cross-regional exploration from 2600 BCE Bronze Age urbanism to India's 1991 liberalisation and modern Transformer breakthroughs.",
-    metrics: "Horizontal & Vertical Views • Knowledge Graph Bridges",
+      "Follow major turning points from Bronze Age cities (3000 BCE) to modern AI and jump straight into each event's wider cause-and-effect map.",
+    metrics: "Horizontal & List Views • Interactive Era Scrubber",
   },
   {
-    number: "MODULE 05",
-    title: "Deep Research Intelligence",
+    number: "Research",
+    title: "Deep Research",
     href: "/research",
     icon: FileSearch,
     tone: "badge-tone-verified",
     accentText: "tone-verified",
     description:
-      "Multi-step research orchestrator across 6 modes retrieving peer-reviewed OpenAlex works, World Bank series, and Wikimedia references with claim verification.",
-    metrics: "6 Research Modes • Contradictory Evidence & Grading",
+      "Ask a question in plain English to read clear answers backed by real World Bank series and OpenAlex academic papers—no made-up citations.",
+    metrics: "6 Research Styles • Source Checks & Limits",
   },
   {
-    number: "MODULE 06",
-    title: "Digital World Laboratory",
+    number: "Science Lab",
+    title: "Interactive Science Labs",
     href: "/laboratory",
     icon: FlaskConical,
     tone: "badge-tone-violet",
     accentText: "tone-violet",
     description:
-      "High-DPI interactive mathematical and physical simulators across Physics, Space, Chemistry, Biology, Climate, and Engineering with governing equations.",
-    metrics: "6 Scientific Disciplines • Interactive Real-Time Solvers",
+      "Experiment directly with pendulums, planetary orbits, molecules, ecosystem cycles, Earth's climate balance, and structural bridges.",
+    metrics: "6 Live Experiments • Pause, Drag & PNG Export",
   },
 ];
 
 const ARCHITECTURAL_NARRATIVE =
-  "Conventional search engines return fragmented links; generic chatbots return unverified prose. OMNIS transforms inquiry into source-traceable intelligence—uniting a Survey-Aligned 3D Global Atlas, Infinite Knowledge Graphs, Monte Carlo Scenario Simulations, Deep Research, and a Digital Scientific Laboratory with rigorous provenance.";
+  "Search engines hand back lists of links, and standard chatbots guess without showing their math. OMNIS puts clear numbers, source-checked research, history timelines, topic maps, and interactive models together in one calm space.";
 
 const DISCIPLINES = [
   {
     icon: Cpu,
-    title: "1. Artificial Intelligence",
-    badge: "Epistemic Routing",
-    desc: "Context-aware natural language understanding, query decomposition, and strict separation between verified facts and AI hypotheses.",
+    title: "Plain-English Answers",
+    badge: "Source-Checked",
+    desc: "Ask everyday questions and get direct summaries that keep measured statistics clearly separate from unconfirmed scenarios.",
   },
   {
     icon: Globe2,
-    title: "2. Global Information & Research",
-    badge: "Live Providers",
-    desc: "Direct integration with World Bank Open Data, OpenAlex scholarly works, Crossref, REST Countries, and Wikimedia REST archives.",
+    title: "Real World Data",
+    badge: "Open APIs",
+    desc: "Pulls official series straight from World Bank Open Data, REST Countries, OpenAlex academic papers, and Wikipedia reference archives.",
   },
   {
     icon: Network,
-    title: "3. Knowledge Representation",
-    badge: "11 Edge Classes",
-    desc: "Typed semantic networks with directional causal semantics (CAUSES, DEPENDS_ON, REGULATES, COMPETES_WITH) and progressive expansion.",
+    title: "How Concepts Connect",
+    badge: "Cause & Effect",
+    desc: "Explore step-by-step topic maps showing what causes, depends on, or speeds up trends across economics, tech, and climate.",
   },
   {
     icon: BarChart3,
-    title: "4. Interactive Data Visualisation",
-    badge: "High-DPI Graphics",
-    desc: "3D WebGL planetary globes, multi-layout semantic graphs, Monte Carlo uncertainty fans, and comparative radar matrices.",
+    title: "Clear Interactive Visuals",
+    badge: "Mobile & Desktop",
+    desc: "3D planetary globe, clean dual-country charts, likely forecast bands, and side-by-side comparisons designed to read effortlessly.",
   },
   {
     icon: Sliders,
-    title: "5. Scientific & Economic Simulations",
-    badge: "ODE + Monte Carlo",
-    desc: "Solow-Swan macroeconomic models, cohort-component demography, grid decarbonisation, and 2-box carbon cycle differential equations.",
+    title: "What-If Forecasts",
+    badge: "500 Scenarios",
+    desc: "Test how economic shocks, clean power transitions, population aging, or warming unfold over 5 to 35 years.",
   },
   {
     icon: Clock,
-    title: "6. Historical & Geographical Intelligence",
-    badge: "2600 BCE – 2026 CE",
-    desc: "Cross-era chronological timelines connected directly to sovereign profiles and conceptual knowledge graphs.",
+    title: "Deep Historical Context",
+    badge: "3000 BCE – Today",
+    desc: "Connect historical turning points directly to modern national indicators and scientific trends.",
   },
 ];
 
@@ -313,9 +315,9 @@ export default function LandingPage() {
 
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center relative z-10">
           <div className="lg:col-span-6 space-y-5">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full badge-tone-blue text-xs font-semibold uppercase tracking-wider omnis-mono">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full badge-tone-blue text-xs font-semibold">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>OMNIS Global Intelligence Platform • v2.0</span>
+              <span>World Data, History &amp; Science Atlas</span>
             </div>
 
             <div className="space-y-3">
@@ -328,9 +330,9 @@ export default function LandingPage() {
                 ]}
               />
               <p className="text-[17px] sm:text-[19px] text-[var(--text-secondary)] leading-[1.6] max-w-xl">
-                OMNIS transforms static walls of text into interactive, source-traceable global
-                intelligence—unifying a Survey-Aligned 3D Global Atlas, Infinite Knowledge Graphs,
-                Monte Carlo Scenario Simulations, Deep Research, and a Digital Scientific Laboratory.
+                Explore how countries grow, how technologies connect, and how global shocks play
+                out—through clear charts, cited research, and interactive models built on World
+                Bank and academic data.
               </p>
             </div>
 
@@ -360,8 +362,8 @@ export default function LandingPage() {
               </form>
 
               <div className="flex flex-wrap items-center gap-1.5 text-[13px]">
-                <span className="text-[var(--text-muted)] omnis-mono uppercase tracking-wider text-xs">
-                  Explore:
+                <span className="text-[var(--text-muted)] text-[13px] font-medium">
+                  Try asking:
                 </span>
                 {[
                   "Explain India's economic development since 1991",
@@ -383,7 +385,7 @@ export default function LandingPage() {
                   aria-expanded={builderOpen}
                   className="min-h-[44px] sm:min-h-0 inline-flex items-center gap-1 px-3 sm:px-2.5 py-2 sm:py-1 rounded-full badge-tone-blue text-xs sm:text-[13px] font-semibold cursor-pointer hover:brightness-105 transition-all"
                 >
-                  <span>Structured Query Builder</span>
+                  <span>Build Custom Question</span>
                   <ChevronDown
                     className={`w-3 h-3 transition-transform duration-200 ${
                       builderOpen ? "rotate-180" : ""
@@ -430,19 +432,19 @@ export default function LandingPage() {
               </Link>
             </div>
 
-            {/* Epistemic Provenance Strip */}
+            {/* Provenance Strip */}
             <div className="grid grid-cols-3 gap-4 pt-3 border-t border-[var(--border-subtle)] text-[13px]">
               <div>
-                <div className="font-bold text-[17px] sm:text-lg omnis-mono tone-blue">6 Modules</div>
-                <div className="text-[var(--text-secondary)]">Unified Intelligence Core</div>
+                <div className="font-bold text-[17px] sm:text-lg tone-blue">6 Tools</div>
+                <div className="text-[var(--text-secondary)]">Globe, Maps &amp; Labs</div>
               </div>
               <div>
-                <div className="font-bold text-[17px] sm:text-lg omnis-mono tone-verified">100% Cited</div>
-                <div className="text-[var(--text-secondary)]">World Bank, OpenAlex & UN</div>
+                <div className="font-bold text-[17px] sm:text-lg tone-verified">Cited Data</div>
+                <div className="text-[var(--text-secondary)]">World Bank, UN &amp; OpenAlex</div>
               </div>
               <div>
-                <div className="font-bold text-[17px] sm:text-lg omnis-mono tone-violet">500-Path MC</div>
-                <div className="text-[var(--text-secondary)]">Stochastic Scenario Engine</div>
+                <div className="font-bold text-[17px] sm:text-lg tone-violet">Live Scenarios</div>
+                <div className="text-[var(--text-secondary)]">What-If Projections</div>
               </div>
             </div>
           </div>
@@ -450,9 +452,9 @@ export default function LandingPage() {
           {/* SECTION 2: LIVE 3D PLANETARY STAGE */}
           <div className="lg:col-span-6 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2 text-[13px]">
-              <span className="font-semibold uppercase tracking-wider text-[var(--text-secondary)] flex items-center gap-1.5 omnis-mono">
+              <span className="font-semibold text-[var(--text-secondary)] flex items-center gap-1.5">
                 <Layers className="w-3.5 h-3.5 tone-blue" />
-                Live 3D Planetary Intelligence Preview
+                Live 3D World Globe Preview
               </span>
               <OmnisSegmentedControl<IntelligenceLayerId>
                 groupId="hero-layer-seg"
@@ -489,20 +491,20 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto space-y-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
             <div className="lg:col-span-4 lg:sticky lg:top-24 space-y-3">
-              <div className="text-[13px] font-bold uppercase tracking-widest tone-blue omnis-mono">
-                01 / Architectural Vision
+              <div className="text-[13px] font-semibold tone-blue">
+                Why We Built This
               </div>
               <ClipMaskHeading className="omnis-display-section font-bold text-[var(--text-primary)]">
-                Six Major Disciplines Integrated Into{" "}
+                Global Data, Research &amp; History in{" "}
                 <span className="omnis-editorial font-normal text-[1.12em]">
-                  One Cohesive System
+                  One Place
                 </span>
               </ClipMaskHeading>
               <ScrollFocusNarrative text={ARCHITECTURAL_NARRATIVE} />
             </div>
 
             <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 border-t border-l border-[var(--border-subtle)]">
-              {DISCIPLINES.map((item, idx) => {
+              {DISCIPLINES.map((item) => {
                 const Icon = item.icon;
                 return (
                   <div
@@ -510,15 +512,10 @@ export default function LandingPage() {
                     className="p-5 border-r border-b border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:bg-[var(--bg-slate)]/50 transition-colors space-y-2.5"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <div className="p-1.5 rounded-md badge-tone-blue">
-                          <Icon className="w-4 h-4" />
-                        </div>
-                        <span className="text-[11.5px] sm:text-xs font-bold omnis-mono tone-blue">
-                          01.{idx + 1}
-                        </span>
+                      <div className="p-1.5 rounded-md badge-tone-blue">
+                        <Icon className="w-4 h-4" />
                       </div>
-                      <span className="text-[11.5px] sm:text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
+                      <span className="text-xs font-medium text-[var(--text-muted)]">
                         {item.badge}
                       </span>
                     </div>
@@ -539,13 +536,13 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto space-y-8">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             <div>
-              <div className="text-[13px] font-bold uppercase tracking-widest tone-blue omnis-mono">
-                02 / Flagship Modules
+              <div className="text-[13px] font-semibold tone-blue">
+                Explore the Atlas &amp; Tools
               </div>
               <ClipMaskHeading className="omnis-display-section font-bold mt-1 text-[var(--text-primary)]">
-                Explore the Six Flagship{" "}
+                Six Interactive Ways to{" "}
                 <span className="omnis-editorial font-normal text-[1.12em]">
-                  Intelligence Environments
+                  Explore the World
                 </span>
               </ClipMaskHeading>
             </div>
@@ -553,7 +550,7 @@ export default function LandingPage() {
               href="/command"
               className="group text-sm font-semibold tone-blue hover:underline inline-flex items-center gap-1"
             >
-              Open Command Center <ArrowRight className="w-3.5 h-3.5 omnis-magnetic-arrow" />
+              Start from Command Hub <ArrowRight className="w-3.5 h-3.5 omnis-magnetic-arrow" />
             </Link>
           </div>
 
@@ -637,15 +634,14 @@ export default function LandingPage() {
       <section className="py-16 px-4 sm:px-8 border-b border-[var(--border-subtle)] bg-[var(--bg-graphite)]">
         <div className="max-w-7xl mx-auto space-y-10">
           <div className="space-y-2">
-            <div className="text-[13px] font-bold uppercase tracking-widest tone-blue omnis-mono">
-              03 / Live Interactive Demonstrations
+            <div className="text-[13px] font-semibold tone-blue">
+              Try It Live
             </div>
             <ClipMaskHeading className="omnis-display-section font-bold text-[var(--text-primary)]">
-              Country Intelligence, Knowledge Graph, Research &{" "}
+              Country Profiles, Scenarios &amp;{" "}
               <span className="omnis-editorial font-normal text-[1.12em]">
-                Scenario Simulation
+                How They Connect
               </span>{" "}
-              Preview
             </ClipMaskHeading>
           </div>
 
@@ -654,8 +650,8 @@ export default function LandingPage() {
             <div className="lg:col-span-7 min-w-0 omnis-card p-6 space-y-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <span className="text-xs uppercase tracking-widest tone-blue font-bold omnis-mono">
-                    Interactive Country Intelligence Experience
+                  <span className="text-[13px] tone-blue font-medium">
+                    Country Profile Preview
                   </span>
                   <div className="flex flex-wrap items-center gap-2 mt-0.5">
                     <h3 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)]">
@@ -695,51 +691,53 @@ export default function LandingPage() {
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <OmnisStatTile
-                  label="Nominal GDP"
+                  label="Total Economy"
                   value={
                     isHydratingSelected && effectiveActiveGdp === 0
-                      ? "Syncing…"
+                      ? "Loading…"
                       : effectiveActiveGdp > 0
-                        ? `$${effectiveActiveGdp.toLocaleString()}B`
+                        ? formatUsdBnCompact(effectiveActiveGdp)
                         : "N/A"
                   }
                   subValue={
                     isHydratingSelected && effectiveActiveGdp === 0
-                      ? "World Bank WDI"
-                      : effectiveActiveGdpYear && effectiveActiveGdp !== activeCountry.gdpUsdBn
-                        ? `Live WDI ${effectiveActiveGdpYear} • ${formatSignedPct(activeCountry.gdpGrowthPct)}`
-                        : `${formatSignedPct(activeCountry.gdpGrowthPct)} real/yr`
+                      ? "World Bank"
+                      : effectiveActiveGdp > 0
+                        ? `$${effectiveActiveGdp.toLocaleString()}B${
+                            effectiveActiveGdpYear ? ` (${effectiveActiveGdpYear})` : ""
+                          } • ${formatSignedPct(activeCountry.gdpGrowthPct)}/yr`
+                        : "Annual figures unavailable"
                   }
                   tone="blue"
                 />
                 <OmnisStatTile
-                  label="GDP / Capita"
+                  label="Per Person Income"
                   value={
                     isHydratingSelected && activeCountry.gdpPerCapitaUsd === 0
-                      ? "Syncing…"
+                      ? "Loading…"
                       : activeCountry.gdpPerCapitaUsd > 0
                         ? `$${activeCountry.gdpPerCapitaUsd.toLocaleString()}`
                         : "N/A"
                   }
                   subValue={
                     isHydratingSelected && activeCountry.gdpPerCapitaUsd === 0
-                      ? "Querying CPI…"
-                      : `CPI: ${formatCountryMetricOrNa(activeCountry, activeCountry.inflationPct, (v) => `${v}%`)}`
+                      ? "Fetching inflation…"
+                      : `Price rise: ${formatCountryMetricOrNa(activeCountry, activeCountry.inflationPct, (v) => `${v}%`)}`
                   }
                   tone="default"
                 />
                 <OmnisStatTile
-                  label="Clean Grid"
+                  label="Clean Power"
                   value={
                     isHydratingSelected && activeCountry.energyProfile.renewableSharePct === 0
-                      ? "Syncing…"
+                      ? "Loading…"
                       : !activeCountry.provenance.missingData || activeCountry.energyProfile.renewableSharePct > 0
                         ? `${activeCountry.energyProfile.renewableSharePct}%`
                         : "N/A"
                   }
                   subValue={
                     isHydratingSelected && activeCountry.energyProfile.renewableSharePct === 0
-                      ? "Energy Mix"
+                      ? "Power mix"
                       : `Nuclear: ${formatCountryMetricOrNa(activeCountry, activeCountry.energyProfile.nuclearSharePct, (v) => `${v}%`)}`
                   }
                   tone="verified"
@@ -748,15 +746,13 @@ export default function LandingPage() {
                   label="Population"
                   value={
                     isHydratingSelected && activeCountry.population === 0
-                      ? "Syncing…"
-                      : activeCountry.population > 0
-                        ? `${(activeCountry.population / 1e6).toFixed(1)}M`
-                        : "N/A"
+                      ? "Loading…"
+                      : formatPopulationHuman(activeCountry.population, "compact")
                   }
                   subValue={
                     isHydratingSelected && activeCountry.population === 0
-                      ? "Demographics"
-                      : `Life Exp: ${formatCountryMetricOrNa(activeCountry, activeCountry.lifeExpectancyYears, (v) => `${v}y`)}`
+                      ? "Population"
+                      : `Life span: ${formatCountryMetricOrNa(activeCountry, activeCountry.lifeExpectancyYears, (v) => `${v} yrs`)}`
                   }
                   tone="default"
                 />
@@ -790,20 +786,34 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Interactive What-If Simulation & Knowledge Graph Demo */}
+            {/* Interactive What-If Scenario & Connections Preview */}
             <div className="lg:col-span-5 min-w-0 flex flex-col gap-6">
               <div className="omnis-card p-6 space-y-4">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs uppercase tracking-widest tone-violet font-bold omnis-mono">
-                    Interactive What-If Simulation Demo
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-semibold tone-violet">
+                    Try a What-If Oil Shock
                   </span>
-                  <span className="text-xs omnis-mono text-[var(--text-muted)] truncate">
-                    {activeCountry.name} + Solow-Swan MDSE-v2.4
-                  </span>
+                  <details className="text-xs text-[var(--text-muted)]">
+                    <summary className="cursor-pointer hover:text-[var(--text-primary)] select-none">
+                      Model info
+                    </summary>
+                    <div className="mt-1 text-[11.5px]">
+                      {activeCountry.name} calibrated via Solow-Swan equilibrium model (MDSE-v2.4)
+                    </div>
+                  </details>
                 </div>
-                <h3 className="text-[17px] sm:text-lg font-bold text-[var(--text-primary)]">
-                  Crude Oil Price Shock Impact on 2040 {activeCountry.iso3} GDP Index
-                </h3>
+                <div className="space-y-1">
+                  <h3 className="text-[17px] sm:text-lg font-bold text-[var(--text-primary)]">
+                    How Oil Prices Affect {activeCountry.name}&apos;s 2040 Economy
+                  </h3>
+                  <p className="text-[13px] text-[var(--text-secondary)]">
+                    A {formatSignedPct(simOilShock)} crude oil price move leads to{" "}
+                    <strong className="text-[var(--text-primary)]">
+                      {formatIndexContext(oilShockPreviewSvg.endBaseline, oilShockPreviewSvg.endShocked, 2025)}
+                    </strong>
+                    .
+                  </p>
+                </div>
 
                 {/* Live Interactive SVG Trajectory Fan */}
                 <div className="rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] p-2.5">
@@ -826,8 +836,8 @@ export default function LandingPage() {
                       stroke="var(--chart-blue)"
                       strokeWidth="2.5"
                     />
-                    <text x="16" y="13" fill="var(--text-muted)" fontSize="11" className="omnis-mono">
-                      2025 BASE (100)
+                    <text x="16" y="13" fill="var(--text-muted)" fontSize="11">
+                      2025 level (100)
                     </text>
                     <text
                       x={oilShockPreviewSvg.w - 16}
@@ -836,16 +846,15 @@ export default function LandingPage() {
                       fill="var(--chart-blue)"
                       fontSize="11"
                       fontWeight="700"
-                      className="omnis-mono"
                     >
-                      2040 P50: {oilShockPreviewSvg.endShocked.toFixed(1)}
+                      2040 scenario: {oilShockPreviewSvg.endShocked.toFixed(1)}
                     </text>
                   </svg>
                 </div>
 
                 <div className="space-y-3">
                   <OmnisParameterSlider
-                    label="Oil Price Impulse"
+                    label="Oil Price Change"
                     unit="%"
                     min={-30}
                     max={80}
@@ -856,21 +865,21 @@ export default function LandingPage() {
                     onChange={setSimOilShock}
                     onReset={() => setSimOilShock(0)}
                   />
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="omnis-surface-slate p-2.5">
-                      <div className="text-xs text-[var(--text-muted)]">Baseline 2040</div>
+                  <div className="grid grid-cols-3 gap-2 text-center border-y border-[var(--border-subtle)] py-2.5">
+                    <div>
+                      <div className="text-xs text-[var(--text-muted)]">Trend without shock</div>
                       <div className="text-base font-bold omnis-mono omnis-tabular text-[var(--text-primary)]">
                         {oilShockPreviewSvg.endBaseline.toFixed(1)}
                       </div>
                     </div>
-                    <div className="omnis-surface-slate p-2.5">
-                      <div className="text-xs text-[var(--text-muted)]">Modified P50</div>
+                    <div className="border-x border-[var(--border-subtle)]">
+                      <div className="text-xs text-[var(--text-muted)]">Projected with shock</div>
                       <div className="text-base font-bold omnis-mono omnis-tabular tone-blue">
                         {oilShockPreviewSvg.endShocked.toFixed(1)}
                       </div>
                     </div>
-                    <div className="omnis-surface-slate p-2.5">
-                      <div className="text-xs text-[var(--text-muted)]">P10–P90 Band</div>
+                    <div>
+                      <div className="text-xs text-[var(--text-muted)]">80% likely range</div>
                       <div className="text-base font-bold omnis-mono omnis-tabular tone-violet">
                         ±{oilShockPreviewSvg.bandPct}%
                       </div>
@@ -881,23 +890,24 @@ export default function LandingPage() {
                   href={`/simulations?category=economics&oilShock=${simOilShock}&country=${activeCountry.iso3}`}
                   className="omnis-magnetic-arrow text-[13px] font-semibold tone-blue hover:underline inline-flex items-center gap-1"
                 >
-                  <span>Open Full 5-Domain Simulation Workspace</span>
+                  <span>Explore All 5 What-If Scenarios</span>
                   <ArrowRight className="omnis-arrow-glyph w-3.5 h-3.5" />
                 </Link>
               </div>
 
-              {/* Card 3: Live 1-Hop Causal Graph & Claim Inspector */}
+              {/* Card 3: How Causes Connect */}
               <div className="omnis-card p-6 space-y-3.5">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs uppercase tracking-widest tone-verified font-bold omnis-mono">
-                    Live 1-Hop Causal Graph & Claim Inspector
+                  <span className="text-xs font-semibold tone-verified">
+                    How Energy &amp; Economy Connect
                   </span>
-                  <span className="text-[11px] omnis-mono px-1.5 py-0.5 rounded badge-tone-verified font-semibold">
-                    VERIFIED EVIDENCE
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium tone-verified">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--status-verified)]" />
+                    Checked Data
                   </span>
                 </div>
                 <h3 className="text-[17px] sm:text-lg font-bold text-[var(--text-primary)]">
-                  {activeCountry.name} Causal Shock & Clean Grid Pathways
+                  What Happens When {activeCountry.name}&apos;s Oil Prices Move
                 </h3>
 
                 {(() => {
@@ -913,10 +923,12 @@ export default function LandingPage() {
                       y: 54,
                       rectW: 132,
                       short: `${activeCountry.iso3} GDP (${formatSignedPct(activeCountry.gdpGrowthPct)})`,
-                      title: `${activeCountry.officialName} Real Output Core`,
-                      claim: `Nominal GDP of $${activeCountry.gdpUsdBn.toLocaleString()}B anchored by ${formatSignedPct(
-                        activeCountry.gdpGrowthPct
-                      )} baseline real annual growth.`,
+                      title: `${activeCountry.officialName} Economic Output`,
+                      claim: `Economy size of ${
+                        effectiveActiveGdp > 0
+                          ? `${formatUsdBnCompact(effectiveActiveGdp)} ($${effectiveActiveGdp.toLocaleString()}B)`
+                          : "N/A"
+                      }, growing ${formatSignedPct(activeCountry.gdpGrowthPct)} a year.`,
                       source: activeCountry.provenance.source,
                       tone: "var(--chart-blue)",
                     },
@@ -926,11 +938,11 @@ export default function LandingPage() {
                       y: 24,
                       rectW: 114,
                       short: `Fossil (${fossilPct}%)`,
-                      title: "Hydrocarbon Import & Baseload Exposure",
-                      claim: `${fossilPct}% non-renewable electricity share creates direct current-account sensitivity to a ${formatSignedPct(
+                      title: "Reliance on Fossil Fuels",
+                      claim: `${fossilPct}% non-renewable power leaves import bills exposed to a ${formatSignedPct(
                         simOilShock
-                      )} crude shock.`,
-                      source: "IEA / World Bank WDI Energy Profile",
+                      )} swing in global oil prices.`,
+                      source: "IEA & World Bank Energy Data",
                       tone: "var(--chart-amber)",
                     },
                     {
@@ -939,13 +951,13 @@ export default function LandingPage() {
                       y: 24,
                       rectW: 114,
                       short: `CPI (${formatSignedPct(inflationImpulse)})`,
-                      title: "Pass-Through Inflationary Channel",
-                      claim: `Simulated energy impulse shifts headline CPI expectations by ${formatSignedValue(
+                      title: "Higher Fuel Costs Lift Everyday Prices",
+                      claim: `Simulated fuel shock shifts consumer inflation by ${formatSignedValue(
                         inflationImpulse,
                         " pp",
                         2
-                      )} over baseline (${activeCountry.inflationPct}% current).`,
-                      source: "OMNIS Solow-Swan MDSE-v2.4 Elasticities",
+                      )} above ${activeCountry.inflationPct}% today.`,
+                      source: "Estimated price response",
                       tone: "var(--chart-violet)",
                     },
                     {
@@ -955,8 +967,8 @@ export default function LandingPage() {
                       rectW: 136,
                       short: `Clean Grid (${activeCountry.energyProfile.renewableSharePct}%)`,
                       title: "Renewable Decarbonisation Buffer",
-                      claim: `${activeCountry.energyProfile.renewableSharePct}% renewable share dampens external fossil volatility while boosting long-run capital productivity.`,
-                      source: "IRENA / World Bank Clean Generation Index",
+                      claim: `Generating ${activeCountry.energyProfile.renewableSharePct}% renewable electricity cushions families and factories from imported oil spikes.`,
+                      source: "IRENA & World Bank Clean Power Data",
                       tone: "var(--chart-emerald)",
                     },
                   ];
@@ -1028,8 +1040,8 @@ export default function LandingPage() {
                         <p className="text-[13.5px] text-[var(--text-secondary)] leading-relaxed">
                           {activeNode.claim}
                         </p>
-                        <div className="text-xs omnis-mono text-[var(--text-muted)]">
-                          Provenance: {activeNode.source}
+                        <div className="text-xs text-[var(--text-muted)]">
+                          Source: {activeNode.source}
                         </div>
                       </div>
                     </>
@@ -1043,14 +1055,14 @@ export default function LandingPage() {
                     )}`}
                     className="omnis-magnetic-arrow px-3.5 py-2 rounded-xl badge-tone-verified hover:brightness-105 text-[13px] font-semibold inline-flex items-center gap-1.5 transition-all"
                   >
-                    <span>Launch Deep Research</span>
+                    <span>Read Deep Research</span>
                     <ArrowRight className="omnis-arrow-glyph w-3 h-3" />
                   </Link>
                   <Link
                     href={`/knowledge-graph?topic=${encodeURIComponent(activeCountry.name)}`}
                     className="omnis-magnetic-arrow px-3.5 py-2 rounded-xl badge-tone-blue hover:brightness-105 text-[13px] font-semibold inline-flex items-center gap-1.5 transition-all"
                   >
-                    <span>Launch Knowledge Graph</span>
+                    <span>Explore Topic Map</span>
                     <ArrowRight className="omnis-arrow-glyph w-3 h-3" />
                   </Link>
                 </div>
@@ -1060,87 +1072,76 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* SECTION 9 & 10: TECHNOLOGY PHILOSOPHY, TRUST & EPISTEMIC TRANSPARENCY */}
+      {/* SECTION 9 & 10: HOW WE VERIFY DATA (+ COLLAPSIBLE ARCHITECTURE) */}
       <section className="py-12 px-4 sm:px-8 border-b border-[var(--border-subtle)]">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 border-y border-[var(--border-subtle)]">
-          <div className="py-8 lg:pr-10 border-b lg:border-b-0 lg:border-r border-[var(--border-subtle)] space-y-4">
-            <div className="flex items-center gap-2 tone-blue text-[13px] font-bold uppercase tracking-wider omnis-mono">
-              <Terminal className="w-4 h-4" />
-              <span>04 / Technology & Polyglot Architecture</span>
-            </div>
-            <ClipMaskHeading as="h3" className="text-xl sm:text-2xl font-bold text-[var(--text-primary)]">
-              Engineered for Precision, Speed & Reproducibility
-            </ClipMaskHeading>
-            <ul className="space-y-3 text-[15px] leading-relaxed text-[var(--text-secondary)]">
-              <li className="flex items-start gap-2.5">
-                <CheckCircle2 className="w-4 h-4 tone-verified shrink-0 mt-0.5" />
-                <span>
-                  <strong className="text-[var(--text-primary)]">
-                    TypeScript + Next.js + Three.js + D3:
-                  </strong>{" "}
-                  Strict typing, GPU-disposed Survey-Aligned 3D Earth rendering, and 6-layout semantic
-                  graphs.
-                </span>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <CheckCircle2 className="w-4 h-4 tone-verified shrink-0 mt-0.5" />
-                <span>
-                  <strong className="text-[var(--text-primary)]">
-                    Python FastAPI + SQLAlchemy 2.0 + NumPy:
-                  </strong>{" "}
-                  Relational schema across 28 tables, Alembic migrations, and deterministic Monte
-                  Carlo simulation routines.
-                </span>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <CheckCircle2 className="w-4 h-4 tone-verified shrink-0 mt-0.5" />
-                <span>
-                  <strong className="text-[var(--text-primary)]">AI Security Guardrails:</strong>{" "}
-                  Prompt-injection sanitization, untrusted retrieval quarantine, and sliding-window
-                  API rate limiting.
-                </span>
-              </li>
-            </ul>
-          </div>
-
-          <div className="py-8 lg:pl-10 space-y-4">
-            <div className="flex items-center gap-2 tone-verified text-[13px] font-bold uppercase tracking-wider omnis-mono">
+        <div className="max-w-4xl mx-auto space-y-6">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 tone-verified text-[13px] font-semibold">
               <ShieldCheck className="w-4 h-4" />
-              <span>05 / Trust, Provenance & Epistemic Integrity</span>
+              <span>How We Verify Data</span>
             </div>
             <ClipMaskHeading as="h3" className="text-xl sm:text-2xl font-bold text-[var(--text-primary)]">
-              Non-Negotiable Separation of Verified Data and Hypotheses
+              Measured Facts Stay Separate from Scenarios
             </ClipMaskHeading>
             <ul className="space-y-3 text-[15px] leading-relaxed text-[var(--text-secondary)]">
               <li className="flex items-start gap-2.5">
                 <Database className="w-4 h-4 tone-blue shrink-0 mt-0.5" />
                 <span>
-                  <strong className="text-[var(--text-primary)]">Identifiable Provenance:</strong>{" "}
-                  Every country indicator and chart displays its publisher, retrieval timestamp,
-                  units, coverage, and methodology.
+                  <strong className="text-[var(--text-primary)]">Direct Source Links:</strong>{" "}
+                  Every country statistic and chart lists its publisher, update year, units, and
+                  how it is measured.
                 </span>
               </li>
               <li className="flex items-start gap-2.5">
                 <BookOpen className="w-4 h-4 tone-violet shrink-0 mt-0.5" />
                 <span>
-                  <strong className="text-[var(--text-primary)]">Zero Fabricated Citations:</strong>{" "}
-                  Claims are graded as <em>Verified Multi-Source</em>,{" "}
-                  <em>Single Primary Source</em>, <em>Conflicting Evidence</em>, or{" "}
-                  <em>AI-Generated Hypothesis</em>.
+                  <strong className="text-[var(--text-primary)]">No Made-Up Citations:</strong>{" "}
+                  Claims are clearly labeled as <em>Verified Multi-Source</em>,{" "}
+                  <em>Single Source</em>, <em>Conflicting Evidence</em>, or{" "}
+                  <em>Unconfirmed Scenario</em>.
                 </span>
               </li>
               <li className="flex items-start gap-2.5">
                 <ShieldCheck className="w-4 h-4 tone-verified shrink-0 mt-0.5" />
                 <span>
                   <strong className="text-[var(--text-primary)]">
-                    Transparent Model Boundaries:
+                    Clear Model Assumptions:
                   </strong>{" "}
-                  Simulation outputs and laboratory experiments explicitly document governing
-                  equations and simplifying assumptions.
+                  Projections and science labs list every simplifying assumption and math equation
+                  inside optional disclosures.
                 </span>
               </li>
             </ul>
           </div>
+
+          <details className="pt-4 border-t border-[var(--border-subtle)] text-[14px]">
+            <summary className="min-h-[44px] sm:min-h-0 inline-flex items-center gap-2 text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer select-none">
+              <span>Technical architecture (under the hood)</span>
+            </summary>
+            <ul className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-4 text-[13.5px] leading-relaxed text-[var(--text-secondary)]">
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 tone-verified shrink-0 mt-0.5" />
+                <span>
+                  <strong className="text-[var(--text-primary)]">Interactive WebGL &amp; SVG:</strong>{" "}
+                  TypeScript, Next.js, Three.js Earth geometry, and 6-layout D3-style concept graphs.
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 tone-verified shrink-0 mt-0.5" />
+                <span>
+                  <strong className="text-[var(--text-primary)]">FastAPI + NumPy Models:</strong>{" "}
+                  28-table Postgres schema and seeded 500-path simulation engines.
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 tone-verified shrink-0 mt-0.5" />
+                <span>
+                  <strong className="text-[var(--text-primary)]">Input Guardrails:</strong>{" "}
+                  Sanitized external snippets, origin limits, and per-route API rate limiting.
+                </span>
+              </li>
+            </ul>
+          </details>
         </div>
       </section>
 
@@ -1188,54 +1189,54 @@ export default function LandingPage() {
           </div>
 
           <div className="space-y-2.5">
-            <div className="font-bold text-[var(--text-primary)] uppercase tracking-wider text-xs omnis-mono">
-              Flagship Modules
+            <div className="font-semibold text-[var(--text-primary)] text-xs">
+              Explore Tools
             </div>
             <ul className="space-y-1.5">
-              <li><Link href="/atlas" className="hover:text-[var(--accent-blue)] transition-colors">01. Global Intelligence Globe</Link></li>
-              <li><Link href="/knowledge-graph" className="hover:text-[var(--accent-blue)] transition-colors">02. Infinite Knowledge Graph</Link></li>
-              <li><Link href="/simulations" className="hover:text-[var(--accent-blue)] transition-colors">03. What-If Simulation Engine</Link></li>
-              <li><Link href="/timeline" className="hover:text-[var(--accent-blue)] transition-colors">04. Reality Timeline</Link></li>
-              <li><Link href="/research" className="hover:text-[var(--accent-blue)] transition-colors">05. Deep Research Intelligence</Link></li>
-              <li><Link href="/laboratory" className="hover:text-[var(--accent-blue)] transition-colors">06. Digital World Laboratory</Link></li>
+              <li><Link href="/atlas" className="hover:text-[var(--accent-blue)] transition-colors">World Earth Globe</Link></li>
+              <li><Link href="/knowledge-graph" className="hover:text-[var(--accent-blue)] transition-colors">Connected Topic Map</Link></li>
+              <li><Link href="/simulations" className="hover:text-[var(--accent-blue)] transition-colors">What-If Scenarios</Link></li>
+              <li><Link href="/timeline" className="hover:text-[var(--accent-blue)] transition-colors">World Timeline</Link></li>
+              <li><Link href="/research" className="hover:text-[var(--accent-blue)] transition-colors">Deep Research</Link></li>
+              <li><Link href="/laboratory" className="hover:text-[var(--accent-blue)] transition-colors">Science Lab</Link></li>
             </ul>
           </div>
 
           <div className="space-y-2.5">
-            <div className="font-bold text-[var(--text-primary)] uppercase tracking-wider text-xs omnis-mono">
-              Platform & Workspace
+            <div className="font-semibold text-[var(--text-primary)] text-xs">
+              Workspace
             </div>
             <ul className="space-y-1.5">
-              <li><Link href="/command" className="hover:text-[var(--accent-blue)] transition-colors">Home — Command Center</Link></li>
-              <li><Link href="/intelligence" className="hover:text-[var(--accent-blue)] transition-colors">Intelligence Compare & Feed</Link></li>
-              <li><Link href="/explore" className="hover:text-[var(--accent-blue)] transition-colors">Universal Search & Explorer</Link></li>
-              <li><Link href="/workspace" className="hover:text-[var(--accent-blue)] transition-colors">My Workspace & Export Centre</Link></li>
-              <li><Link href="/settings" className="hover:text-[var(--accent-blue)] transition-colors">Settings, Theme & Privacy</Link></li>
+              <li><Link href="/command" className="hover:text-[var(--accent-blue)] transition-colors">Home — Command Hub</Link></li>
+              <li><Link href="/intelligence" className="hover:text-[var(--accent-blue)] transition-colors">Compare Countries</Link></li>
+              <li><Link href="/explore" className="hover:text-[var(--accent-blue)] transition-colors">Search &amp; Explore</Link></li>
+              <li><Link href="/workspace" className="hover:text-[var(--accent-blue)] transition-colors">Saved Notes &amp; Exports</Link></li>
+              <li><Link href="/settings" className="hover:text-[var(--accent-blue)] transition-colors">Settings &amp; Theme</Link></li>
             </ul>
           </div>
 
           <div className="space-y-2.5">
-            <div className="font-bold text-[var(--text-primary)] uppercase tracking-wider text-xs omnis-mono">
-              Verified Data Sources
+            <div className="font-semibold text-[var(--text-primary)] text-xs">
+              Data Partners
             </div>
             <ul className="space-y-1.5 text-[var(--text-muted)]">
               <li>World Bank Open Data API (v2)</li>
-              <li>REST Countries v3.1 Registry</li>
-              <li>OpenAlex Scholarly Graph</li>
-              <li>UN DESA & IMF WEO Series</li>
-              <li>Wikimedia REST API v1</li>
+              <li>REST Countries Registry</li>
+              <li>OpenAlex Academic Library</li>
+              <li>UN Population &amp; IMF Series</li>
+              <li>Wikipedia Reference API</li>
             </ul>
           </div>
         </div>
 
         <div className="max-w-7xl mx-auto pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[var(--text-muted)]">
-          <span>© 2026 OMNIS Global Intelligence Platform. All rights reserved.</span>
+          <span>© 2026 OMNIS. Clear data, cited research, and open models.</span>
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
               onClick={toggleMotionPaused}
               aria-pressed={motionPaused}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors cursor-pointer omnis-mono"
+              className="min-h-[44px] sm:min-h-0 inline-flex items-center gap-1.5 px-3 sm:px-2.5 py-1.5 sm:py-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors cursor-pointer"
             >
               {motionPaused ? (
                 <Play className="w-3 h-3 tone-blue" />
@@ -1244,8 +1245,8 @@ export default function LandingPage() {
               )}
               <span>{motionPaused ? "Resume motion" : "Pause motion"}</span>
             </button>
-            <span className="omnis-mono text-xs">
-              Epistemic Integrity Verified • Dual-Theme Contrast Engineered
+            <span className="text-xs">
+              Built on open World Bank, UN &amp; OpenAlex data
             </span>
           </div>
         </div>

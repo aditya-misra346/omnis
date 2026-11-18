@@ -70,12 +70,12 @@ const PROVENANCE_DIFF_META: Record<
 };
 
 const RESEARCH_MODES: { id: ResearchMode; label: string; desc: string }[] = [
-  { id: "quick", label: "Quick Research", desc: "Concise synthesis with primary citations" },
-  { id: "deep", label: "Deep Research", desc: "Multi-source investigation & claim verification" },
-  { id: "comparative", label: "Comparative", desc: "Cross-entity & cross-country comparison" },
-  { id: "historical", label: "Historical", desc: "Longitudinal evolution across eras" },
-  { id: "scientific", label: "Scientific", desc: "Empirical studies, methodology & limits" },
-  { id: "economic", label: "Economic", desc: "Macro indicators, elasticities & policy models" },
+  { id: "quick", label: "Quick Research", desc: "Short bottom-line answer and top facts" },
+  { id: "deep", label: "Deep Research", desc: "Full report with claim checks and sources" },
+  { id: "comparative", label: "Comparative", desc: "Head-to-head comparison across peers" },
+  { id: "historical", label: "Historical", desc: "How trends evolved over time" },
+  { id: "scientific", label: "Scientific", desc: "Academic findings and study limits" },
+  { id: "economic", label: "Economic", desc: "Output, income per person, and R&D drivers" },
 ];
 
 function ResearchContent() {
@@ -304,11 +304,11 @@ ${report.sources
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
-      {/* Research Orchestration Header */}
+      {/* Research Header */}
       <OmnisModuleHeader
-        moduleTag="MODULE 05 • DEEP RESEARCH INTELLIGENCE & SOURCE CREDIBILITY ENGINE"
-        title="Multi-Step Source Verification, Claim Extraction & Synthesis"
-        subtitle="Orchestrate multi-provider literature and sovereign data retrieval with claim-level epistemic verification and zero fabricated references."
+        moduleTag="Deep Research"
+        title="Source-Checked Answers & Evidence Breakdown"
+        subtitle="Start with the plain-English answer and key statistics, then explore peer-reviewed studies, conflicting viewpoints, and primary data."
         icon={<FileSearch className="w-3.5 h-3.5" />}
         actions={
           report ? (
@@ -367,7 +367,7 @@ ${report.sources
             />
           </div>
           <OmnisButton type="submit" disabled={loading}>
-            {loading ? "Synthesising Sources..." : "Synthesise Report"}
+            {loading ? "Checking sources..." : "Investigate"}
           </OmnisButton>
         </form>
       </OmnisModuleHeader>
@@ -393,73 +393,48 @@ ${report.sources
 
       {report && (
         <div className="space-y-6">
-          {/* Multi-Step Orchestration Trace (Architectural Hairline Grid) */}
-          <div className="omnis-card p-5 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-[13px]">
-              <span className="font-bold uppercase tracking-wider tone-blue omnis-mono">
-                Multi-Step Research Orchestration Trace
-              </span>
-              <span className="text-[var(--text-muted)] omnis-mono">
-                Objective: {report.researchObjective}
-              </span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 border border-[var(--border-subtle)] rounded-xl overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-[var(--border-subtle)] bg-[var(--bg-graphite)]">
-              {report.decomposedTasks.map((t) => (
-                <div key={t.step} className="p-3.5 text-[13px] space-y-1.5">
-                  <div className="flex items-center justify-between text-[11.5px] omnis-mono tone-verified font-bold">
-                    <span>STEP 0{t.step}</span>
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                  </div>
-                  <div className="font-semibold text-[var(--text-primary)]">{t.task}</div>
-                  <div className="text-xs text-[var(--text-muted)]">{t.sourceCategory}</div>
+          {/* Direct Answer & Key Numbers Immediately Below Search */}
+          <div className="omnis-card p-5 sm:p-7 space-y-5">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-[var(--border-subtle)]">
+              <div className="min-w-0">
+                <div className="text-xs font-medium text-[var(--text-muted)]">
+                  {RESEARCH_MODES.find((m) => m.id === report.mode)?.label ?? "Report"} • Updated{" "}
+                  <span className="omnis-tabular">{report.generatedAt.slice(0, 10)}</span>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Executive Summary & Key Findings */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-8 min-w-0 omnis-card p-6 sm:p-7 space-y-6">
-              <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-[var(--border-subtle)]">
-                <div>
-                  <span className="text-xs font-bold uppercase tracking-widest tone-blue omnis-mono">
-                    {report.mode.toUpperCase()} RESEARCH REPORT • {report.generatedAt.slice(0, 10)}
-                  </span>
-                  <h2 className="omnis-display-section font-extrabold mt-0.5 text-[var(--text-primary)]">
-                    {report.query}
-                  </h2>
-                </div>
-                <div className="flex flex-wrap items-center gap-1.5 no-print omnis-no-print">
-                  <OmnisSegmentedControl
-                    groupId="research-reader-font"
-                    ariaLabel="Reader typography toggle"
-                    size="sm"
-                    value={typographyStyle}
-                    onChange={(val) => setTypographyStyle(val as "editorial" | "sans")}
-                    options={[
-                      { value: "editorial", label: "Serif" },
-                      { value: "sans", label: "Sans" },
-                    ]}
-                  />
-                  <OmnisButton
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setEditingSummary((e) => !e)}
-                  >
-                    <Edit3 className="w-3 h-3" />
-                    <span>{editingSummary ? "Save Edit" : "Edit Summary"}</span>
-                  </OmnisButton>
-                  <OmnisButton variant="secondary" size="sm" onClick={handleCopySummary}>
-                    <Copy className="w-3 h-3" />
-                    <span>{copiedToast ? "Copied!" : "Copy"}</span>
-                  </OmnisButton>
-                </div>
+                <h2 className="omnis-display-section font-extrabold mt-0.5 text-[var(--text-primary)]">
+                  {report.query}
+                </h2>
               </div>
+              <div className="flex flex-wrap items-center gap-1.5 no-print omnis-no-print">
+                <OmnisSegmentedControl
+                  groupId="research-reader-font"
+                  ariaLabel="Reader typography toggle"
+                  size="sm"
+                  value={typographyStyle}
+                  onChange={(val) => setTypographyStyle(val as "editorial" | "sans")}
+                  options={[
+                    { value: "editorial", label: "Serif" },
+                    { value: "sans", label: "Sans" },
+                  ]}
+                />
+                <OmnisButton
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setEditingSummary((e) => !e)}
+                >
+                  <Edit3 className="w-3 h-3" />
+                  <span>{editingSummary ? "Done Editing" : "Edit Summary"}</span>
+                </OmnisButton>
+                <OmnisButton variant="secondary" size="sm" onClick={handleCopySummary}>
+                  <Copy className="w-3 h-3" />
+                  <span>{copiedToast ? "Copied!" : "Copy"}</span>
+                </OmnisButton>
+              </div>
+            </div>
 
-              <div className="space-y-2">
-                <div className="text-[13px] font-bold uppercase tracking-wider tone-blue omnis-mono">
-                  Executive Summary
-                </div>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+              <div className="lg:col-span-7 space-y-2 min-w-0">
+                <div className="text-sm font-semibold tone-blue">Direct Answer</div>
                 {editingSummary ? (
                   <textarea
                     value={customSummary}
@@ -469,9 +444,9 @@ ${report.sources
                   />
                 ) : (
                   <p
-                    className={`omnis-prose text-[var(--text-secondary)] ${
+                    className={`omnis-prose text-[var(--text-primary)] ${
                       typographyStyle === "editorial"
-                        ? "text-[17px] sm:text-[18px] leading-[1.72]"
+                        ? "text-[17px] sm:text-[18.5px] leading-[1.72]"
                         : "text-[15.5px] sm:text-base leading-[1.72]"
                     }`}
                     style={
@@ -485,16 +460,62 @@ ${report.sources
                 )}
               </div>
 
+              <div className="lg:col-span-5 grid grid-cols-2 gap-3 min-w-0">
+                {report.relevantStatistics.slice(0, 4).map((stat) => (
+                  <div
+                    key={stat.metric}
+                    className="border-l-2 border-[var(--border-subtle)] pl-3 py-1 space-y-0.5 min-w-0"
+                  >
+                    <div className="text-xs font-medium text-[var(--text-muted)] line-clamp-2">
+                      {stat.metric}
+                    </div>
+                    <div className="text-lg sm:text-xl font-bold omnis-mono omnis-tabular tone-blue">
+                      {stat.value}
+                    </div>
+                    <div className="text-[11.5px] text-[var(--text-muted)] truncate">
+                      {stat.unit}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Collapsible Research Steps Disclosure */}
+            <details className="pt-3 border-t border-[var(--border-subtle)] group">
+              <summary className="min-h-[44px] sm:min-h-0 inline-flex items-center gap-2 text-[13px] font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer select-none">
+                <CheckCircle2 className="w-3.5 h-3.5 tone-verified shrink-0" />
+                <span>
+                  Checked {report.sources.length} sources across World Bank, IMF &amp; OpenAlex • View research steps
+                </span>
+              </summary>
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 border border-[var(--border-subtle)] rounded-xl overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-[var(--border-subtle)] bg-[var(--bg-graphite)]">
+                {report.decomposedTasks.map((t) => (
+                  <div key={t.step} className="p-3 text-[13px] space-y-1">
+                    <div className="flex items-center justify-between text-xs omnis-tabular tone-verified font-semibold">
+                      <span>Step {t.step}</span>
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="font-semibold text-[var(--text-primary)]">{t.task}</div>
+                    <div className="text-xs text-[var(--text-muted)]">{t.sourceCategory}</div>
+                  </div>
+                ))}
+              </div>
+            </details>
+          </div>
+
+          {/* Main Evidence & Key Findings */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-8 min-w-0 omnis-card p-6 sm:p-7 space-y-6">
               {/* Key Findings: Editorial Margin Ledger */}
-              <div className="space-y-2.5 pt-2 border-t border-[var(--border-subtle)]">
-                <div className="text-[13px] font-bold uppercase tracking-wider tone-verified omnis-mono">
-                  Key Empirical Findings
-                </div>
+              <div className="space-y-2.5">
+                <h3 className="text-base sm:text-[17px] font-bold text-[var(--text-primary)]">
+                  Main Takeaways
+                </h3>
                 <ol className="divide-y divide-[var(--border-subtle)] border-y border-[var(--border-subtle)]">
                   {report.keyFindings.map((kf, idx) => (
                     <li
                       key={kf}
-                      className="py-3 grid grid-cols-[2.5rem_1fr] gap-3 items-baseline text-[15px] sm:text-base leading-relaxed text-[var(--text-secondary)]"
+                      className="py-3 grid grid-cols-[2.25rem_1fr] gap-3 items-baseline text-[15px] sm:text-base leading-relaxed text-[var(--text-secondary)]"
                     >
                       <span className="omnis-mono omnis-tabular text-[13px] font-bold tone-cyan">
                         {String(idx + 1).padStart(2, "0")}
@@ -505,7 +526,7 @@ ${report.sources
                 </ol>
               </div>
 
-              {/* Detailed Analysis */}
+              {/* Detailed Breakdown */}
               <div className="space-y-5">
                 {report.detailedAnalysis.map((sec) => (
                   <div key={sec.heading} className="space-y-1.5">
@@ -515,10 +536,10 @@ ${report.sources
                 ))}
               </div>
 
-              {/* Supporting Evidence: Left-Rule Architectural Callouts & Interactive Hover Citation Popover */}
+              {/* Supporting Claims & Source Links */}
               <div className="space-y-4 pt-3 border-t border-[var(--border-subtle)]">
                 <h3 className="text-base sm:text-[17px] font-bold text-[var(--text-primary)]">
-                  Extracted Claims & Epistemic Verification Matrix
+                  Key Claims &amp; Source Checks
                 </h3>
                 <div className="space-y-4">
                   {report.supportingEvidence.map((claim) => (
@@ -527,7 +548,7 @@ ${report.sources
                       className="border-l-2 border-[var(--accent-blue)] pl-4 py-1 space-y-1.5 text-[13.5px]"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="font-bold tone-blue omnis-mono text-xs">
+                        <span className="font-semibold tone-blue text-xs">
                           {claim.category}
                         </span>
                         <VerificationBadge status={claim.verificationStatus} />
@@ -536,7 +557,7 @@ ${report.sources
                         {claim.statement}
                       </p>
                       <div className="text-[13px] text-[var(--text-muted)] flex flex-wrap items-center gap-1.5">
-                        <span>Methodology: {claim.methodologyNote} • Linked Sources:</span>
+                        <span>How verified: {claim.methodologyNote} • Sources:</span>
                         {Array.from(new Set(claim.sourceIds)).map((sid, sIdx) => {
                           const citKey = `${claim.id}-${sid}-${sIdx}`;
                           const matchedSource = report.sources.find((s) => s.id === sid);
@@ -648,7 +669,7 @@ ${report.sources
                 </div>
               </div>
 
-              {/* Contradictory Evidence: Amber Border Callout */}
+              {/* Disagreements & Nuance: Amber Border Callout */}
               {report.contradictoryEvidence.map((ce) => (
                 <div
                   key={ce.pointOfContention}
@@ -657,21 +678,21 @@ ${report.sources
                   <div className="font-bold tone-warning flex items-center gap-1.5">
                     <AlertTriangle className="w-4 h-4 shrink-0" />
                     <span>
-                      Contradictory Evidence & Methodological Disagreement: {ce.pointOfContention}
+                      Where Experts Disagree: {ce.pointOfContention}
                     </span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 border border-[var(--border-subtle)] rounded-xl overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-[var(--border-subtle)]">
-                    <div className="p-3 bg-[var(--bg-slate)]/60">
-                      <div className="font-semibold tone-cyan text-xs omnis-mono">
-                        Perspective A
+                    <div className="p-3 bg-[var(--bg-slate)]/40">
+                      <div className="font-semibold tone-cyan text-xs">
+                        One View
                       </div>
                       <p className="text-[var(--text-secondary)] mt-1 leading-relaxed">
                         {ce.perspectiveA}
                       </p>
                     </div>
-                    <div className="p-3 bg-[var(--bg-slate)]/60">
-                      <div className="font-semibold tone-violet text-xs omnis-mono">
-                        Perspective B
+                    <div className="p-3 bg-[var(--bg-slate)]/40">
+                      <div className="font-semibold tone-violet text-xs">
+                        Another View
                       </div>
                       <p className="text-[var(--text-secondary)] mt-1 leading-relaxed">
                         {ce.perspectiveB}
@@ -679,19 +700,19 @@ ${report.sources
                     </div>
                   </div>
                   <div className="text-[13.5px] text-[var(--text-secondary)] leading-relaxed">
-                    <strong className="text-[var(--text-primary)]">Epistemic Resolution:</strong>{" "}
+                    <strong className="text-[var(--text-primary)]">What the data suggests:</strong>{" "}
                     {ce.epistemicResolution}
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* Right Column: Visualisation, Statistics & Source Credibility Registry */}
+            {/* Right Column: Visualisation, Statistics & Source Registry */}
             <div className="lg:col-span-4 min-w-0 space-y-6 lg:sticky lg:top-20 lg:self-start">
-              {/* Relevant Statistics & Comparative Bar Visualisation */}
+              {/* Key Numbers & Visualisation */}
               <div className="omnis-card p-5 space-y-3">
                 <h3 className="text-base font-bold text-[var(--text-primary)]">
-                  Relevant Statistics & Visualisation
+                  Key Numbers &amp; Historical Trend
                 </h3>
                 <div className="divide-y divide-[var(--border-subtle)] border-y border-[var(--border-subtle)]">
                   {report.relevantStatistics.map((stat) => {
@@ -872,11 +893,11 @@ ${report.sources
                 </div>
               </div>
 
-              {/* Source Credibility Registry */}
+              {/* Source Registry */}
               <div className="omnis-card p-5 space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <h3 className="text-base font-bold text-[var(--text-primary)]">
-                    Transparent Source Credibility Registry ({report.sources.length})
+                    Sources Used ({report.sources.length})
                   </h3>
                   {(activeSourceId || activeClaimMeta) && (
                     <button
@@ -891,7 +912,7 @@ ${report.sources
                     </button>
                   )}
                 </div>
-                <div className="space-y-2.5 max-h-96 overflow-y-auto pr-1">
+                <div className="divide-y divide-[var(--border-subtle)] border-t border-[var(--border-subtle)] max-h-96 overflow-y-auto pr-1">
                   {report.sources.map((src) => {
                     const isFocused = activeSourceId === src.id;
                     const isClaimLinked = Boolean(
@@ -908,30 +929,31 @@ ${report.sources
                         ref={(el) => {
                           sourceRefs.current[src.id] = el;
                         }}
-                        className={`p-3 space-y-1.5 text-[13.5px] rounded-xl border transition-all ${
+                        className={`py-3 px-2.5 space-y-1.5 text-[13.5px] transition-all ${
                           isFocused
-                            ? `bg-[var(--badge-blue-bg)] border-[var(--accent-blue)] ring-1 ring-[var(--accent-blue)] ${
+                            ? `bg-[var(--badge-blue-bg)] rounded-lg ${
                                 diffMeta?.railClass ?? "border-l-2 border-l-[var(--accent-blue)]"
                               }`
                             : isClaimLinked && diffMeta
-                              ? `omnis-surface-slate border-[var(--border-strong)] ${diffMeta.railClass}`
-                              : "omnis-surface-slate border-[var(--border-subtle)]"
+                              ? `bg-[var(--bg-slate)]/45 rounded-lg ${diffMeta.railClass}`
+                              : "bg-transparent"
                         }`}
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="text-[11.5px] px-1.5 py-0.5 rounded-md badge-tone-verified font-semibold">
+                            <span className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold tone-verified">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[var(--status-verified)] shrink-0" />
                               {src.sourceType}
                             </span>
                             {diffMeta ? (
                               <span
-                                className={`text-[11px] px-1.5 py-0.5 rounded-md font-semibold omnis-mono ${diffMeta.badgeClass}`}
+                                className={`text-[11px] px-1.5 py-0.5 rounded-md font-semibold ${diffMeta.badgeClass}`}
                               >
                                 {diffMeta.label}
                               </span>
                             ) : null}
                           </div>
-                          <span className="text-[11.5px] omnis-mono text-[var(--text-muted)]">
+                          <span className="text-[11.5px] omnis-tabular text-[var(--text-muted)]">
                             [{src.id}] • {src.publishedDate}
                           </span>
                         </div>
@@ -952,8 +974,8 @@ ${report.sources
                           “{src.excerpt}”
                         </p>
                         {isClaimLinked && activeClaimMeta ? (
-                          <div className="pt-1.5 border-t border-[var(--border-subtle)] text-[11.5px] text-[var(--text-secondary)] omnis-mono">
-                            Provenance Note: {activeClaimMeta.methodologyNote}
+                          <div className="pt-1.5 border-t border-[var(--border-subtle)] text-xs text-[var(--text-secondary)]">
+                            Source check: {activeClaimMeta.methodologyNote}
                           </div>
                         ) : null}
                       </div>
@@ -962,7 +984,7 @@ ${report.sources
                 </div>
               </div>
 
-              {/* Bridge to Knowledge Graph & Timeline */}
+              {/* Bridge to Concept Map & Timeline */}
               {(() => {
                 const navigateWithSpatialFocus = (target: "knowledge-graph" | "timeline") => {
                   const matchedCountry = matchCountryCatalogFromText(
@@ -989,15 +1011,15 @@ ${report.sources
                 };
                 return (
                   <div className="omnis-card p-5 space-y-2.5 no-print">
-                    <div className="text-[13px] font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
-                      Continue Investigation Across Modules
+                    <div className="text-xs font-semibold text-[var(--text-muted)]">
+                      Explore Further
                     </div>
                     <OmnisButton
                       onClick={() => navigateWithSpatialFocus("knowledge-graph")}
                       className="w-full"
                     >
                       <Network className="w-4 h-4" />
-                      <span>Generate Knowledge Graph (Spatial Sync)</span>
+                      <span>Open Topic Map</span>
                     </OmnisButton>
                     <OmnisButton
                       variant="secondary"
@@ -1005,7 +1027,7 @@ ${report.sources
                       className="w-full"
                     >
                       <Clock className="w-4 h-4 tone-violet" />
-                      <span>Inspect Historical Timeline (Spatial Sync)</span>
+                      <span>Open Historical Timeline</span>
                     </OmnisButton>
                   </div>
                 );

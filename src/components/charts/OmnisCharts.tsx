@@ -4,6 +4,7 @@ import React, { useMemo, useState } from "react";
 import { OmnisSegmentedControl } from "@/components/ui/OmnisPrimitives";
 import {
   formatMonetaryAxisTick,
+  formatMultipleOrGap,
   formatSignedPct,
   formatSignedValue,
   getEffectiveGdpUsdBn,
@@ -144,8 +145,22 @@ export function HistoricalTrajectoryChart({
       : "";
 
   const activePoint = hoverIdx !== null ? points[hoverIdx] : points[points.length - 1];
+  const firstPoint = points[0];
+  const lastPoint = points[points.length - 1];
   const firstYear = series[0]?.year ?? 1970;
   const lastYear = series[series.length - 1]?.year ?? 2025;
+  const spanSummary = (() => {
+    if (!firstPoint || !lastPoint || lastYear <= firstYear) return null;
+    if (firstPoint.val > 0 && lastPoint.val > 0) {
+      const ratio = lastPoint.val / firstPoint.val;
+      if (ratio >= 1.5) {
+        return `Grew ${ratio.toFixed(1)}× between ${firstYear} and ${lastYear}`;
+      }
+      const pct = ((lastPoint.val - firstPoint.val) / firstPoint.val) * 100;
+      return `${pct >= 0 ? "Up" : "Down"} ${formatSignedPct(pct, 0).replace(/^[+-]/, "")} between ${firstYear} and ${lastYear}`;
+    }
+    return null;
+  })();
   const inflectionMarkers = [
     { year: 1991, label: "1991 Shift" },
     { year: 2008, label: "2008 GFC" },
@@ -179,7 +194,12 @@ export function HistoricalTrajectoryChart({
           }))}
         />
 
-        <div className="flex flex-wrap items-center gap-3 text-[13px] omnis-mono">
+        <div className="flex flex-wrap items-center gap-2.5 text-[13px] omnis-mono">
+          {spanSummary && (
+            <span className="px-2 py-0.5 rounded-md badge-tone-blue font-sans text-xs font-semibold">
+              {spanSummary}
+            </span>
+          )}
           {compareCountry && comparePoints.length > 0 && (
             <div className="inline-flex items-center gap-2 px-2 py-0.5 rounded-md bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-xs">
               <span className="inline-flex items-center gap-1 text-[var(--text-primary)] font-semibold">
@@ -400,7 +420,7 @@ export function MonteCarloFanChart({
   const w = 740;
   const h = 324;
   const padL = 60;
-  const padR = 28;
+  const padR = 96;
   const padT = 30;
   const padB = 38;
 
@@ -445,6 +465,23 @@ export function MonteCarloFanChart({
   const hovered =
     hoverIndex !== null ? trajectory[hoverIndex] : trajectory[trajectory.length - 1];
   const boundaryIdx = Math.min(3, Math.max(0, trajectory.length - 1));
+  const lastIdx = Math.max(0, trajectory.length - 1);
+  const terminalPt = trajectory[lastIdx];
+  const rawBaseEndY = terminalPt ? toY(terminalPt.baseline) : padT;
+  const rawModEndY = terminalPt ? toY(terminalPt.modifiedP50) : padT;
+  const endpointDeCollide = Math.abs(rawBaseEndY - rawModEndY) < 18;
+  const baseLabelY =
+    endpointDeCollide && rawBaseEndY <= rawModEndY
+      ? Math.max(padT + 10, rawBaseEndY - 8)
+      : endpointDeCollide
+        ? Math.min(h - padB - 6, rawBaseEndY + 12)
+        : rawBaseEndY + 4;
+  const modLabelY =
+    endpointDeCollide && rawModEndY < rawBaseEndY
+      ? Math.max(padT + 10, rawModEndY - 8)
+      : endpointDeCollide
+        ? Math.min(h - padB - 6, rawModEndY + 12)
+        : rawModEndY + 4;
 
   return (
     <div className="space-y-3">
@@ -460,7 +497,7 @@ export function MonteCarloFanChart({
             }`}
           >
             <span className="w-3 h-0.5 border-b-2 border-dashed border-[var(--chart-axis)]" />
-            Baseline Reference
+            Expected Trend
           </button>
           <button
             type="button"
@@ -472,7 +509,7 @@ export function MonteCarloFanChart({
             }`}
           >
             <span className="w-3 h-2.5 rounded-xs bg-[var(--chart-blue-area)] border border-[var(--chart-blue)]" />
-            P10–P90 Confidence Band
+            Likely range (8 of 10 runs)
           </button>
         </div>
 
@@ -480,12 +517,12 @@ export function MonteCarloFanChart({
           <div className="px-3 py-1 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] omnis-mono text-xs flex flex-wrap items-center gap-3">
             <span className="font-bold text-[var(--text-primary)]">{hovered.year}</span>
             <span className="tone-blue font-semibold">
-              P50: {hovered.modifiedP50} {units.split(" ")[0]}
+              Scenario: {hovered.modifiedP50} {units.split(" ")[0]}
             </span>
             <span className="text-[var(--text-muted)]">
-              [{hovered.modifiedP10} – {hovered.modifiedP90}]
+              [{hovered.modifiedP10}–{hovered.modifiedP90}]
             </span>
-            <span className="text-[var(--text-secondary)]">Base: {hovered.baseline}</span>
+            <span className="text-[var(--text-secondary)]">Trend: {hovered.baseline}</span>
           </div>
         )}
       </div>
@@ -592,6 +629,47 @@ export function MonteCarloFanChart({
             strokeWidth="2.8"
             strokeLinecap="round"
           />
+
+          {terminalPt && (
+            <g>
+              {showBaseline && (
+                <>
+                  <circle
+                    cx={toX(lastIdx)}
+                    cy={rawBaseEndY}
+                    r={3.5}
+                    fill="var(--chart-axis)"
+                  />
+                  <text
+                    x={toX(lastIdx) + 7}
+                    y={baseLabelY}
+                    fontSize="11.5"
+                    fontWeight="600"
+                    fill="var(--chart-axis)"
+                    className="omnis-mono"
+                  >
+                    Trend {terminalPt.baseline}
+                  </text>
+                </>
+              )}
+              <circle
+                cx={toX(lastIdx)}
+                cy={rawModEndY}
+                r={4.2}
+                fill="var(--chart-blue)"
+              />
+              <text
+                x={toX(lastIdx) + 7}
+                y={modLabelY}
+                fontSize="11.5"
+                fontWeight="700"
+                fill="var(--chart-blue)"
+                className="omnis-mono"
+              >
+                Scenario {terminalPt.modifiedP50}
+              </text>
+            </g>
+          )}
 
           {hoverIndex !== null && (
             <g>
@@ -723,8 +801,11 @@ export function ComparisonRadarChart({
   leftCountry: CountryIntelligenceProfile;
   rightCountry: CountryIntelligenceProfile;
 }) {
+  const [viewMode, setViewMode] = useState<"bars" | "radar">("bars");
   const [hoveredAxis, setHoveredAxis] = useState<number | null>(null);
 
+  const perCapitaAvailable = (c: CountryIntelligenceProfile) =>
+    hasSectorMetricValue(c, c.gdpPerCapitaUsd) && c.gdpPerCapitaUsd > 0;
   const growthAvailable = (c: CountryIntelligenceProfile) =>
     !(c.provenance.missingData && c.gdpGrowthPct === 0 && getEffectiveGdpUsdBn(c) === 0);
   const renewAvailable = (c: CountryIntelligenceProfile) =>
@@ -740,7 +821,7 @@ export function ComparisonRadarChart({
 
   const radarAxes = [
     {
-      label: "Real Growth",
+      label: "Annual Growth",
       maxLabel: "-2..+10%",
       availL: growthAvailable(leftCountry),
       availR: growthAvailable(rightCountry),
@@ -754,7 +835,7 @@ export function ComparisonRadarChart({
           : "N/A",
     },
     {
-      label: "Clean Energy",
+      label: "Clean Power",
       maxLabel: "0..100%",
       availL: renewAvailable(leftCountry),
       availR: renewAvailable(rightCountry),
@@ -772,7 +853,7 @@ export function ComparisonRadarChart({
           : "N/A",
     },
     {
-      label: "AI Index",
+      label: "AI Readiness",
       maxLabel: "0..100",
       availL: aiAvailable(leftCountry),
       availR: aiAvailable(rightCountry),
@@ -828,7 +909,7 @@ export function ComparisonRadarChart({
           : "N/A",
     },
     {
-      label: "Longevity",
+      label: "Life Span",
       maxLabel: "50..90y",
       availL: longevityAvailable(leftCountry),
       availR: longevityAvailable(rightCountry),
@@ -846,6 +927,41 @@ export function ComparisonRadarChart({
           : "N/A",
     },
   ];
+
+  const dumbbellRows = [
+    {
+      label: "Income per person",
+      availL: perCapitaAvailable(leftCountry),
+      availR: perCapitaAvailable(rightCountry),
+      l: perCapitaAvailable(leftCountry)
+        ? Math.max(0, Math.min(1, leftCountry.gdpPerCapitaUsd / 90000))
+        : 0,
+      r: perCapitaAvailable(rightCountry)
+        ? Math.max(0, Math.min(1, rightCountry.gdpPerCapitaUsd / 90000))
+        : 0,
+      rawL: perCapitaAvailable(leftCountry)
+        ? `$${leftCountry.gdpPerCapitaUsd.toLocaleString()}`
+        : "N/A",
+      rawR: perCapitaAvailable(rightCountry)
+        ? `$${rightCountry.gdpPerCapitaUsd.toLocaleString()}`
+        : "N/A",
+      gapText:
+        perCapitaAvailable(leftCountry) && perCapitaAvailable(rightCountry)
+          ? formatMultipleOrGap(leftCountry.gdpPerCapitaUsd, rightCountry.gdpPerCapitaUsd, "ratio")
+          : "N/A",
+    },
+    ...radarAxes.map((ax) => ({
+      label: ax.label,
+      availL: ax.availL,
+      availR: ax.availR,
+      l: ax.l,
+      r: ax.r,
+      rawL: ax.rawL,
+      rawR: ax.rawR,
+      gapText: ax.deltaLabel,
+    })),
+  ];
+
   const leftHasMissing = radarAxes.some((a) => !a.availL);
   const rightHasMissing = radarAxes.some((a) => !a.availR);
 
@@ -880,159 +996,242 @@ export function ComparisonRadarChart({
   ].filter(Boolean);
 
   return (
-    <div className="space-y-3">
-      <svg viewBox="0 0 420 330" className="w-full h-64 mx-auto">
-        {/* Explicit 0% inner reference ring */}
-        <circle
-          cx={cx}
-          cy={cy}
-          r={zeroRingRadius}
-          fill="none"
-          stroke="var(--chart-axis)"
-          strokeOpacity={0.55}
-          strokeDasharray="2,2"
+    <div className="space-y-3.5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <OmnisSegmentedControl<"bars" | "radar">
+          groupId={`compare-viz-${leftCountry.iso3}-${rightCountry.iso3}`}
+          ariaLabel="Comparison chart view"
+          size="sm"
+          value={viewMode}
+          onChange={setViewMode}
+          options={[
+            { value: "bars", label: "Direct Range" },
+            { value: "radar", label: "Shape View" },
+          ]}
         />
-        <text
-          x={cx + zeroRingRadius * Math.cos(-Math.PI / 2 + Math.PI / radarAxes.length)}
-          y={cy + zeroRingRadius * Math.sin(-Math.PI / 2 + Math.PI / radarAxes.length) + 3}
-          textAnchor="middle"
-          fontSize="9.5"
-          fill="var(--text-muted)"
-          className="omnis-mono"
-        >
-          min
-        </text>
-        {[0.25, 0.5, 0.75, 1.0].map((ring) => {
-          const r = zeroRingRadius + (radius - zeroRingRadius) * ring;
-          const labelAngle = -Math.PI / 2 + Math.PI / radarAxes.length;
-          return (
-            <g key={ring}>
-              <circle
-                cx={cx}
-                cy={cy}
-                r={r}
-                fill="none"
-                stroke="var(--chart-grid)"
-                strokeDasharray="3,3"
-              />
-              <text
-                x={cx + r * Math.cos(labelAngle)}
-                y={cy + r * Math.sin(labelAngle) + 3}
-                textAnchor="middle"
-                fontSize="9"
-                fill="var(--text-muted)"
-                className="omnis-mono"
-              >
-                {Math.round(ring * 100)}%
-              </text>
-            </g>
-          );
-        })}
-        {radarAxes.map((axis, i) => {
-          const angle = (Math.PI * 2 * i) / radarAxes.length - Math.PI / 2;
-          const x2 = cx + radius * Math.cos(angle);
-          const y2 = cy + radius * Math.sin(angle);
-          const lx = cx + (radius + 44) * Math.cos(angle);
-          const ly = cy + (radius + 24) * Math.sin(angle);
-          return (
-            <g
-              key={axis.label}
-              className="cursor-pointer"
-              onMouseEnter={() => setHoveredAxis(i)}
-              onMouseLeave={() => setHoveredAxis(null)}
-              onClick={() => setHoveredAxis((prev) => (prev === i ? null : i))}
-            >
-              <line x1={cx} y1={cy} x2={x2} y2={y2} stroke="var(--chart-grid)" strokeWidth="1.2" />
-              <text
-                x={lx}
-                y={ly}
-                textAnchor="middle"
-                fontSize="11.5"
-                fontWeight={hoveredAxis === i ? "700" : "500"}
-                fill={hoveredAxis === i ? "var(--text-primary)" : "var(--chart-axis)"}
-                className="omnis-mono"
-              >
-                {axis.label}
-              </text>
-              <text
-                x={lx}
-                y={ly + 12}
-                textAnchor="middle"
-                fontSize="9.5"
-                fill="var(--text-muted)"
-                className="omnis-mono"
-              >
-                [{axis.maxLabel}]
-              </text>
-            </g>
-          );
-        })}
+        <div className="flex items-center gap-3 text-xs font-semibold">
+          <span className="inline-flex items-center gap-1.5 tone-blue">
+            <span className="w-2.5 h-2.5 rounded-full bg-[var(--chart-blue)]" />
+            {leftCountry.iso3}
+          </span>
+          <span className="inline-flex items-center gap-1.5 tone-violet">
+            <span className="w-2.5 h-2.5 rounded-full bg-[var(--chart-violet)]" />
+            {rightCountry.iso3}
+          </span>
+        </div>
+      </div>
 
-        <polygon
-          points={buildPolygon("r")}
-          fill="var(--chart-violet-area)"
-          fillOpacity={rightHasMissing ? 0.45 : 1}
-          stroke="var(--chart-violet)"
-          strokeWidth="2.1"
-          strokeDasharray={rightHasMissing ? "4,3" : undefined}
-        />
-        <polygon
-          points={buildPolygon("l")}
-          fill="var(--chart-blue-area)"
-          fillOpacity={leftHasMissing ? 0.45 : 1}
-          stroke="var(--chart-blue)"
-          strokeWidth="2.4"
-          strokeDasharray={leftHasMissing ? "4,3" : undefined}
-        />
-
-        {radarAxes.map((axis, i) => {
-          const pl = getCoord(i, axis.l);
-          const pr = getCoord(i, axis.r);
-          return (
-            <g
-              key={`dots-${axis.label}`}
-              className="cursor-pointer"
-              onMouseEnter={() => setHoveredAxis(i)}
-              onClick={() => setHoveredAxis((prev) => (prev === i ? null : i))}
+      {viewMode === "bars" ? (
+        <div className="divide-y divide-[var(--border-subtle)] border-y border-[var(--border-subtle)]">
+          {dumbbellRows.map((row) => {
+            const leftPct = Math.round(row.l * 100);
+            const rightPct = Math.round(row.r * 100);
+            const bridgeLeft = Math.min(leftPct, rightPct);
+            const bridgeWidth = Math.max(0, Math.abs(rightPct - leftPct));
+            return (
+              <div key={row.label} className="py-2.5 space-y-1.5 text-[13px]">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold text-[var(--text-primary)]">{row.label}</span>
+                  <div className="flex items-center gap-1.5 omnis-mono omnis-tabular text-xs">
+                    <span className="tone-blue font-semibold">{row.rawL}</span>
+                    <span className="text-[var(--text-muted)]">vs</span>
+                    <span className="tone-violet font-semibold">{row.rawR}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <div className="relative flex-1 h-4 flex items-center">
+                    <div className="w-full h-1.5 rounded-full bg-[var(--bg-slate)]" />
+                    {row.availL && row.availR && (
+                      <div
+                        className="absolute h-1 rounded-full bg-[var(--border-strong)] opacity-60"
+                        style={{ left: `${bridgeLeft}%`, width: `${bridgeWidth}%` }}
+                      />
+                    )}
+                    <span
+                      aria-hidden="true"
+                      className={`absolute -translate-x-1/2 w-3.5 h-3.5 rounded-full border-2 ${
+                        row.availR
+                          ? "bg-[var(--chart-violet)] border-[var(--bg-graphite)]"
+                          : "bg-[var(--bg-graphite)] border-dashed border-[var(--chart-violet)]"
+                      }`}
+                      style={{ left: `${rightPct}%` }}
+                    />
+                    <span
+                      aria-hidden="true"
+                      className={`absolute -translate-x-1/2 w-3.5 h-3.5 rounded-full border-2 ${
+                        row.availL
+                          ? "bg-[var(--chart-blue)] border-[var(--bg-graphite)]"
+                          : "bg-[var(--bg-graphite)] border-dashed border-[var(--chart-blue)]"
+                      }`}
+                      style={{ left: `${leftPct}%` }}
+                    />
+                  </div>
+                  <span className="w-24 text-right text-xs font-medium text-[var(--text-muted)] truncate omnis-tabular">
+                    {row.gapText}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <>
+          <div className="text-xs text-[var(--text-muted)] text-center font-medium">
+            Outer edge = stronger global score (tap any axis for exact values)
+          </div>
+          <svg viewBox="0 0 420 330" className="w-full h-64 mx-auto">
+            {/* Explicit 0% inner reference ring */}
+            <circle
+              cx={cx}
+              cy={cy}
+              r={zeroRingRadius}
+              fill="none"
+              stroke="var(--chart-axis)"
+              strokeOpacity={0.55}
+              strokeDasharray="2,2"
+            />
+            <text
+              x={cx + zeroRingRadius * Math.cos(-Math.PI / 2 + Math.PI / radarAxes.length)}
+              y={cy + zeroRingRadius * Math.sin(-Math.PI / 2 + Math.PI / radarAxes.length) + 3}
+              textAnchor="middle"
+              fontSize="10"
+              fill="var(--text-muted)"
+              className="omnis-mono"
             >
-              <circle
-                cx={pr.x}
-                cy={pr.y}
-                r={hoveredAxis === i ? 5 : 3.5}
-                fill={axis.availR ? "var(--chart-violet)" : "var(--bg-graphite)"}
-                stroke={axis.availR ? undefined : "var(--chart-violet)"}
-                strokeWidth={axis.availR ? undefined : 1.5}
-                strokeDasharray={axis.availR ? undefined : "2,2"}
-              />
-              <circle
-                cx={pl.x}
-                cy={pl.y}
-                r={hoveredAxis === i ? 5.2 : 3.8}
-                fill={axis.availL ? "var(--chart-blue)" : "var(--bg-graphite)"}
-                stroke={axis.availL ? undefined : "var(--chart-blue)"}
-                strokeWidth={axis.availL ? undefined : 1.5}
-                strokeDasharray={axis.availL ? undefined : "2,2"}
-              />
-            </g>
-          );
-        })}
-      </svg>
+              min
+            </text>
+            {[0.25, 0.5, 0.75, 1.0].map((ring) => {
+              const r = zeroRingRadius + (radius - zeroRingRadius) * ring;
+              const labelAngle = -Math.PI / 2 + Math.PI / radarAxes.length;
+              return (
+                <g key={ring}>
+                  <circle
+                    cx={cx}
+                    cy={cy}
+                    r={r}
+                    fill="none"
+                    stroke="var(--chart-grid)"
+                    strokeDasharray="3,3"
+                  />
+                  <text
+                    x={cx + r * Math.cos(labelAngle)}
+                    y={cy + r * Math.sin(labelAngle) + 3}
+                    textAnchor="middle"
+                    fontSize="10"
+                    fill="var(--text-muted)"
+                    className="omnis-mono"
+                  >
+                    {Math.round(ring * 100)}%
+                  </text>
+                </g>
+              );
+            })}
+            {radarAxes.map((axis, i) => {
+              const angle = (Math.PI * 2 * i) / radarAxes.length - Math.PI / 2;
+              const x2 = cx + radius * Math.cos(angle);
+              const y2 = cy + radius * Math.sin(angle);
+              const lx = cx + (radius + 44) * Math.cos(angle);
+              const ly = cy + (radius + 24) * Math.sin(angle);
+              return (
+                <g
+                  key={axis.label}
+                  className="cursor-pointer"
+                  onMouseEnter={() => setHoveredAxis(i)}
+                  onMouseLeave={() => setHoveredAxis(null)}
+                  onClick={() => setHoveredAxis((prev) => (prev === i ? null : i))}
+                >
+                  <line x1={cx} y1={cy} x2={x2} y2={y2} stroke="var(--chart-grid)" strokeWidth="1.2" />
+                  <text
+                    x={lx}
+                    y={ly}
+                    textAnchor="middle"
+                    fontSize="11.5"
+                    fontWeight={hoveredAxis === i ? "700" : "500"}
+                    fill={hoveredAxis === i ? "var(--text-primary)" : "var(--chart-axis)"}
+                  >
+                    {axis.label}
+                  </text>
+                  <text
+                    x={lx}
+                    y={ly + 12}
+                    textAnchor="middle"
+                    fontSize="10"
+                    fill="var(--text-muted)"
+                    className="omnis-mono"
+                  >
+                    {axis.maxLabel}
+                  </text>
+                </g>
+              );
+            })}
+
+            <polygon
+              points={buildPolygon("r")}
+              fill="var(--chart-violet-area)"
+              fillOpacity={rightHasMissing ? 0.45 : 1}
+              stroke="var(--chart-violet)"
+              strokeWidth="2.1"
+              strokeDasharray={rightHasMissing ? "4,3" : undefined}
+            />
+            <polygon
+              points={buildPolygon("l")}
+              fill="var(--chart-blue-area)"
+              fillOpacity={leftHasMissing ? 0.45 : 1}
+              stroke="var(--chart-blue)"
+              strokeWidth="2.4"
+              strokeDasharray={leftHasMissing ? "4,3" : undefined}
+            />
+
+            {radarAxes.map((axis, i) => {
+              const pl = getCoord(i, axis.l);
+              const pr = getCoord(i, axis.r);
+              return (
+                <g
+                  key={`dots-${axis.label}`}
+                  className="cursor-pointer"
+                  onMouseEnter={() => setHoveredAxis(i)}
+                  onClick={() => setHoveredAxis((prev) => (prev === i ? null : i))}
+                >
+                  <circle
+                    cx={pr.x}
+                    cy={pr.y}
+                    r={hoveredAxis === i ? 5 : 3.5}
+                    fill={axis.availR ? "var(--chart-violet)" : "var(--bg-graphite)"}
+                    stroke={axis.availR ? undefined : "var(--chart-violet)"}
+                    strokeWidth={axis.availR ? undefined : 1.5}
+                    strokeDasharray={axis.availR ? undefined : "2,2"}
+                  />
+                  <circle
+                    cx={pl.x}
+                    cy={pl.y}
+                    r={hoveredAxis === i ? 5.2 : 3.8}
+                    fill={axis.availL ? "var(--chart-blue)" : "var(--bg-graphite)"}
+                    stroke={axis.availL ? undefined : "var(--chart-blue)"}
+                    strokeWidth={axis.availL ? undefined : 1.5}
+                    strokeDasharray={axis.availL ? undefined : "2,2"}
+                  />
+                </g>
+              );
+            })}
+          </svg>
+        </>
+      )}
 
       {leftHasMissing || rightHasMissing ? (
-        <div className="px-2.5 py-1 rounded-md badge-tone-warning text-[11px] omnis-mono text-center">
-          Dashed ring vertices denote N/A metrics pending upstream sector ingestion.
+        <div className="px-2.5 py-1 rounded-md badge-tone-warning text-xs text-center">
+          N/A indicates data is currently unavailable from official sources.
         </div>
       ) : null}
 
       {contractionNotes.length > 0 ? (
-        <div className="px-2.5 py-1.5 rounded-md badge-tone-warning text-xs omnis-mono text-center">
-          Severe contraction clamped to domain min (-2%): {contractionNotes.join(" • ")}
+        <div className="px-2.5 py-1.5 rounded-md badge-tone-warning text-xs text-center">
+          Severe contraction clamped to chart min (-2%): {contractionNotes.join(" • ")}
         </div>
       ) : null}
 
-      {activeAxis ? (
-        <div className="omnis-surface-slate px-3 py-2 text-[13px] flex flex-wrap items-center justify-between gap-2 omnis-mono">
-          <span className="font-bold text-[var(--text-primary)]">{activeAxis.label}</span>
+      {viewMode === "radar" && activeAxis ? (
+        <div className="border-t border-[var(--border-subtle)] pt-2.5 px-1 text-[13px] flex flex-wrap items-center justify-between gap-2 omnis-mono">
+          <span className="font-sans font-bold text-[var(--text-primary)]">{activeAxis.label}</span>
           <span className="tone-blue font-semibold">
             {leftCountry.iso3}: {activeAxis.rawL}
           </span>
@@ -1040,24 +1239,10 @@ export function ComparisonRadarChart({
             {rightCountry.iso3}: {activeAxis.rawR}
           </span>
           <span className="px-1.5 py-0.5 rounded badge-tone-blue text-xs font-bold">
-            Δ {activeAxis.deltaLabel}
+            {activeAxis.deltaLabel}
           </span>
         </div>
-      ) : (
-        <div className="flex flex-wrap items-center justify-center gap-4 text-[13px]">
-          <span className="inline-flex items-center gap-1.5 font-semibold tone-blue">
-            <span className="w-3 h-3 rounded-xs bg-[var(--chart-blue)]" />
-            {leftCountry.name} ({leftCountry.iso3})
-          </span>
-          <span className="inline-flex items-center gap-1.5 font-semibold tone-violet">
-            <span className="w-3 h-3 rounded-xs bg-[var(--chart-violet)]" />
-            {rightCountry.name} ({rightCountry.iso3})
-          </span>
-          <span className="text-xs text-[var(--text-muted)] omnis-mono">
-            Hover or tap any axis for vertex delta
-          </span>
-        </div>
-      )}
+      ) : null}
     </div>
   );
 }

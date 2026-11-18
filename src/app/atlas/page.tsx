@@ -27,8 +27,10 @@ import {
 } from "@/lib/data/world-catalog";
 import {
   formatCountryMetricOrNa,
+  formatPopulationHuman,
   formatSignedPct,
   formatSignedValue,
+  formatUsdBnCompact,
   getEffectiveGdpUsdBn,
   getEffectiveGdpYear,
   hasEnergyProfileData,
@@ -280,22 +282,22 @@ function GlobalAtlasContent() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* Header & Layer Switcher */}
       <OmnisModuleHeader
-        moduleTag="MODULE 01 • GLOBAL INTELLIGENCE GLOBE & SOVEREIGN ATLAS"
-        title="Interactive 3D Earth & Country Intelligence Experience"
-        subtitle="Explore Survey of India & sovereign geodesic country geometry, day/night illumination, and deep sovereign indicators across 7 calibrated analytical lenses."
+        moduleTag="World Atlas"
+        title="Interactive 3D Earth & Country Profiles"
+        subtitle="Explore accurate borders, live day/night sunlight, and country data across economy, population, clean energy, technology, and world affairs."
         icon={<Globe2 className="w-3.5 h-3.5" />}
         mobileFilterLabel={`Layer: ${LAYERS.find((l) => l.id === activeLayer)?.label ?? "Layers"}`}
         actions={
           <>
             <OmnisButton onClick={handleSaveCountry}>
               {savedNotice ? <Check className="w-3.5 h-3.5" /> : <Bookmark className="w-3.5 h-3.5" />}
-              <span>{savedNotice ? "Saved to Workspace" : `Save ${country.name} Dossier`}</span>
+              <span>{savedNotice ? "Saved to Workspace" : `Save ${country.name} Profile`}</span>
             </OmnisButton>
             <Link
               href={`/research?q=${encodeURIComponent(
                 `Explain ${country.name}'s economic and technological development`
               )}`}
-              className="omnis-magnetic-arrow px-3.5 py-2 rounded-lg bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[13px] font-semibold text-[var(--text-primary)] inline-flex items-center gap-1.5 transition-colors"
+              className="omnis-magnetic-arrow min-h-[44px] sm:min-h-0 px-3.5 py-2 rounded-lg bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[13px] font-semibold text-[var(--text-primary)] inline-flex items-center gap-1.5 transition-colors"
             >
               <FileSearch className="w-3.5 h-3.5 tone-blue" />
               <span>Deep Research</span>
@@ -303,18 +305,18 @@ function GlobalAtlasContent() {
             </Link>
             <Link
               href={`/knowledge-graph?topic=${encodeURIComponent(country.name)}`}
-              className="omnis-magnetic-arrow px-3.5 py-2 rounded-lg bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[13px] font-semibold text-[var(--text-primary)] inline-flex items-center gap-1.5 transition-colors"
+              className="omnis-magnetic-arrow min-h-[44px] sm:min-h-0 px-3.5 py-2 rounded-lg bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[13px] font-semibold text-[var(--text-primary)] inline-flex items-center gap-1.5 transition-colors"
             >
               <Network className="w-3.5 h-3.5 tone-violet" />
-              <span>Knowledge Graph</span>
+              <span>Topic Map</span>
               <ArrowRight className="omnis-arrow-glyph w-3 h-3 opacity-65" />
             </Link>
             <Link
               href={`/simulations?category=economics&country=${country.iso3}`}
-              className="omnis-magnetic-arrow px-3.5 py-2 rounded-lg bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[13px] font-semibold text-[var(--text-primary)] inline-flex items-center gap-1.5 transition-colors"
+              className="omnis-magnetic-arrow min-h-[44px] sm:min-h-0 px-3.5 py-2 rounded-lg bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[13px] font-semibold text-[var(--text-primary)] inline-flex items-center gap-1.5 transition-colors"
             >
               <TrendingUp className="w-3.5 h-3.5 tone-verified" />
-              <span>Simulate Macro Shock</span>
+              <span>Run What-If Scenario</span>
               <ArrowRight className="omnis-arrow-glyph w-3 h-3 opacity-65" />
             </Link>
           </>
@@ -394,50 +396,73 @@ function GlobalAtlasContent() {
           </div>
 
           {country.liveWorldBankOverride?.retrievedFromApi && (
-            <div className="px-3 py-1.5 rounded-lg badge-tone-verified text-[13px] font-semibold omnis-mono">
-              ✓ Live World Bank API v2 Synced (Latest Year: {country.liveWorldBankOverride.latestYear})
+            <div className="px-3 py-1.5 rounded-lg badge-tone-verified text-[13px] font-semibold omnis-tabular">
+              ✓ World Bank data synced: {country.liveWorldBankOverride.latestYear}
             </div>
           )}
         </div>
 
-        {/* Provenance & Methodology Banner */}
-        <ProvenancePanel provenance={country.provenance} />
+        {/* Plain-English 1-Sentence Snapshot */}
+        <div
+          className="border-l-2 border-[var(--accent-blue)] pl-4 py-1 text-[15px] sm:text-base text-[var(--text-primary)] leading-relaxed"
+          style={{ fontFamily: "var(--font-editorial), Georgia, serif" }}
+        >
+          {effectiveGdpUsdBn > 0
+            ? `${country.name} is a ${formatUsdBnCompact(effectiveGdpUsdBn)} economy${
+                country.population > 0
+                  ? ` of ${formatPopulationHuman(country.population, "long")} people`
+                  : ""
+              }${
+                hasSectorMetricValue(country, country.gdpPerCapitaUsd) && country.gdpPerCapitaUsd > 0
+                  ? `, averaging $${country.gdpPerCapitaUsd.toLocaleString()} per person`
+                  : ""
+              }, growing at ${formatSignedPct(country.gdpGrowthPct)} a year.`
+            : `${country.name} (${country.iso3}) currently has partial World Bank data returned; verified geographic identifiers and available indicators are listed below.`}
+        </div>
 
-        {/* Seamless Architectural 2x3 Sovereign Discipline Grid (De-boxed Hairline Matrix) */}
+        {/* Provenance & Methodology Banner */}
+        <ProvenancePanel provenance={country.provenance} compact />
+
+        {/* Seamless Architectural 2x3 Country Discipline Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 border border-[var(--border-subtle)] rounded-2xl overflow-hidden bg-[var(--bg-graphite)]">
-          {/* 01 / MACROECONOMICS */}
+          {/* ECONOMY */}
           <div className="p-5 border-b border-[var(--border-subtle)] md:border-r space-y-3">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider tone-blue omnis-mono">
-              <TrendingUp className="w-3.5 h-3.5" />
-              <span>01 / Macroeconomics</span>
+            <div className="flex items-center gap-2 text-sm font-bold tone-blue">
+              <TrendingUp className="w-4 h-4" />
+              <span>Economy</span>
             </div>
             <div className="divide-y divide-[var(--border-subtle)] text-[13.5px] sm:text-sm">
-              <div className="flex items-baseline justify-between py-1.5 gap-2">
-                <span className="text-[var(--text-muted)]">Nominal GDP</span>
+              <div className="flex items-baseline justify-between py-2 gap-2">
+                <span className="text-[var(--text-secondary)]">Total Economy (GDP)</span>
                 <span className="inline-flex flex-wrap items-center justify-end gap-1.5 font-bold omnis-mono omnis-tabular text-[var(--text-primary)]">
-                  <span>
-                    {effectiveGdpUsdBn > 0 ? `$${effectiveGdpUsdBn.toLocaleString()}B` : "N/A"}
+                  <span title={effectiveGdpUsdBn > 0 ? `$${effectiveGdpUsdBn.toLocaleString()} billion` : "N/A"}>
+                    {effectiveGdpUsdBn > 0 ? formatUsdBnCompact(effectiveGdpUsdBn) : "N/A"}
                   </span>
+                  {effectiveGdpUsdBn > 0 && (
+                    <span className="text-xs font-normal text-[var(--text-muted)]">
+                      (${effectiveGdpUsdBn.toLocaleString()}B)
+                    </span>
+                  )}
                   {effectiveGdpYear && Math.abs(gdpDeltaVsBaseline) >= 0.1 ? (
                     <span
-                      title={`Static baseline: $${country.gdpUsdBn.toLocaleString()}B vs Live WDI ${effectiveGdpYear}`}
+                      title={`Static baseline: $${country.gdpUsdBn.toLocaleString()}B vs World Bank ${effectiveGdpYear}`}
                       className="px-1.5 py-0.5 rounded text-[11px] font-semibold badge-tone-verified"
                     >
-                      Live WDI {effectiveGdpYear} ({formatSignedValue(gdpDeltaVsBaseline, "B", 1)})
+                      World Bank {effectiveGdpYear}
                     </span>
                   ) : null}
                 </span>
               </div>
-              <div className="flex items-baseline justify-between py-1.5 gap-2">
-                <span className="text-[var(--text-muted)]">GDP Per Capita</span>
+              <div className="flex items-baseline justify-between py-2 gap-2">
+                <span className="text-[var(--text-secondary)]">Average Income per Person</span>
                 <span className="font-bold omnis-mono omnis-tabular text-[var(--text-primary)]">
                   {hasSectorMetricValue(country, country.gdpPerCapitaUsd) && country.gdpPerCapitaUsd > 0
                     ? `$${country.gdpPerCapitaUsd.toLocaleString()}`
                     : "N/A"}
                 </span>
               </div>
-              <div className="flex items-baseline justify-between py-1.5 gap-2">
-                <span className="text-[var(--text-muted)]">Real GDP Growth</span>
+              <div className="flex items-baseline justify-between py-2 gap-2">
+                <span className="text-[var(--text-secondary)]">Annual Growth Rate</span>
                 <span
                   className={`font-bold omnis-mono omnis-tabular ${
                     country.provenance.missingData &&
@@ -456,121 +481,136 @@ function GlobalAtlasContent() {
                     : `${formatSignedPct(country.gdpGrowthPct)} / yr`}
                 </span>
               </div>
-              <div className="flex items-baseline justify-between py-1.5 gap-2">
-                <span className="text-[var(--text-muted)]">CPI Inflation / Unemp.</span>
+              <div className="flex items-baseline justify-between py-2 gap-2">
+                <span className="text-[var(--text-secondary)]">Annual Price Rise (Inflation)</span>
                 <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
-                  {formatCountryMetricOrNa(country, country.inflationPct, (v) => `${v}%`)} /{" "}
+                  {formatCountryMetricOrNa(country, country.inflationPct, (v) => `${v}%`)}
+                </span>
+              </div>
+              <div className="flex items-baseline justify-between py-2 gap-2">
+                <span className="text-[var(--text-secondary)]">Unemployment Rate</span>
+                <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
                   {formatCountryMetricOrNa(country, country.unemploymentPct, (v) => `${v}%`)}
                 </span>
               </div>
-              <div className="flex items-baseline justify-between py-1.5 gap-2">
-                <span className="text-[var(--text-muted)]">Public Debt / Gov Exp</span>
+              <div className="flex items-baseline justify-between py-2 gap-2">
+                <span className="text-[var(--text-secondary)]">Public Debt (% of Economy)</span>
                 <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
-                  {formatCountryMetricOrNa(country, country.publicDebtPctGdp, (v) => `${v}%`)} /{" "}
-                  {formatCountryMetricOrNa(country, country.govExpenditurePctGdp, (v) => `${v}%`)}
+                  {formatCountryMetricOrNa(country, country.publicDebtPctGdp, (v) => `${v}%`)}
                 </span>
               </div>
-              <div className="flex items-baseline justify-between pt-1.5 gap-2">
-                <span className="text-[var(--text-muted)]">FDI Inflow / Trade</span>
+              <div className="flex items-baseline justify-between py-2 gap-2">
+                <span className="text-[var(--text-secondary)]">Government Spending</span>
                 <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
-                  {formatCountryMetricOrNa(country, country.fdiNetInflowsUsdBn, (v) => `$${v}B`)} /{" "}
-                  {formatCountryMetricOrNa(country, country.tradeBalanceUsdBn, (v) => `$${v}B`)}
+                  {formatCountryMetricOrNa(country, country.govExpenditurePctGdp, (v) => `${v}% of GDP`)}
+                </span>
+              </div>
+              <div className="flex items-baseline justify-between pt-2 gap-2">
+                <span className="text-[var(--text-secondary)]">Foreign Investment Inflow</span>
+                <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
+                  {formatCountryMetricOrNa(country, country.fdiNetInflowsUsdBn, (v) => `$${v}B`)}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* 02 / DEMOGRAPHICS */}
+          {/* PEOPLE & LIVING STANDARDS */}
           <div className="p-5 border-b border-[var(--border-subtle)] lg:border-r space-y-3">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider tone-violet omnis-mono">
-              <Users className="w-3.5 h-3.5" />
-              <span>02 / Demographics</span>
+            <div className="flex items-center gap-2 text-sm font-bold tone-violet">
+              <Users className="w-4 h-4" />
+              <span>People &amp; Health</span>
             </div>
             <div className="divide-y divide-[var(--border-subtle)] text-[13.5px] sm:text-sm">
-              <div className="flex items-baseline justify-between py-1.5 gap-2">
-                <span className="text-[var(--text-muted)]">Total Population</span>
-                <span className="font-bold omnis-mono omnis-tabular text-[var(--text-primary)]">
-                  {country.population > 0 ? `${(country.population / 1e6).toFixed(2)}M` : "N/A"}
+              <div className="flex items-baseline justify-between py-2 gap-2">
+                <span className="text-[var(--text-secondary)]">Total Population</span>
+                <span
+                  title={country.population > 0 ? country.population.toLocaleString() : "N/A"}
+                  className="font-bold omnis-mono omnis-tabular text-[var(--text-primary)]"
+                >
+                  {formatPopulationHuman(country.population, "long")}
                 </span>
               </div>
-              <div className="flex items-baseline justify-between py-1.5 gap-2">
-                <span className="text-[var(--text-muted)]">Density / Median Age</span>
+              <div className="flex items-baseline justify-between py-2 gap-2">
+                <span className="text-[var(--text-secondary)]">Life Expectancy</span>
+                <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
+                  {formatCountryMetricOrNa(country, country.lifeExpectancyYears, (v) => `${v} yrs`)}
+                </span>
+              </div>
+              <div className="flex items-baseline justify-between py-2 gap-2">
+                <span className="text-[var(--text-secondary)]">Median Age</span>
+                <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
+                  {formatCountryMetricOrNa(country, country.medianAgeYears, (v) => `${v} yrs`)}
+                </span>
+              </div>
+              <div className="flex items-baseline justify-between py-2 gap-2">
+                <span className="text-[var(--text-secondary)]">People per km²</span>
                 <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
                   {hasSectorMetricValue(country, country.populationDensityPerSqKm)
-                    ? `${country.populationDensityPerSqKm}/km²`
-                    : "N/A"}{" "}
-                  •{" "}
-                  {formatCountryMetricOrNa(country, country.medianAgeYears, (v) => `${v}y`)}
+                    ? `${country.populationDensityPerSqKm.toLocaleString()}/km²`
+                    : "N/A"}
                 </span>
               </div>
-              <div className="flex items-baseline justify-between py-1.5 gap-2">
-                <span className="text-[var(--text-muted)]">Urbanisation / Life Exp</span>
+              <div className="flex items-baseline justify-between py-2 gap-2">
+                <span className="text-[var(--text-secondary)]">Living in Cities</span>
                 <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
-                  {formatCountryMetricOrNa(country, country.urbanisationPct, (v) => `${v}%`)} •{" "}
-                  {formatCountryMetricOrNa(country, country.lifeExpectancyYears, (v) => `${v}y`)}
+                  {formatCountryMetricOrNa(country, country.urbanisationPct, (v) => `${v}%`)}
                 </span>
               </div>
-              <div className="flex items-baseline justify-between py-1.5 gap-2">
-                <span className="text-[var(--text-muted)]">Literacy / Tertiary</span>
+              <div className="flex items-baseline justify-between py-2 gap-2">
+                <span className="text-[var(--text-secondary)]">Adult Literacy Rate</span>
                 <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
-                  {formatCountryMetricOrNa(
-                    country,
-                    country.educationHealthcare.literacyRatePct,
-                    (v) => `${v}%`
-                  )}{" "}
-                  /{" "}
-                  {formatCountryMetricOrNa(
-                    country,
-                    country.educationHealthcare.tertiaryEnrollmentPct,
-                    (v) => `${v}%`
-                  )}
+                  {formatCountryMetricOrNa(country, country.educationHealthcare.literacyRatePct, (v) => `${v}%`)}
                 </span>
               </div>
-              <div className="flex items-baseline justify-between py-1.5 gap-2">
-                <span className="text-[var(--text-muted)]">Education Spend</span>
+              <div className="flex items-baseline justify-between py-2 gap-2">
+                <span className="text-[var(--text-secondary)]">Education Spending</span>
                 <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
                   {formatCountryMetricOrNa(
                     country,
                     country.educationHealthcare.educationSpendPctGdp,
-                    (v) => `${v}% GDP`
+                    (v) => `${v}% of GDP`
                   )}
                 </span>
               </div>
-              <div className="flex items-baseline justify-between pt-1.5 gap-2">
-                <span className="text-[var(--text-muted)]">Healthcare Spend</span>
+              <div className="flex items-baseline justify-between pt-2 gap-2">
+                <span className="text-[var(--text-secondary)]">Healthcare Spending</span>
                 <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
                   {hasSectorMetricValue(country, country.educationHealthcare.healthcareSpendPctGdp)
-                    ? `${country.educationHealthcare.healthcareSpendPctGdp}% (${country.educationHealthcare.physiciansPer1000}/1k)`
+                    ? `${country.educationHealthcare.healthcareSpendPctGdp}% of GDP (${country.educationHealthcare.physiciansPer1000} doctors/1k)`
                     : "N/A"}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* 03 / ENERGY & CLIMATE */}
+          {/* ENERGY & CLIMATE */}
           <div className="p-5 border-b border-[var(--border-subtle)] md:border-r lg:border-r-0 space-y-3">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider tone-verified omnis-mono">
-              <Zap className="w-3.5 h-3.5" />
-              <span>03 / Energy & Climate</span>
+            <div className="flex items-center gap-2 text-sm font-bold tone-verified">
+              <Zap className="w-4 h-4" />
+              <span>Energy &amp; Climate</span>
             </div>
             <div className="divide-y divide-[var(--border-subtle)] text-[13.5px] sm:text-sm">
-              <div className="flex items-baseline justify-between py-1.5 gap-2">
-                <span className="text-[var(--text-muted)]">Electricity Gen</span>
+              <div className="flex items-baseline justify-between py-2 gap-2">
+                <span className="text-[var(--text-secondary)]">Annual Electricity Output</span>
                 <span className="font-bold omnis-mono omnis-tabular text-[var(--text-primary)]">
                   {formatCountryMetricOrNa(
                     country,
                     country.energyProfile.electricityGenerationTwh,
-                    (v) => `${v} TWh`
+                    (v) => `${v.toLocaleString()} TWh`
                   )}
                 </span>
               </div>
-              <div className="flex items-baseline justify-between py-1.5 gap-2">
-                <span className="text-[var(--text-muted)]">Renewable / Nuclear</span>
+              <div className="flex items-baseline justify-between py-2 gap-2">
+                <span className="text-[var(--text-secondary)]">Renewable Share</span>
                 <span className="font-bold omnis-mono omnis-tabular tone-verified">
                   {!country.provenance.missingData || country.energyProfile.renewableSharePct > 0
                     ? `${country.energyProfile.renewableSharePct}%`
-                    : "N/A"}{" "}
-                  /{" "}
+                    : "N/A"}
+                </span>
+              </div>
+              <div className="flex items-baseline justify-between py-2 gap-2">
+                <span className="text-[var(--text-secondary)]">Nuclear Share</span>
+                <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
                   {hasEnergyTelemetry
                     ? `${country.energyProfile.nuclearSharePct}%`
                     : formatCountryMetricOrNa(
@@ -580,12 +620,12 @@ function GlobalAtlasContent() {
                       )}
                 </span>
               </div>
-              <div className="flex items-baseline justify-between py-1.5 gap-2">
-                <span className="text-[var(--text-muted)]">Oil / Natural Gas</span>
+              <div className="flex items-baseline justify-between py-2 gap-2">
+                <span className="text-[var(--text-secondary)]">Oil &amp; Gas Output</span>
                 <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
                   {hasSectorMetricValue(country, country.energyProfile.oilProductionMbpd) ||
                   hasSectorMetricValue(country, country.energyProfile.naturalGasBcm)
-                    ? `${country.energyProfile.oilProductionMbpd} Mbpd / ${country.energyProfile.naturalGasBcm} bcm`
+                    ? `${country.energyProfile.oilProductionMbpd} Mb/d • ${country.energyProfile.naturalGasBcm} bcm`
                     : "N/A"}
                 </span>
               </div>
@@ -697,11 +737,11 @@ function GlobalAtlasContent() {
             </div>
           </div>
 
-          {/* 04 / TECHNOLOGY */}
+          {/* TECHNOLOGY & INNOVATION */}
           <div className="p-5 border-b lg:border-b-0 border-[var(--border-subtle)] lg:border-r space-y-3 text-[13.5px] sm:text-sm">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider tone-cyan omnis-mono">
-              <Cpu className="w-3.5 h-3.5" />
-              <span>04 / Technology</span>
+            <div className="flex items-center gap-2 text-sm font-bold tone-cyan">
+              <Cpu className="w-4 h-4" />
+              <span>Technology &amp; Innovation</span>
             </div>
             <div className="divide-y divide-[var(--border-subtle)]">
               <div className="flex items-baseline justify-between py-1.5 gap-2">
@@ -742,11 +782,11 @@ function GlobalAtlasContent() {
             </p>
           </div>
 
-          {/* 05 / GOVERNANCE & GEOGRAPHY */}
+          {/* GOVERNMENT & GEOGRAPHY */}
           <div className="p-5 border-b md:border-b-0 border-[var(--border-subtle)] md:border-r space-y-3 text-[13.5px] sm:text-sm">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider tone-warning omnis-mono">
-              <Landmark className="w-3.5 h-3.5" />
-              <span>05 / Governance & Geography</span>
+            <div className="flex items-center gap-2 text-sm font-bold tone-warning">
+              <Landmark className="w-4 h-4" />
+              <span>Government &amp; Land</span>
             </div>
             <div className="divide-y divide-[var(--border-subtle)]">
               <div className="py-1.5 space-y-0.5">
@@ -775,11 +815,11 @@ function GlobalAtlasContent() {
             </div>
           </div>
 
-          {/* 06 / INTERNATIONAL TRADE */}
+          {/* GLOBAL TRADE & TIES */}
           <div className="p-5 space-y-3 text-[13.5px] sm:text-sm">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider tone-violet omnis-mono">
-              <Shield className="w-3.5 h-3.5" />
-              <span>06 / Trade & Diplomacy</span>
+            <div className="flex items-center gap-2 text-sm font-bold tone-violet">
+              <Shield className="w-4 h-4" />
+              <span>Trade &amp; Global Ties</span>
             </div>
             <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed">
               {country.internationalRelations.diplomaticContext}
@@ -824,9 +864,9 @@ function GlobalAtlasContent() {
               <div className="flex flex-wrap items-center gap-2">
                 <Link
                   href={`/intelligence?left=${country.iso3}&right=${compareCountry.iso3}`}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--accent-cyan)]/35 bg-[var(--accent-cyan)]/10 px-2.5 py-1.5 font-mono text-xs uppercase tracking-[0.12em] text-[var(--accent-cyan)] transition-colors hover:bg-[var(--accent-cyan)]/20"
+                  className="min-h-[44px] sm:min-h-0 inline-flex items-center gap-1.5 rounded-lg border border-[var(--badge-cyan-border)] bg-[var(--badge-cyan-bg)] px-3 py-1.5 text-xs font-semibold tone-cyan transition-colors hover:brightness-105"
                 >
-                  <span>Full Matrix</span>
+                  <span>Full Comparison</span>
                   <ArrowUpRight className="h-3.5 w-3.5" />
                 </Link>
                 <OmnisSelect

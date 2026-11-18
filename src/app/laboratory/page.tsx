@@ -915,22 +915,22 @@ function LaboratoryContent() {
 
   const observationText =
     activeId === "physics"
-      ? `Natural Period T = ${(2 * Math.PI * Math.sqrt(p2 / p1)).toFixed(2)} s | ω₀ = ${Math.sqrt(p1 / p2).toFixed(2)} rad/s`
+      ? `1 full swing takes ${(2 * Math.PI * Math.sqrt(p2 / p1)).toFixed(2)} s (ω₀ = ${Math.sqrt(p1 / p2).toFixed(2)} rad/s)`
       : activeId === "space"
-      ? `Orbital Period T = ${Math.sqrt(Math.pow(p3, 3) / p1).toFixed(2)} yr | Perihelion = ${(p3 * (1 - p2)).toFixed(2)} AU | Aphelion = ${(p3 * (1 + p2)).toFixed(2)} AU`
+      ? `1 orbit takes ${Math.sqrt(Math.pow(p3, 3) / p1).toFixed(2)} yr • Closest ${(p3 * (1 - p2)).toFixed(2)} AU, farthest ${(p3 * (1 + p2)).toFixed(2)} AU`
       : activeId === "chemistry"
-      ? `Bond Angle = ${p1}° | Dipole Index = ${(p3 * Math.cos(((p1 / 2) * Math.PI) / 180) * 2.4).toFixed(2)} Debye`
+      ? `Bond angle ${p1}° • Polarity ${(p3 * Math.cos(((p1 / 2) * Math.PI) / 180) * 2.4).toFixed(2)} Debye`
       : activeId === "biology"
-      ? `Equilibrium Prey x* = ${(p3 / (0.02 * p2)).toFixed(1)} | Predator y* = ${(p1 / (0.05 * p2)).toFixed(1)}`
+      ? `Steady balance ≈ ${(p3 / (0.02 * p2)).toFixed(0)} prey & ${(p1 / (0.05 * p2)).toFixed(0)} predators`
       : activeId === "climate"
-      ? `ΔF = +${(5.35 * Math.log(p1 / 280)).toFixed(2)} W/m² | Eq. Temp = ${(14.0 + 5.35 * Math.log(p1 / 280) * 0.8 - (p2 - 0.3) * 85 + (p3 - 1361) * 0.07).toFixed(2)} °C`
-      : `Mid-Span Deflection δ = ${((p1 * Math.pow(p2, 2)) / (45000 * Math.pow(p3, 2))).toFixed(2)} cm | Safety Factor = ${Math.max(0.8, (350 * p3) / (p1 * 1.4)).toFixed(2)}x`;
+      ? `Equilibrium temp: ${(14.0 + 5.35 * Math.log(p1 / 280) * 0.8 - (p2 - 0.3) * 85 + (p3 - 1361) * 0.07).toFixed(2)} °C (ΔF +${(5.35 * Math.log(p1 / 280)).toFixed(2)} W/m²)`
+      : `Center bend ${((p1 * Math.pow(p2, 2)) / (45000 * Math.pow(p3, 2))).toFixed(2)} cm • Safety factor ${Math.max(0.8, (350 * p3) / (p1 * 1.4)).toFixed(2)}×`;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* Header & 6 Discipline Switcher */}
       <OmnisModuleHeader
-        moduleTag="MODULE 06 • DIGITAL WORLD SCIENTIFIC & ENGINEERING LABORATORY"
+        moduleTag="Science & Engineering Lab"
         title={exp.title}
         subtitle={exp.objective}
         icon={<FlaskConical className="w-3.5 h-3.5" />}
@@ -1020,10 +1020,17 @@ function LaboratoryContent() {
             />
           ))}
 
-          <OmnisMathBlock
-            label="Governing Mathematical Equations"
-            latex={LAB_EQUATIONS_LATEX[exp.id] ?? exp.equations}
-          />
+          <details className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-slate)]/40 p-3">
+            <summary className="cursor-pointer text-[13px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] select-none">
+              Show governing equations
+            </summary>
+            <div className="pt-3">
+              <OmnisMathBlock
+                label="Governing Mathematical Equations"
+                latex={LAB_EQUATIONS_LATEX[exp.id] ?? exp.equations}
+              />
+            </div>
+          </details>
 
           <div className="p-3.5 rounded-xl badge-tone-warning text-[12.5px] sm:text-[13px] flex items-start gap-2.5 leading-relaxed">
             <Info className="w-4 h-4 shrink-0 mt-0.5" />
@@ -1035,10 +1042,10 @@ function LaboratoryContent() {
         <div className="lg:col-span-8 min-w-0 space-y-6">
           <div className="omnis-card p-5 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2 text-[12.5px] sm:text-[13px]">
-              <span className="font-bold tone-blue uppercase tracking-wider omnis-mono">
-                Live Mathematical Simulation Canvas
+              <span className="font-semibold tone-blue">
+                Live Simulation
               </span>
-              <span className="omnis-mono tone-verified font-semibold">{observationText}</span>
+              <span className="omnis-mono text-xs tone-verified font-semibold">{observationText}</span>
             </div>
 
             <div className="rounded-xl border border-[var(--border-subtle)] overflow-hidden relative">
@@ -1071,14 +1078,14 @@ function LaboratoryContent() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="omnis-card p-5 space-y-2.5">
-              <div className="text-xs font-bold uppercase tracking-wider tone-blue omnis-mono">
-                Experimental Objective
+              <div className="text-[13px] font-semibold tone-blue">
+                What This Experiment Shows
               </div>
               <p className="text-sm sm:text-[15px] text-[var(--text-secondary)] leading-relaxed">{exp.objective}</p>
             </div>
             <div className="omnis-card p-5 space-y-2.5">
-              <div className="text-xs font-bold uppercase tracking-wider tone-verified omnis-mono">
-                Scientific Background & Physical Interpretation
+              <div className="text-[13px] font-semibold tone-verified">
+                Why It Works (The Science Behind It)
               </div>
               <p className="text-sm sm:text-[15px] text-[var(--text-secondary)] leading-relaxed">{exp.background}</p>
             </div>

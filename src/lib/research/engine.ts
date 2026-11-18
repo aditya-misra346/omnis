@@ -9,8 +9,12 @@ import {
 } from "@/lib/data/world-catalog";
 import {
   formatCountryMetricOrNa,
+  formatMultipleOrGap,
+  formatPopulationHuman,
   formatSignedPct,
+  formatUsdBnCompact,
   getEffectiveGdpUsdBn,
+  getEffectiveGdpYear,
 } from "@/lib/formatters";
 import {
   fetchLiveCountryIntelligence,
@@ -371,16 +375,6 @@ export async function orchestrateDeepResearch(
   const isSemiQuery = /semiconductor|chip|euv|tsmc|geopolit/i.test(cleanQuery);
   const isClimateQuery = /climate|carbon|warming|energy|nuclear/i.test(cleanQuery);
 
-  const executiveSummary = isIndiaQuery
-    ? `Following the July 1991 balance-of-payments liberalisation, India transitioned from an inward-looking, licence-constrained economy ($270.1B GDP in 1991) to the world's fastest-growing major economy ($3,912.6B GDP in 2026, +6.8% real growth). Empirical World Bank and RBI data demonstrate that tariff dismantling, exchange-rate flexibility, and subsequent Digital Public Infrastructure (Aadhaar, UPI, GST) structurally raised total factor productivity while reducing extreme poverty.`
-    : isSemiQuery
-    ? `Semiconductor manufacturing represents the most capital-intensive and geographically concentrated chokepoint in the modern global economy. While US firms lead in Electronic Design Automation (EDA) and logic architecture (>65% share) and European firms hold a monopoly in Extreme Ultraviolet (EUV) lithography optics (ASML / Carl Zeiss), over 90% of sub-3nm logic wafer fabrication is concentrated in East Asia—making the silicon supply chain the primary arena of 21st-century industrial policy and export controls.`
-    : isClimateQuery
-    ? `Anthropogenic radiative forcing (+2.72 W/m² relative to 1750, IPCC AR6) has driven a +1.32°C global mean surface temperature anomaly. Decarbonisation requires simultaneous execution across utility-scale solar/wind learning curves, 4-to-8 hour grid battery storage, dispatchable nuclear baseload expansion, and rapid methane abatement.`
-    : `Multi-source intelligence synthesis for "${cleanQuery}" (Mode: ${mode.toUpperCase()}). Cross-referencing ${allSources.length} traceable primary, institutional, and peer-reviewed OpenAlex sources reveals strong structural linkages between capital formation, technological diffusion, energy constraints, and institutional governance.${
-        wikiSummary ? ` Context: ${wikiSummary.extract}` : ""
-      }`;
-
   const matchedCatalogEntries = WORLD_COUNTRIES_CATALOG.filter((entry) =>
     matchesCountryMention(cleanQuery, entry.name, entry.iso3)
   ).slice(0, 2);
@@ -388,7 +382,10 @@ export async function orchestrateDeepResearch(
   const hydratedMatchedCountries = (
     await Promise.all(
       matchedCatalogEntries.map(async (entry) => {
-        if (COUNTRIES_DATA[entry.iso3]) return COUNTRIES_DATA[entry.iso3];
+        if (COUNTRIES_DATA[entry.iso3]) {
+          const liveCurated = await fetchLiveCountryIntelligence(entry.iso3).catch(() => null);
+          return liveCurated ?? COUNTRIES_DATA[entry.iso3];
+        }
         const live = await fetchLiveCountryIntelligence(entry.iso3).catch(() => null);
         return live ?? buildPlaceholderCountryProfile(entry.iso3);
       })
@@ -417,7 +414,9 @@ export async function orchestrateDeepResearch(
     : [];
 
   const leadGdpUsdBn = leadCountry ? getEffectiveGdpUsdBn(leadCountry) : 0;
+  const leadGdpYear = leadCountry ? getEffectiveGdpYear(leadCountry) : undefined;
   const leadGdpDisplay = leadGdpUsdBn > 0 ? `$${leadGdpUsdBn.toLocaleString()}B` : "N/A";
+  const leadGdpHuman = leadGdpUsdBn > 0 ? formatUsdBnCompact(leadGdpUsdBn) : "unreported GDP";
   const leadGrowthDisplay = leadCountry
     ? leadCountry.provenance.missingData && leadCountry.gdpGrowthPct === 0 && leadGdpUsdBn === 0
       ? "N/A"
@@ -429,52 +428,210 @@ export async function orchestrateDeepResearch(
       : formatCountryMetricOrNa(leadCountry, leadCountry.energyProfile.renewableSharePct, (v) => `${v}%`)
     : "N/A";
 
+  const effectiveIndia =
+    leadCountry?.iso3 === "IND"
+      ? leadCountry
+      : compareCountry?.iso3 === "IND"
+        ? compareCountry
+        : COUNTRIES_DATA.IND;
+  const indiaEffectiveGdp = getEffectiveGdpUsdBn(effectiveIndia);
+  const indiaLiveYear = getEffectiveGdpYear(effectiveIndia) ?? "2026";
+  const indiaGdpHuman = formatUsdBnCompact(indiaEffectiveGdp);
+  const indiaGrowthStr = formatSignedPct(effectiveIndia.gdpGrowthPct);
+  const indiaPerCapita = `$${effectiveIndia.gdpPerCapitaUsd.toLocaleString()}`;
+
+  const queryKeywords = lowerQuery.split(/\s+/).filter((t) => t.length >= 4);
+  const matchingEvents = TIMELINE_EVENTS.filter((evt) => {
+    const hay = `${evt.title} ${evt.description} ${evt.historicalContext}`.toLowerCase();
+    return queryKeywords.some((kw) => hay.includes(kw));
+  }).sort((a, b) => a.yearNumeric - b.yearNumeric);
+
+  const topicLeadBaseline = isIndiaQuery
+    ? `Since opening its economy in July 1991, India grew from a $270.1 billion economy into a ${indiaGdpHuman} market (${indiaLiveYear} World Bank data, averaging ${indiaPerCapita} per person and growing ${indiaGrowthStr} a year). Lowering trade barriers, flexible exchange rates, and digital infrastructure like UPI and Aadhaar helped lift productivity, though job creation and income levels per person still lag peers.`
+    : isSemiQuery
+      ? `Modern computing chips rely on one of the most tightly specialized global supply chains ever built: U.S. companies design over 65% of chip architectures, Europe (ASML and Carl Zeiss) builds every extreme-ultraviolet lithography machine, and East Asia manufactures over 90% of sub-3nm processors. Because no single country controls all stages, export controls and domestic foundry subsidies have reshaped trade across continents.`
+      : isClimateQuery
+        ? `Human greenhouse-gas emissions have lifted Earth's average temperature by +1.32°C above pre-industrial levels. Bringing emissions down requires switching grids to cheap solar, wind, battery storage, and nuclear power while cutting industrial heat and methane leaks—without triggering local power shortages.`
+        : leadCountry
+          ? `${leadCountry.name} (${leadCountry.iso3}) represents a ${leadGdpHuman} economy${
+              leadCountry.population > 0
+                ? ` of ${formatPopulationHuman(leadCountry.population, "long")} people`
+                : ""
+            }, ${
+              leadGrowthDisplay === "N/A"
+                ? "with partial live macro coverage returned"
+                : `growing at ${leadGrowthDisplay} annually`
+            } and generating ${leadRenewableDisplay} of its electricity from renewables.${
+              wikiSummary ? ` ${wikiSummary.extract.slice(0, 180)}${wikiSummary.extract.length > 180 ? "..." : ""}` : ""
+            }`
+          : wikiSummary
+            ? `${wikiSummary.extract.slice(0, 320)}${wikiSummary.extract.length > 320 ? "..." : ""} Across ${allSources.length} checked institutional and scholarly records, evidence points to physical capacity, skilled workforces, and steady rules as the main engines of long-term change.`
+            : `Cross-checking "${cleanQuery}" across ${allSources.length} World Bank, IMF, and academic records shows how investment levels, energy reliability, and policy stability shape real-world outcomes over time.`;
+
+  const compareBaselineCountry = compareCountry ?? (leadCountry?.iso3 === "IND" ? COUNTRIES_DATA.CHN : COUNTRIES_DATA.IND);
+  const compGdpA = leadCountry ? getEffectiveGdpUsdBn(leadCountry) : indiaEffectiveGdp;
+  const compGdpB = getEffectiveGdpUsdBn(compareBaselineCountry);
+  const compCountryA = leadCountry ?? effectiveIndia;
+
+  let executiveSummary = topicLeadBaseline;
+  if (mode === "quick") {
+    executiveSummary = leadCountry
+      ? `Bottom line: ${leadCountry.name} operates a ${leadGdpHuman} economy (${leadGrowthDisplay} annual growth, ${leadRenewableDisplay} clean electricity), ranking globally on ${
+          leadCountry.technologyProfile.aiReadinessIndex > 0
+            ? `an AI readiness score of ${leadCountry.technologyProfile.aiReadinessIndex}/100`
+            : "its regional fundamentals"
+        }.`
+      : `Bottom line on "${cleanQuery}": ${topicLeadBaseline.split(". ").slice(0, 2).join(". ")}.`;
+  } else if (mode === "comparative") {
+    const economyGap = formatMultipleOrGap(compGdpA, compGdpB, "ratio");
+    const incomeGap =
+      compCountryA.gdpPerCapitaUsd > 0 && compareBaselineCountry.gdpPerCapitaUsd > 0
+        ? formatMultipleOrGap(compCountryA.gdpPerCapitaUsd, compareBaselineCountry.gdpPerCapitaUsd, "ratio")
+        : "varies across income groups";
+    const growthGap = formatMultipleOrGap(compCountryA.gdpGrowthPct, compareBaselineCountry.gdpGrowthPct, "pp", "faster");
+    executiveSummary = `Comparing ${compCountryA.name} (${formatUsdBnCompact(compGdpA)}) against ${
+      compareBaselineCountry.name
+    } (${formatUsdBnCompact(compGdpB)}): ${compCountryA.name}'s total economy is ${economyGap}, with per-person income ${incomeGap} and growth running ${growthGap}. ${
+      matchedComparable
+        ? `Among industry benchmarks, ${matchedComparable.name} illustrates similar tradeoffs between scale and capital cost.`
+        : ""
+    }`.trim();
+  } else if (mode === "historical") {
+    const anchors = matchingEvents.slice(0, 3);
+    executiveSummary =
+      anchors.length > 0
+        ? `Tracing "${cleanQuery}" across historical records highlights key turning points—especially ${anchors
+            .map((e) => `${e.title} (${e.dateDisplay})`)
+            .join(", then ")}. Each shift shows how earlier institutional and infrastructure choices compounded into modern economic capacity.`
+        : `Looking at "${cleanQuery}" over the long arc of modern history shows structural reforms take years to show up in living standards: early investments in trade access, grids, and skills typically take 5 to 15 years to lift economy-wide productivity.`;
+  } else if (mode === "scientific") {
+    executiveSummary =
+      openAlexSources.length > 0
+        ? `Across ${openAlexSources.length} recent peer-reviewed studies indexed in OpenAlex matching "${cleanQuery}" (including "${openAlexSources[0].title}"), researchers examine measurable physical mechanisms, experimental controls, and why real-world deployment often lags lab benchmarks.`
+        : `${topicLeadBaseline} Empirical studies emphasize separating narrow lab or pilot gains from system-wide physical limits such as grid losses, material purity, and manufacturing yield.`;
+  } else if (mode === "economic") {
+    executiveSummary = leadCountry
+      ? `Economically, ${leadCountry.name} pairs a ${leadGdpHuman} nominal base with ${
+          leadCountry.gdpPerCapitaUsd > 0
+            ? `$${leadCountry.gdpPerCapitaUsd.toLocaleString()} output per person`
+            : "developing per-capita income"
+        }, ${leadGrowthDisplay} real GDP expansion, ${formatCountryMetricOrNa(
+          leadCountry,
+          leadCountry.inflationPct,
+          (v) => `${v}% inflation`
+        )}, and R&D spending at ${formatCountryMetricOrNa(
+          leadCountry,
+          leadCountry.technologyProfile.rdSpendPctGdp,
+          (v) => `${v}% of GDP`
+        )}. Long-run living standards depend on raising productivity faster than borrowing costs and energy import bills.`
+      : `From an economic standpoint, "${cleanQuery}" comes down to total output growth, price stability, and how fast capital and technology lift wages per worker without inflating debt or trade deficits.`;
+  }
+
+  const empiricalDriversSection =
+    mode === "historical" && matchingEvents.length > 0
+      ? `Historical inflection points trace the path step by step: ${matchingEvents
+          .slice(0, 2)
+          .map((e) => `In ${e.dateDisplay}, ${e.title} reshaped incentives because ${e.causes[0]?.toLowerCase() ?? "policy rules changed"}`)
+          .join("; ")}. Earlier reforms lowered friction well before consumer growth peaked.`
+      : isIndiaQuery
+        ? `Key drivers include post-1991 tariff cuts, services-export competitiveness, highway and rail capital spending, and population-scale digital rails (UPI and Aadhaar). Yet per-capita income (${indiaPerCapita}) shows substantial catch-up room in formal manufacturing employment and clean baseload power (${effectiveIndia.energyProfile.renewableSharePct}% renewable share).`
+        : leadCountry
+          ? `${leadCountry.name}'s trajectory rests on an electricity system running ${leadRenewableDisplay} on renewables alongside ${
+              leadCountry.population > 0 ? formatPopulationHuman(leadCountry.population, "long") : "its working-age"
+            } population base and ${formatCountryMetricOrNa(
+              leadCountry,
+              leadCountry.technologyProfile.rdSpendPctGdp,
+              (v) => `${v}% of GDP`
+            )} committed to research and development.`
+          : `Measured outcomes reflect how capital formation, workforce training, and reliable infrastructure translate raw investment into everyday goods and services.`;
+
+  const transmissionSection = isSemiQuery
+    ? `In practice, disruptions hit downstream makers unevenly: a delay in specialty photoresists or lithography parts slows leading-edge foundry expansion immediately, raising chip prices for servers, vehicles, and phones across every importing region.`
+    : isClimateQuery
+      ? `In real energy markets, fuel price spikes raise household power and shipping bills quickly, whereas shifting grids toward solar plus 4-to-8 hour battery storage stabilizes costs once upfront transmission lines are finished.`
+      : `In everyday economies, shocks in fuel costs, interest rates, or trade tariffs pass quickly into transport and household prices, while gains from new research or infrastructure tend to compound gradually over several years.`;
+
+  const credibilitySection = `Checked across ${allSources.length} named sources (${openAlexSources.length} OpenAlex studies plus World Bank and IMF tables as of ${nowIso.slice(0, 10)}). Forward-looking scenarios below are clearly separated from measured past data so forecasts are never confused with historical fact.`;
+
+  const contradictionByDomain = isIndiaQuery
+    ? {
+        pointOfContention: "Rapid Headline Growth vs. Broad Formal Job Creation",
+        perspectiveA: `High GDP expansion (${indiaGrowthStr}) and rapid digital adoption point to durable productivity gains and strong urban consumption.`,
+        perspectiveB: "Labor force surveys show a large share of workers still in low-wage agriculture and informal services, slowing broad wage growth.",
+        epistemicResolution: "Both patterns exist side by side: high-skill digital and capital sectors are scaling rapidly while labor-intensive manufacturing is still catching up.",
+      }
+    : isSemiQuery
+      ? {
+          pointOfContention: "Global Supply Efficiency vs. Domestic Chip Sovereignty",
+          perspectiveA: "Concentrated regional specialization keeps wafer costs low and speeds up generational node shrinks like 2nm GAA.",
+          perspectiveB: "Geographic concentration leaves global electronics vulnerable to export bans, natural disasters, and maritime chokepoints.",
+          epistemicResolution: "Resilient chip ecosystems balance comparative advantage with multi-region fabs, even though duplicating supply lines carries a permanent cost premium.",
+        }
+      : isClimateQuery
+        ? {
+            pointOfContention: "Grid Transition Speed vs. System Cost & Reliability",
+            perspectiveA: "Falling solar and battery costs make fast renewable buildouts the cheapest source of new electricity in most sunny and windy regions.",
+            perspectiveB: "High renewable shares still demand expensive transmission upgrades, long-duration storage, or firm nuclear/gas backup during cloudy peaks.",
+            epistemicResolution: "Combining cheap variable renewables with firm clean baseload (nuclear/hydro) and regional grid interconnects lowers total system cost over time.",
+          }
+        : mode === "historical"
+          ? {
+              pointOfContention: "Policy Reforms vs. Global Tailwinds in Historical Shifts",
+              perspectiveA: "Proponents attribute inflection points directly to domestic policy reforms, institutional laws, and scientific breakthroughs.",
+              perspectiveB: "Revisionist accounts emphasize external commodity cycles, demographics, and global trade timing outside any government's control.",
+              epistemicResolution: "Domestic policy unlocks growth potential, while global economic conditions often determine how fast and far that boom carries.",
+            }
+          : {
+              pointOfContention: "Fast Narrow Benchmarks vs. Economy-Wide Payoffs",
+              perspectiveA: "Controlled pilot tests and single-industry studies often show striking efficiency jumps within months.",
+              perspectiveB: "National statistics frequently reflect gains more slowly because organizations take years to retrain staff and rebuild workflows.",
+              epistemicResolution: "Separating laboratory or pilot gains from economy-wide averages explains why rapid tech news coexists with steady national productivity growth.",
+            };
+
   const relevantStatistics: ResearchReportData["relevantStatistics"] = leadCountry
     ? [
         {
-          metric: `${leadCountry.name} Nominal GDP`,
-          value: leadGdpDisplay,
-          unit: "USD Billions",
-          period: leadCountry.liveWorldBankOverride?.latestYear
-            ? `${leadCountry.liveWorldBankOverride.latestYear} Live WDI`
-            : "2026 Verified Baseline",
+          metric: `${leadCountry.name} Total Economy (GDP)`,
+          value: leadGdpUsdBn > 0 ? leadGdpHuman : "N/A",
+          unit: leadGdpDisplay,
+          period: leadGdpYear ? `${leadGdpYear} World Bank` : "World Bank Data",
           sourceId: "src-wb-wdi",
         },
         {
-          metric: `${leadCountry.name} Real GDP Growth`,
+          metric: `${leadCountry.name} Annual Growth`,
           value: leadGrowthDisplay,
-          unit: "Annual %",
-          period: "2026 Verified Baseline",
+          unit: "Real GDP / yr",
+          period: leadGdpYear ? `${leadGdpYear} World Bank` : "World Bank Data",
           sourceId: "src-wb-wdi",
         },
         {
-          metric: `${leadCountry.name} Clean Electricity Share`,
+          metric: `${leadCountry.name} Clean Electricity`,
           value: leadRenewableDisplay,
-          unit: "% of Generation",
-          period: "2026 Baseline",
+          unit: "Renewables share",
+          period: "Latest Power Mix",
           sourceId: "src-wb-wdi",
         },
         {
-          metric: "Peer-Reviewed Works Retrieved",
+          metric: "Academic Studies Found",
           value: String(openAlexSources.length),
-          unit: "OpenAlex Live",
-          period: "Live Retrieval",
+          unit: "OpenAlex matches",
+          period: "Live Search",
           sourceId: primarySourceId,
         },
       ]
     : [
         ...comparableStats,
         {
-          metric: "OpenAlex Peer-Reviewed Citations",
+          metric: "Academic Studies Found",
           value: String(openAlexSources.length),
-          unit: "Works Retrieved",
-          period: "Live API Retrieval",
+          unit: "OpenAlex papers",
+          period: "Live Search",
           sourceId: primarySourceId,
         },
         ...(openAlexTrend.length > 0
           ? [
               {
-                metric: `Latest Annual Works (${openAlexTrend[openAlexTrend.length - 1].year})`,
+                metric: `Studies Published (${openAlexTrend[openAlexTrend.length - 1].year})`,
                 value: openAlexTrend[openAlexTrend.length - 1].count.toLocaleString(),
                 unit: "Indexed Papers",
                 period: String(openAlexTrend[openAlexTrend.length - 1].year),
@@ -483,9 +640,9 @@ export async function orchestrateDeepResearch(
             ]
           : []),
         {
-          metric: "Wikimedia Encyclopedic Grounding",
-          value: wikiSummary ? "Verified" : "Unavailable",
-          unit: "REST v1 Status",
+          metric: "Background Reference",
+          value: wikiSummary ? "Available" : "Unavailable",
+          unit: "Wikipedia REST",
           period: "Live Check",
           sourceId: wikiSummary ? "src-wikimedia-rest" : primarySourceId,
         },
@@ -529,110 +686,124 @@ export async function orchestrateDeepResearch(
     query: cleanQuery,
     mode,
     generatedAt: nowIso,
-    researchObjective: `Decompose "${cleanQuery}" into empirically testable claims, cross-check primary statistical series against peer-reviewed literature, surface methodological disagreements, and attach verifiable citations.`,
+    researchObjective: `Answer "${cleanQuery}" using traceable World Bank, IMF, and academic records while clearly flagging disagreements and limits.`,
     decomposedTasks: [
       {
         step: 1,
-        task: "Semantic query decomposition & boundary definition",
-        sourceCategory: "OMNIS Epistemic Planner",
+        task: "Identify key countries, terms, and time horizon in the question",
+        sourceCategory: "Question Parser",
         status: "completed",
       },
       {
         step: 2,
-        task: "Retrieve peer-reviewed literature & citation graph via OpenAlex API",
-        sourceCategory: "OpenAlex Scholarly Works API",
+        task: "Search peer-reviewed studies and citations via OpenAlex",
+        sourceCategory: "OpenAlex Academic Library",
         status: "completed",
       },
       {
         step: 3,
-        task: "Cross-check sovereign statistical series via World Bank & IMF",
+        task: "Cross-check economic, energy & demographic tables via World Bank & IMF",
         sourceCategory: "World Bank WDI / IMF WEO",
         status: "completed",
       },
       {
         step: 4,
-        task: "Audit conflicting claims, methodology limits & assign verification badges",
-        sourceCategory: "OMNIS Source Credibility Engine",
+        task: "Compare differing viewpoints and verify source labels",
+        sourceCategory: "Source Verification",
         status: "completed",
       },
     ],
     executiveSummary,
-    keyFindings: [
-      openAlexSources.length > 0
-        ? `Retrieved ${openAlexSources.length} peer-reviewed OpenAlex records directly matching "${cleanQuery}" (earliest/top cited: ${openAlexSources[0].publishedDate}).`
-        : `No live OpenAlex works returned within timeout for "${cleanQuery}"; relying strictly on curated sovereign datasets without fabricated citations.`,
-      leadCountry
-        ? `${leadCountry.name} nominal GDP stands at ${leadGdpDisplay} (${leadGrowthDisplay} real growth), with ${leadRenewableDisplay} clean electricity generation.`
-        : "Physical infrastructure capacity (grid transmission, wafer lithography, skilled cohorts) constrains aggregate productivity diffusion.",
-      "Macro-econometric national accounts frequently exhibit 3–5 year structural adjustment lags between R&D investment and total factor productivity gains.",
-      "Model uncertainty bands and forward-looking scenarios are isolated strictly from measured historical observations.",
-    ],
-    detailedAnalysis: [
-      {
-        heading: "1. Structural Foundations & Empirical Baseline",
-        content: executiveSummary,
-      },
-      {
-        heading: "2. Cross-Disciplinary Transmission Mechanisms",
-        content:
-          "Empirical decomposition shows that shocks in energy prices, compute availability, or regulatory trade barriers propagate non-linearly across downstream industries. Systems with diversified domestic energy and high digital public infrastructure resilience absorb external shocks more effectively.",
-      },
-      {
-        heading: "3. Epistemic Evaluation & Source Cross-Verification",
-        content: `Every claim in this report is linked to an identifiable record in the Source Credibility Registry (${allSources.length} sources verified at ${nowIso}). Where single-study estimates or forward-looking scenario hypotheses are presented, they are explicitly isolated from verified historical measurements.`,
-      },
-    ],
+    keyFindings:
+      mode === "quick"
+        ? [
+            leadCountry
+              ? `${leadCountry.name} (${leadCountry.iso3}) stands at ${leadGdpHuman} (${leadGrowthDisplay} growth; ${leadRenewableDisplay} clean electricity).`
+              : openAlexSources.length > 0
+                ? `Found ${openAlexSources.length} recent peer-reviewed studies via OpenAlex matching "${cleanQuery}".`
+                : `Relying cleanly on verified official country and historical tables with zero invented citations.`,
+            leadCountry && leadCountry.gdpPerCapitaUsd > 0
+              ? `Average income sits at $${leadCountry.gdpPerCapitaUsd.toLocaleString()} per person, with R&D spending at ${formatCountryMetricOrNa(leadCountry, leadCountry.technologyProfile.rdSpendPctGdp, (v) => `${v}% of GDP`)}.`
+              : "Infrastructure reliability, grid capacity, and skilled workforces explain most medium-term gains.",
+            "Forecast scenarios remain clearly separated from measured historical statistics.",
+          ]
+        : [
+            openAlexSources.length > 0
+              ? `Found ${openAlexSources.length} peer-reviewed OpenAlex studies directly matching "${cleanQuery}" (latest from ${openAlexSources[0].publishedDate}).`
+              : `No live OpenAlex works matched "${cleanQuery}" within timeout; summary relies strictly on verified country and historical data without fabricated citations.`,
+            leadCountry
+              ? `${leadCountry.name} nominal GDP is ${leadGdpDisplay}${leadGdpYear ? ` (${leadGdpYear} live World Bank data)` : ""} with ${leadGrowthDisplay} annual growth and ${leadRenewableDisplay} clean electricity generation.`
+              : "Physical limits—power grid capacity, specialized tooling, and skilled labor—govern how fast new technology lifts living standards.",
+            "Changes in national economic productivity typically appear 3–5 years after major policy or R&D shifts.",
+            "Uncertain projections and unconfirmed scenarios are separated from measured past series.",
+          ],
+    detailedAnalysis:
+      mode === "quick"
+        ? [
+            {
+              heading: "1. What the Numbers Show",
+              content: empiricalDriversSection,
+            },
+          ]
+        : [
+            {
+              heading: "1. What the Numbers Show",
+              content: empiricalDriversSection,
+            },
+            {
+              heading: "2. How Real-World Tradeoffs Play Out",
+              content: transmissionSection,
+            },
+            {
+              heading: "3. Source Check & Data Limits",
+              content: credibilitySection,
+            },
+          ],
     supportingEvidence: [
       {
         id: "claim-1",
         statement: leadCountry
-          ? `${leadCountry.name} (${leadCountry.iso3}) recorded ${leadGdpDisplay} nominal GDP with ${leadRenewableDisplay} renewable electricity generation (World Bank WDI).`
-          : `Primary institutional datasets and OpenAlex literature retrieved ${allSources.length} traceable sources linked to "${cleanQuery}".`,
-        category: "Macroeconomic & Institutional Series",
+          ? `${leadCountry.name} (${leadCountry.iso3}) recorded ${leadGdpDisplay} nominal GDP (${leadGdpHuman}) with ${leadRenewableDisplay} renewable electricity generation (World Bank WDI).`
+          : `Official institutional data and OpenAlex literature surfaced ${allSources.length} checked sources for "${cleanQuery}".`,
+        category: "Economic & Public Data",
         verificationStatus: leadCountry?.provenance.verificationStatus ?? "verified",
         sourceIds: Array.from(new Set([primarySourceId, "src-wb-wdi"])),
-        methodologyNote: "Cross-verified against World Bank SNA 2008 national accounts and OpenAlex corpus.",
+        methodologyNote: "Cross-checked with World Bank national accounts and OpenAlex library records.",
       },
       {
         id: "claim-2",
         statement:
           openAlexSources[0]?.excerpt ??
-          "Capital expenditure and human-capital density correlate strongly with cross-country technology absorption speed.",
-        category: "Econometric Literature",
+          "Sustained infrastructure spending and technical training track closely with how rapidly countries adopt new technologies.",
+        category: "Published Studies",
         verificationStatus: openAlexSources.length > 0 ? "verified" : "single_source",
         sourceIds: [secondarySourceId],
-        methodologyNote: "Sourced directly from OpenAlex peer-reviewed works and institutional series.",
+        methodologyNote: "Drawn directly from OpenAlex academic works and multilateral publications.",
       },
       {
         id: "claim-3",
         statement:
-          "Hypothesis: Resolving upstream physical bottlenecks (grid storage & semiconductor supply chains) accelerates medium-horizon productivity above baseline trajectories.",
-        category: "Forward Scenario Projection",
+          "Scenario note: Easing key physical bottlenecks—such as grid energy storage and advanced chip supply—raises medium-term output above current trends.",
+        category: "Scenario Outlook",
         verificationStatus: "ai_hypothesis",
         sourceIds: ["src-imf-weo"],
-        methodologyNote: "Model-generated forward hypothesis; contingent on regulatory and energy assumptions.",
+        methodologyNote: "Conditional forward-looking estimate; depends on investment and policy delivery.",
       },
     ],
     contradictoryEvidence: [
       {
-        pointOfContention: "Magnitude and Speed of Aggregate Productivity Pass-Through",
-        perspectiveA:
-          "Micro-level task benchmarks often report rapid localized efficiency improvements.",
-        perspectiveB:
-          "Aggregate national accounts frequently exhibit slower multi-year productivity realization due to organisational and infrastructure adjustment lags.",
-        epistemicResolution:
-          "Both observations reconcile cleanly when separating narrow micro-efficiency from economy-wide structural adoption lags.",
+        ...contradictionByDomain,
         sourceIds: Array.from(new Set([primarySourceId, "src-imf-weo"])),
       },
     ],
     relevantStatistics,
     visualisationSeries,
     limitations: [
-      "National statistical agencies revise quarterly GDP and trade balances up to 18 months post-publication.",
-      "OpenAlex publication counts reflect indexed records matching search terms and vary by discipline indexing coverage.",
-      "Forward-looking hypotheses represent conditional analytical statements, never guaranteed predictions.",
+      "National statistical offices revise quarterly GDP and trade figures for up to 18 months after first release.",
+      "OpenAlex publication counts reflect academic journals and papers indexed under the search terms.",
+      "Forward-looking scenarios reflect plausible model assumptions rather than guaranteed forecasts.",
     ],
-    conclusions: `Multi-source synthesis for "${cleanQuery}" highlights the interplay of capital formation, infrastructure capacity, and institutional governance. Transition into the Infinite Knowledge Graph or What-If Simulation Engine to test specific parameters.`,
+    conclusions: `Taken together, the evidence on "${cleanQuery}" weighs near-term policy stability against long-term infrastructure investments. Use the Interactive Topic Map or What-If Simulator next to explore cause-and-effect links or test specific scenarios.`,
     sources: allSources,
     relatedGraphTopic: isIndiaQuery
       ? "Indian Economy"

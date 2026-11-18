@@ -24,7 +24,7 @@ export function VerificationBadge({ status }: { status: VerificationStatus }) {
       icon: <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />,
     },
     single_source: {
-      label: "Single Primary Source",
+      label: "Single Source",
       className: "badge-tone-cyan",
       icon: <Database className="w-3.5 h-3.5 shrink-0" />,
     },
@@ -34,7 +34,7 @@ export function VerificationBadge({ status }: { status: VerificationStatus }) {
       icon: <AlertTriangle className="w-3.5 h-3.5 shrink-0" />,
     },
     interpretation: {
-      label: "Model / Analytical Output",
+      label: "Modeled Estimate",
       className: "badge-tone-blue",
       icon: <Info className="w-3.5 h-3.5 shrink-0" />,
     },
@@ -44,7 +44,7 @@ export function VerificationBadge({ status }: { status: VerificationStatus }) {
       icon: <AlertTriangle className="w-3.5 h-3.5 shrink-0" />,
     },
     ai_hypothesis: {
-      label: "AI-Generated Hypothesis",
+      label: "Unconfirmed Scenario",
       className: "badge-tone-hypothesis",
       icon: <Sparkles className="w-3.5 h-3.5 shrink-0" />,
     },
@@ -72,14 +72,14 @@ export function ProvenancePanel({
   const [expanded, setExpanded] = useState(!compact);
 
   return (
-    <div className="omnis-surface-slate p-3.5 text-[13px] sm:text-sm transition-all">
+    <div className="border-y border-[var(--border-subtle)] bg-[var(--bg-slate)]/45 py-3 px-3.5 rounded-lg text-[13px] sm:text-sm transition-all">
       <div className="flex flex-wrap items-center justify-between gap-2.5">
         <div className="flex flex-wrap items-center gap-2 min-w-0">
           <VerificationBadge status={provenance.verificationStatus} />
           <span className="font-medium text-[var(--text-primary)] truncate max-w-full">
             Source: {provenance.source}
           </span>
-          <span className="text-[var(--text-muted)] omnis-mono text-xs">
+          <span className="text-[var(--text-muted)] text-xs omnis-tabular">
             • Updated {provenance.lastUpdated}
           </span>
         </div>
@@ -91,7 +91,7 @@ export function ProvenancePanel({
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 tone-blue font-semibold underline-offset-2 hover:underline"
           >
-            <span>Inspect Source</span>
+            <span>View source</span>
             <ExternalLink className="w-3 h-3" />
           </a>
           <button
@@ -101,12 +101,12 @@ export function ProvenancePanel({
           >
             {expanded ? (
               <>
-                <span>Hide Details</span>
+                <span>Hide details</span>
                 <ChevronUp className="w-3.5 h-3.5" />
               </>
             ) : (
               <>
-                <span>Methodology & Units</span>
+                <span>Method &amp; sources</span>
                 <ChevronDown className="w-3.5 h-3.5" />
               </>
             )}
@@ -117,36 +117,36 @@ export function ProvenancePanel({
       {expanded && (
         <div className="mt-3 pt-3 border-t border-[var(--border-subtle)] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-[var(--text-secondary)]">
           <div>
-            <div className="text-[11.5px] sm:text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-              Publisher / Agency
+            <div className="text-xs font-medium text-[var(--text-muted)]">
+              Publisher
             </div>
             <div className="font-medium text-[var(--text-primary)] mt-0.5 leading-snug">
               {provenance.publisher}
             </div>
           </div>
           <div>
-            <div className="text-[11.5px] sm:text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-              Units & Coverage
+            <div className="text-xs font-medium text-[var(--text-muted)]">
+              Units &amp; coverage
             </div>
             <div className="font-medium text-[var(--text-primary)] mt-0.5 leading-snug">
               {provenance.units} • {provenance.coverage}
             </div>
           </div>
           <div>
-            <div className="text-[11.5px] sm:text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-              Methodology
+            <div className="text-xs font-medium text-[var(--text-muted)]">
+              How it&apos;s measured
             </div>
             <div className="font-medium text-[var(--text-primary)] mt-0.5 leading-snug">
-              {provenance.methodology ?? "Standardised Institutional Series"}
+              {provenance.methodology ?? "Standardised official statistics"}
             </div>
           </div>
           <div>
-            <div className="text-[11.5px] sm:text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-              Data Integrity Status
+            <div className="text-xs font-medium text-[var(--text-muted)]">
+              Coverage check
             </div>
-            <div className="font-semibold mt-0.5 omnis-mono">
+            <div className="font-semibold mt-0.5">
               {provenance.missingData ? (
-                <span className="tone-warning">Partial / Missing Values Flagged</span>
+                <span className="tone-warning">Some indicators unavailable</span>
               ) : (
                 <span className="tone-verified">
                   Complete • {provenance.retrievedAt.slice(0, 10)}

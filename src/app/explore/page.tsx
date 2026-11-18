@@ -183,9 +183,9 @@ function ExploreContent() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* Universal Search Header */}
       <OmnisModuleHeader
-        moduleTag="UNIVERSAL NATURAL-LANGUAGE SEARCH & KNOWLEDGE EXPLORER"
-        title="Semantic Discovery Across Countries, Science, Economics & History"
-        subtitle="Decompose complex natural-language queries across sovereign World Bank dossiers, historical inflection events, and interactive Knowledge Graph pathways."
+        moduleTag="Topic & Country Search"
+        title="Search Countries, History, Science & Academic Studies"
+        subtitle="Find country figures, historical timelines, concept maps, and academic papers in one place."
         icon={<Compass className="w-3.5 h-3.5" />}
         actions={
           <OmnisButton
@@ -402,8 +402,8 @@ function ExploreContent() {
                             </span>
                           </span>
                         ) : (
-                          <span className="omnis-mono text-xs tone-cyan">
-                            Hydrate Live WDI →
+                          <span className="text-xs font-medium tone-cyan">
+                            Load latest data →
                           </span>
                         )}
                         {c.gdpUsdBn > 0 && (
@@ -420,29 +420,38 @@ function ExploreContent() {
             </section>
           )}
 
-          {/* Live Peer-Reviewed OpenAlex Literature Section */}
+          {/* Academic Papers Section */}
           {(activeTab === "overview" || activeTab === "research") &&
             (sourceFilter === "all" || sourceFilter === "openalex") && (
               <section className="omnis-card p-5 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h2 className="text-[15px] sm:text-base font-bold flex items-center gap-2 text-[var(--text-primary)]">
                     <FileSearch className="w-4 h-4 tone-verified" />
-                    Live OpenAlex Scholarly Literature ({openAlexWorks.length})
+                    Academic Papers ({openAlexWorks.length})
                   </h2>
                   <span
-                    className={`px-2.5 py-0.5 rounded-full text-[11.5px] font-semibold omnis-mono uppercase ${
+                    className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
                       liveFetchState === "verified"
-                        ? "badge-tone-verified"
+                        ? "tone-verified"
                         : liveFetchState === "loading"
-                          ? "badge-tone-cyan"
-                          : "badge-tone-warning"
+                          ? "tone-cyan"
+                          : "tone-warning"
                     }`}
                   >
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        liveFetchState === "verified"
+                          ? "bg-[var(--status-verified)]"
+                          : liveFetchState === "loading"
+                            ? "bg-[var(--status-cyan)] animate-pulse"
+                            : "bg-[var(--status-warning)]"
+                      }`}
+                    />
                     {liveFetchState === "loading"
-                      ? "Hydrating OpenAlex…"
+                      ? "Searching OpenAlex…"
                       : liveFetchState === "verified"
-                        ? "Live OpenAlex Verified"
-                        : "Curated Offline Index Active"}
+                        ? "Live OpenAlex Results"
+                        : "Showing built-in library"}
                   </span>
                 </div>
                 {liveFetchState === "loading" ? (

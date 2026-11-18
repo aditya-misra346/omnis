@@ -252,7 +252,7 @@ export const useOmnisStore = create<OmnisState>()(
           id: "msg-welcome",
           role: "assistant",
           content:
-            "Welcome to OMNIS Universal Intelligence Assistant. I am context-aware of your active page, country profile, knowledge graph, or simulation parameters. Ask me to explain any indicator, compare entities, generate a knowledge graph, or synthesize source-backed research.",
+            "Hi! I can answer questions using what is open on your screen right now—explaining any chart, comparing countries, tracing how topics connect, or digging up academic sources.",
           timestamp: "2026-11-15T08:00:00Z",
           citations: [
             { label: "World Bank Open Data API v2", url: "https://data.worldbank.org" },
@@ -273,7 +273,7 @@ export const useOmnisStore = create<OmnisState>()(
             {
               id: "msg-reset",
               role: "assistant",
-              content: "Conversation history cleared. Ready for your next inquiry.",
+              content: "Chat cleared. Ask anything whenever you're ready.",
               timestamp: new Date().toISOString(),
             },
           ],

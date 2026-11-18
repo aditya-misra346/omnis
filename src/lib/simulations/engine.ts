@@ -4,7 +4,11 @@ import {
   WORLD_CATALOG_BY_ISO3,
   WORLD_COUNTRIES_CATALOG,
 } from "@/lib/data/world-catalog";
-import { formatSignedPct, formatSignedValue } from "@/lib/formatters";
+import {
+  formatIndexContext,
+  formatSignedPct,
+  formatSignedValue,
+} from "@/lib/formatters";
 import type {
   CountryIntelligenceProfile,
   SimulationCategory,
@@ -770,17 +774,22 @@ export function executeWhatIfSimulation(params: {
   const spread = Number((terminal.modifiedP90 - terminal.modifiedP10).toFixed(2));
 
   const baselineLabel = country
-    ? `${country.name} (${country.iso3}) Sovereign Baseline`
-    : "Global Aggregate Baseline";
+    ? `${country.name} (${country.iso3})`
+    : "the global baseline";
 
   const anchoredAssumptions = country
     ? [
         resolvedDynamicsPriors
-          ? `Anchored to ${country.officialName} (${country.iso3}): Real growth ${formatSignedPct(resolvedDynamicsPriors.gdpGrowthPct)}, Clean Grid ${resolvedDynamicsPriors.renewableSharePct}%, AI Index ${resolvedDynamicsPriors.aiReadinessIndex}, Temp Anomaly ${formatSignedValue(resolvedDynamicsPriors.tempAnomalyC, "°C")}.`
-          : `Anchored to ${country.officialName} (${country.iso3}) structural baseline.`,
+          ? `Calibrated to ${country.officialName} (${country.iso3}): Real growth ${formatSignedPct(resolvedDynamicsPriors.gdpGrowthPct)}, Clean grid ${resolvedDynamicsPriors.renewableSharePct}%, AI index ${resolvedDynamicsPriors.aiReadinessIndex}, Temperature anomaly ${formatSignedValue(resolvedDynamicsPriors.tempAnomalyC, "°C")}.`
+          : `Calibrated to ${country.officialName} (${country.iso3}) starting data.`,
         ...spec.baselineAssumptions,
       ]
     : spec.baselineAssumptions;
+
+  const isIndexMetric = spec.units.toLowerCase().includes("index");
+  const outcomeSummary = isIndexMetric
+    ? formatIndexContext(terminal.baseline, terminal.modifiedP50, baseYear)
+    : `moves ${spec.dependentVariableLabel.toLowerCase()} from ${terminal.baseline} to ${terminal.modifiedP50} (${formatSignedPct(pctDelta)} vs trend)`;
 
   return {
     scenarioId: spec.id,
@@ -803,15 +812,11 @@ export function executeWhatIfSimulation(params: {
       percentageDelta: pctDelta,
       uncertaintySpreadP90MinusP10: spread,
     },
-    analyticalExplanation: `Calibrated for ${baselineLabel} over a ${horizon}-year window (${baseYear}–${
+    analyticalExplanation: `Starting from ${baselineLabel}, over the next ${horizon} years (${baseYear}–${
       baseYear + horizon
-    }), the modified vector shifts the terminal median (${
-      spec.dependentVariableLabel
-    }) from ${terminal.baseline} to ${terminal.modifiedP50} (${formatSignedPct(
-      pctDelta
-    )} vs baseline). The 10th–90th percentile Monte Carlo uncertainty band spans [${
+    }) your scenario ${isIndexMetric ? `results in ${outcomeSummary} (index ${terminal.modifiedP50} vs ${terminal.baseline} trend)` : outcomeSummary}. Across ${mcRuns} simulated runs, 8 out of 10 outcomes fall between ${
       terminal.modifiedP10
-    }, ${terminal.modifiedP90}] (${spec.units}).`,
+    } and ${terminal.modifiedP90} (${spec.units}).`,
     limitations: spec.limitations,
     provenance: {
       ...spec.sourceAttribution,

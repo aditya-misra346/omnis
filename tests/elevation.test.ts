@@ -4,7 +4,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { COUNTRIES_DATA } from "@/lib/data/global-intelligence";
-import { buildSovereignComparisonMatrix } from "@/lib/research/compare";
+import { buildComparisonTakeaways, buildSovereignComparisonMatrix } from "@/lib/research/compare";
 import { buildInfiniteKnowledgeGraph, findShortestCausalPath } from "@/lib/graph/engine";
 import { executeWhatIfSimulation, parseSimulationQueryPrompt } from "@/lib/simulations/engine";
 import {
@@ -35,8 +35,14 @@ import {
 } from "@/lib/research/engine";
 import {
   escapeCsvCell,
+  formatBasisPointsHuman,
   formatCountryMetricOrNa,
+  formatIndexContext,
   formatMonetaryAxisTick,
+  formatMultipleOrGap,
+  formatPopulationHuman,
+  formatRelationshipLabel,
+  formatRelationshipSentence,
   formatSignedPct,
   formatSignedValue,
   formatUsdBnCompact,
@@ -553,7 +559,8 @@ describe("OMNIS Elevation & Credibility Regression Suite", () => {
       horizonYears: 15,
       seed: 42,
     });
-    expect(canEcon.analyticalExplanation).toContain("Canada (CAN) Sovereign Baseline");
+    expect(canEcon.analyticalExplanation).toContain("Canada (CAN)");
+    expect(canEcon.analyticalExplanation).toContain("8 out of 10 outcomes");
     expect(canEcon.provenance.coverage).toContain("CAN");
 
     const parsedCan = parseSimulationQueryPrompt("Simulate Canada tariff 15%");
@@ -1252,5 +1259,119 @@ describe("OMNIS Elevation & Credibility Regression Suite", () => {
     expect(recovered.state.theme).toBe("light");
     expect(recovered.state.workspaceItems).toHaveLength(1);
     expect(recovered.state.assistantMessages).toHaveLength(QUOTA_FALLBACK_ASSISTANT_MESSAGES);
+  });
+
+  it("formats human scales, comparison takeaways, all 6 research modes, live WDI GDP hydration, and conversational assistant replies", async () => {
+    expect(formatPopulationHuman(1_441_700_000, "compact")).toBe("1.44B");
+    expect(formatPopulationHuman(1_441_700_000, "long")).toBe("1.44 billion");
+    expect(formatPopulationHuman(68_400_000, "compact")).toBe("68.4M");
+    expect(formatPopulationHuman(68_400_000, "long")).toBe("68.4 million");
+    expect(formatPopulationHuman(520_000)).toBe("520,000");
+    expect(formatPopulationHuman(0)).toBe("N/A");
+
+    expect(formatMultipleOrGap(18.7, 3.9, "ratio")).toContain("× larger");
+    expect(formatMultipleOrGap(3.9, 18.7, "ratio")).toContain("× smaller");
+    expect(formatMultipleOrGap(101, 100, "ratio")).toBe("Roughly equal");
+    expect(formatMultipleOrGap(12.5, 9.0, "pp")).toBe("+3.5 percentage points");
+    expect(formatMultipleOrGap(9.0, 12.5, "pp")).toBe("-3.5 percentage points");
+    expect(formatMultipleOrGap(Number.NaN, 10, "ratio")).toBe("N/A");
+
+    expect(formatIndexContext(100, 100, 2026)).toBe("Roughly matches baseline (2026 = 100)");
+    expect(formatIndexContext(110, 99, 2026)).toBe("10.0% smaller output than staying on baseline");
+    expect(formatIndexContext(100, 112.5, 2026)).toBe("12.5% larger output than staying on baseline");
+
+    expect(formatBasisPointsHuman(75)).toBe("+0.75% (+75 bps)");
+    expect(formatBasisPointsHuman(-50)).toBe("-0.50% (-50 bps)");
+    expect(formatBasisPointsHuman(-0)).toBe("0.00% (0 bps)");
+
+    expect(formatRelationshipLabel("DEPENDS_ON")).toBe("Depends on");
+    expect(formatRelationshipSentence("Chips", "DEPENDS_ON", "EUV Lithography")).toBe(
+      "Chips depends on EUV Lithography"
+    );
+    expect(formatRelationshipSentence("Node A", "CUSTOM_RELATION", "Node B")).toBe(
+      "Node A custom relation Node B"
+    );
+
+    const indChnTakeaways = buildComparisonTakeaways(COUNTRIES_DATA.IND, COUNTRIES_DATA.CHN);
+    expect(indChnTakeaways).toHaveLength(3);
+    expect(indChnTakeaways.join(" ")).not.toContain("undefined");
+    expect(indChnTakeaways.join(" ")).not.toContain("NaN");
+
+    const placeholderLeft = buildPlaceholderCountryProfile("TLS");
+    const placeholderRight = buildPlaceholderCountryProfile("LUX");
+    expect(placeholderLeft).not.toBeNull();
+    expect(placeholderRight).not.toBeNull();
+    const missingTakeaways = buildComparisonTakeaways(placeholderLeft!, placeholderRight!);
+    expect(missingTakeaways).toHaveLength(3);
+
+    // Stub World Bank live GDP override for IND ($4,125.7B in 2025) to ensure no stale $3,912.6B drift
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("api.worldbank.org/v2/country/IND/indicator/NY.GDP.MKTP.CD")) {
+          return new Response(
+            JSON.stringify([
+              { page: 1 },
+              [{ indicator: { id: "NY.GDP.MKTP.CD" }, date: "2025", value: 4_125_700_000_000 }],
+            ]),
+            { status: 200, headers: { "content-type": "application/json" } }
+          );
+        }
+        return new Response(JSON.stringify({}), { status: 404 });
+      })
+    );
+
+    const liveIndDeep = await orchestrateDeepResearch("Explain India's economic growth", "deep");
+    expect(liveIndDeep.executiveSummary).toContain("$4.1T");
+    expect(liveIndDeep.executiveSummary).not.toContain("$3,912.6B");
+    expect(liveIndDeep.detailedAnalysis[0]?.content).not.toBe(liveIndDeep.executiveSummary);
+
+    // Verify distinct summaries across all 6 ResearchModes when upstream times out
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Offline timeout")));
+    const modes = ["quick", "deep", "comparative", "historical", "scientific", "economic"] as const;
+    const reports = await Promise.all(
+      modes.map((m) => orchestrateDeepResearch("Explain India semiconductor energy transition", m))
+    );
+    const uniqueSummaries = new Set(reports.map((r) => r.executiveSummary));
+    expect(uniqueSummaries.size).toBe(6);
+    for (const rep of reports) {
+      expect(rep.detailedAnalysis.length).toBeGreaterThan(0);
+      expect(rep.detailedAnalysis[0].content).not.toBe(rep.executiveSummary);
+    }
+
+    // Verify /api/v1/assistant plain-English country reply & warm fallback (zero legacy filler)
+    const { POST } = await import("@/app/api/v1/assistant/route");
+    const indiaRes = await POST(
+      new Request("http://localhost/api/v1/assistant", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-forwarded-for": "198.51.100.141" },
+        body: JSON.stringify({
+          message: "Tell me about India",
+          contextLabel: "Global Atlas",
+          contextTopic: "IND",
+        }),
+      })
+    );
+    expect(indiaRes.status).toBe(200);
+    const indiaBody = (await indiaRes.json()) as { reply?: string };
+    expect(indiaBody.reply).toContain("India (IND)");
+    expect(indiaBody.reply).not.toContain("undefined");
+
+    const unknownTopicRes = await POST(
+      new Request("http://localhost/api/v1/assistant", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-forwarded-for": "198.51.100.142" },
+        body: JSON.stringify({
+          message: "How does quantum entanglement relate to superconductors?",
+          contextLabel: "Explore",
+          contextTopic: "Physics",
+        }),
+      })
+    );
+    expect(unknownTopicRes.status).toBe(200);
+    const unknownBody = (await unknownTopicRes.json()) as { reply?: string };
+    expect(unknownBody.reply).not.toContain("No pre-cached sovereign dossier");
+    expect((unknownBody.reply ?? "").length).toBeGreaterThan(40);
   });
 });

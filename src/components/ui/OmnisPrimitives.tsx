@@ -75,8 +75,8 @@ export function OmnisModuleHeader({
     <section className="pb-4 sm:pb-5 border-b border-[var(--border-subtle)] space-y-3 sm:space-y-4 relative">
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3 sm:gap-4">
         <div className="space-y-1.5 sm:space-y-2 min-w-0">
-          <div className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] tone-blue omnis-mono">
-            {icon}
+          <div className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[var(--text-muted)]">
+            <span className="tone-blue shrink-0">{icon}</span>
             <span>{moduleTag}</span>
           </div>
           <h1 className="text-[clamp(1.625rem,2.6vw,2.4rem)] font-bold tracking-[-0.02em] text-[var(--text-primary)] leading-[1.16] text-balance">
@@ -146,14 +146,14 @@ export function OmnisStatTile({
 
   return (
     <div className="omnis-surface-slate p-4 space-y-1.5 hover:border-[var(--border-strong)] min-w-0">
-      <div className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)] leading-snug">
+      <div className="text-[13px] font-medium text-[var(--text-muted)] leading-snug">
         {label}
       </div>
       <div className={`text-[21px] sm:text-[26px] font-bold omnis-mono omnis-tabular leading-tight ${toneClass}`}>
         {value}
       </div>
       {subValue && (
-        <div className="text-[13px] text-[var(--text-secondary)] omnis-mono omnis-tabular leading-snug break-words">
+        <div className="text-[12.5px] sm:text-[13px] text-[var(--text-secondary)] omnis-tabular leading-snug break-words">
           {subValue}
         </div>
       )}
@@ -185,7 +185,7 @@ export function OmnisRouteLoadingSkeleton({
       className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6"
     >
       <div className="omnis-card p-5 sm:p-6 space-y-4">
-        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] tone-blue omnis-mono">
+        <div className="flex items-center gap-2 text-[13px] font-medium text-[var(--text-muted)]">
           <span className="w-2 h-2 rounded-full bg-[var(--accent-blue)] animate-pulse" />
           <span>{moduleTag}</span>
         </div>

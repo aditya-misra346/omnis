@@ -141,3 +141,135 @@ export function formatCountryMetricOrNa(
 ): string {
   return hasSectorMetricValue(country, value) ? formatFn(value) : naLabel;
 }
+
+/**
+ * Formats a population headcount with natural B / M scaling (`"1.44B"`, `"67.5M"`, `"480,000"`)
+ * or full words in `"long"` style (`"1.44 billion"`, `"67.5 million"`).
+ */
+export function formatPopulationHuman(
+  pop: number,
+  style: "compact" | "long" = "compact"
+): string {
+  if (!Number.isFinite(pop) || pop <= 0) return "N/A";
+  if (pop >= 1e9) {
+    const billions = (pop / 1e9).toFixed(2);
+    return style === "long" ? `${billions} billion` : `${billions}B`;
+  }
+  if (pop >= 1e6) {
+    const millions = (pop / 1e6).toFixed(1);
+    return style === "long" ? `${millions} million` : `${millions}M`;
+  }
+  return Math.round(pop).toLocaleString("en-US");
+}
+
+/**
+ * Translates raw comparisons into human-readable multiples or point gaps
+ * (`"4.7× larger"`, `"+2.0 percentage points faster"`, `"+11.2 pts higher"`).
+ */
+export function formatMultipleOrGap(
+  a: number,
+  b: number,
+  kind: "ratio" | "pp" | "diff",
+  unit = ""
+): string {
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return "N/A";
+
+  if (kind === "ratio" && a > 0 && b > 0) {
+    const larger = Math.max(a, b);
+    const smaller = Math.min(a, b);
+    const ratio = larger / smaller;
+    if (ratio < 1.04) return "Roughly equal";
+    if (ratio >= 1.45) {
+      return `${ratio.toFixed(1)}× ${a >= b ? "larger" : "smaller"}`;
+    }
+    const pct = Math.round((a >= b ? a / b - 1 : 1 - a / b) * 100);
+    return `${pct}% ${a >= b ? "larger" : "smaller"}`;
+  }
+
+  const delta = normalizeZero(a - b);
+  if (kind === "pp") {
+    if (Math.abs(delta) < 0.05) return "Same rate";
+    const trimmedUnit = unit.trim();
+    const resolvedUnit =
+      delta < 0 && trimmedUnit === "faster"
+        ? "slower"
+        : delta < 0 && trimmedUnit === "higher"
+          ? "lower"
+          : trimmedUnit;
+    const sign = delta > 0 ? "+" : "";
+    return `${sign}${delta.toFixed(1)} percentage points${resolvedUnit ? ` ${resolvedUnit}` : ""}`;
+  }
+
+  if (Math.abs(delta) < 0.05) return "No gap";
+  const cleanUnit = unit.trim() || "pts";
+  const sign = delta > 0 ? "+" : "";
+  const dir = delta >= 0 ? "higher" : "lower";
+  return `${sign}${delta.toFixed(1)} ${cleanUnit} ${dir}`;
+}
+
+/**
+ * Translates baseline vs modified projection index values into plain-English output deltas.
+ */
+export function formatIndexContext(
+  baselineVal: number,
+  modifiedVal: number,
+  baseYear = 2026
+): string {
+  if (!Number.isFinite(baselineVal) || !Number.isFinite(modifiedVal) || baselineVal <= 0) {
+    return "Projection unavailable";
+  }
+  const pctDiff = ((modifiedVal - baselineVal) / baselineVal) * 100;
+  if (Math.abs(pctDiff) < 0.15) {
+    return `Roughly matches baseline (${baseYear} = 100)`;
+  }
+  const absPct = Math.abs(pctDiff).toFixed(1);
+  return pctDiff < 0
+    ? `${absPct}% smaller output than staying on baseline`
+    : `${absPct}% larger output than staying on baseline`;
+}
+
+/** Formats basis-point rate shifts into both percentage points and bps (`"+1.25% (+125 bps)"`). */
+export function formatBasisPointsHuman(bps: number): string {
+  if (!Number.isFinite(bps)) return "0.00% (0 bps)";
+  const safe = normalizeZero(bps);
+  if (safe === 0) return "0.00% (0 bps)";
+  const sign = safe > 0 ? "+" : "";
+  return `${sign}${(safe / 100).toFixed(2)}% (${sign}${Math.round(safe)} bps)`;
+}
+
+const RELATIONSHIP_LABELS: Record<string, { label: string; verb: string }> = {
+  DEPENDS_ON: { label: "Depends on", verb: "depends on" },
+  CAUSES: { label: "Causes", verb: "causes" },
+  INFLUENCES: { label: "Influences", verb: "influences" },
+  REGULATES: { label: "Regulates", verb: "regulates" },
+  COMPETES_WITH: { label: "Competes with", verb: "competes with" },
+  PART_OF: { label: "Part of", verb: "is part of" },
+  SUPPORTS: { label: "Supports", verb: "supports" },
+  DEVELOPED_BY: { label: "Built by", verb: "was built by" },
+  HISTORICALLY_PRECEDED: { label: "Led to", verb: "preceded" },
+  RELATED_TO: { label: "Related to", verb: "relates to" },
+  REQUIRES: { label: "Requires", verb: "requires" },
+  AMPLIFIES: { label: "Amplifies", verb: "amplifies" },
+  MITIGATES: { label: "Mitigates", verb: "mitigates" },
+  ACCELERATES: { label: "Accelerates", verb: "accelerates" },
+  CONSTRAINS: { label: "Limits", verb: "limits" },
+};
+
+/** Converts uppercase graph relationship enums into plain English pill labels. */
+export function formatRelationshipLabel(relType: string): string {
+  const key = relType.trim().toUpperCase();
+  if (RELATIONSHIP_LABELS[key]) return RELATIONSHIP_LABELS[key].label;
+  const spaced = key.replace(/_/g, " ").toLowerCase();
+  return spaced ? spaced.charAt(0).toUpperCase() + spaced.slice(1) : "Related to";
+}
+
+/** Formats a directed graph edge as a readable English sentence. */
+export function formatRelationshipSentence(
+  sourceLabel: string,
+  relType: string,
+  targetLabel: string
+): string {
+  const key = relType.trim().toUpperCase();
+  const verb = RELATIONSHIP_LABELS[key]?.verb ?? key.replace(/_/g, " ").toLowerCase();
+  return `${sourceLabel.trim()} ${verb || "relates to"} ${targetLabel.trim()}`;
+}

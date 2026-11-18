@@ -104,9 +104,9 @@ export default function CommandCenterPage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       <OmnisModuleHeader
-        moduleTag="INTELLIGENCE COMMAND CENTER"
-        title="Global Situation & Knowledge Discovery Cockpit"
-        subtitle="Route natural-language investigations directly to the 3D Sovereign Atlas, Infinite Knowledge Graph, Monte Carlo Simulator, or Multi-Step Deep Research Engine."
+        moduleTag="Ask & Navigate"
+        title="Start with a question, country, or topic"
+        subtitle="Type what you want to understand—like comparing two countries, testing an oil shock, or tracing an event in history."
         icon={<Sparkles className="w-3.5 h-3.5" />}
         actions={
           <>
@@ -139,14 +139,14 @@ export default function CommandCenterPage() {
             />
           </div>
           <OmnisButton type="submit" size="md" className="omnis-magnetic-arrow">
-            <span>Execute Command</span>
+            <span>Search</span>
             <ArrowRight className="omnis-arrow-glyph w-3.5 h-3.5" />
           </OmnisButton>
         </form>
 
         <div className="flex flex-wrap items-center gap-2 text-[13px]">
-          <span className="text-[var(--text-muted)] font-semibold omnis-mono uppercase tracking-wider text-xs">
-            Instant Triggers:
+          <span className="text-[var(--text-muted)] font-medium text-xs">
+            Try a question:
           </span>
           {[
             { label: "🇮🇳 India Country Dossier", href: "/atlas?country=IND" },
@@ -323,50 +323,50 @@ export default function CommandCenterPage() {
               <div className="flex items-center justify-between pb-2 border-b border-[var(--border-subtle)]">
                 <div className="flex items-center gap-2">
                   <Layers className="w-4 h-4 tone-violet" />
-                  <h2 className="text-[15px] font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono">
-                    Core Intelligence Modules
+                  <h2 className="text-[15px] font-bold text-[var(--text-primary)]">
+                    Explore Atlas &amp; Tools
                   </h2>
                 </div>
-                <span className="text-xs text-[var(--text-muted)] omnis-mono">
-                  6 Dedicated Environments
+                <span className="text-xs text-[var(--text-muted)]">
+                  6 Interactive Tools
                 </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 border-t border-l border-[var(--border-subtle)] bg-[var(--bg-graphite)]">
                 {[
                   {
-                    title: "01. Global Intelligence Globe",
-                    desc: "3D Earth, 7 intelligence layers, sovereign dossiers & indicator comparisons.",
+                    title: "World Globe & Country Profiles",
+                    desc: "3D Earth, live day/night light, detailed country stats & comparisons.",
                     href: "/atlas",
                     icon: Globe2,
                   },
                   {
-                    title: "02. Infinite Knowledge Graph",
-                    desc: "6 graph layouts, typed causal relationships, progressive expansion & SVG/JSON export.",
+                    title: "Connected Topic Map",
+                    desc: "6 interactive views showing causes, connections & sources.",
                     href: "/knowledge-graph",
                     icon: Network,
                   },
                   {
-                    title: "03. What-If Simulation Engine",
-                    desc: "500-path Monte Carlo models across macroeconomics, energy, climate & AI.",
+                    title: "What-If Scenario Forecasts",
+                    desc: "500-run models testing oil shocks, tariffs, clean grids & warming.",
                     href: "/simulations",
                     icon: Sliders,
                   },
                   {
-                    title: "04. Reality Timeline",
-                    desc: "Connected historical milestones from 2600 BCE to modern AI & climate treaties.",
+                    title: "World History Timeline",
+                    desc: "Historical milestones from 3000 BCE connected directly to modern trends.",
                     href: "/timeline",
                     icon: Clock,
                   },
                   {
-                    title: "05. Deep Research Intelligence",
-                    desc: "6 research modes retrieving live OpenAlex papers, World Bank data & citations.",
+                    title: "Deep Research",
+                    desc: "Plain-English answers backed by World Bank tables & OpenAlex studies.",
                     href: "/research",
                     icon: FileSearch,
                   },
                   {
-                    title: "06. Digital World Laboratory",
-                    desc: "Interactive physics, orbital mechanics, chemistry, DNA, climate & bridge labs.",
+                    title: "Interactive Science Labs",
+                    desc: "Hands-on physics, orbits, molecules, ecosystems, climate & bridges.",
                     href: "/laboratory",
                     icon: FlaskConical,
                   },
@@ -398,14 +398,14 @@ export default function CommandCenterPage() {
               "global-developments": (
             <section className="space-y-3">
               <div className="flex items-center justify-between pb-2 border-b border-[var(--border-subtle)]">
-                <h2 className="text-[15px] font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono">
-                  Curated Sovereign Developments
+                <h2 className="text-[15px] font-bold text-[var(--text-primary)]">
+                  Recent National Trends
                 </h2>
                 <Link
                   href="/timeline"
                   className="omnis-magnetic-arrow text-[13px] tone-blue font-semibold hover:underline inline-flex items-center gap-1"
                 >
-                  <span>Open Reality Timeline</span>
+                  <span>Open World Timeline</span>
                   <ArrowRight className="omnis-arrow-glyph w-3 h-3" />
                 </Link>
               </div>

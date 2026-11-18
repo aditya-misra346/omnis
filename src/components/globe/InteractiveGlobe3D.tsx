@@ -25,6 +25,7 @@ import {
 } from "@/lib/data/world-catalog";
 import { applyOfficialSurveyOfIndiaBoundaries } from "@/lib/data/india-soi-official";
 import {
+  formatPopulationHuman,
   formatSignedPct,
   formatSignedValue,
   getEffectiveGdpUsdBn,
@@ -1723,7 +1724,7 @@ totalEmissiveRadiance *= omnisNightMask * omnisEmissiveGain * uCityLightsEnabled
                   <span className="truncate">
                     {selectedCountry.capital} •{" "}
                     {selectedCountry.population > 0
-                      ? `Pop ${(selectedCountry.population / 1e6).toFixed(0)}M`
+                      ? `Pop ${formatPopulationHuman(selectedCountry.population)}`
                       : "Pop N/A"}
                   </span>
                 </div>

@@ -239,7 +239,7 @@ export function OmnisLogo({
 
   return (
     <div
-      className={`omnis-brand-root flex items-center gap-2.5 select-none ${className}`.trim()}
+      className={`omnis-brand-root flex items-center gap-2 sm:gap-2.5 select-none ${className}`.trim()}
     >
       <div className="relative shrink-0 rounded-xl">
         <OmnisMark size={markSize} simplified={simplified} />
@@ -247,7 +247,7 @@ export function OmnisLogo({
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <span
-            className="font-bold tracking-[0.22em] text-[15px] leading-none"
+            className="font-bold tracking-[0.14em] sm:tracking-[0.22em] text-sm sm:text-[15px] leading-none"
             style={{
               color: "var(--omnis-logo-wordmark, var(--text-primary))",
               fontFamily: "var(--font-display), var(--font-sans), sans-serif",

@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Minus, Plus, RotateCcw } from "lucide-react";
+import { formatBasisPointsHuman } from "@/lib/formatters";
 
 export interface OmnisParameterSliderProps {
   label: string;
@@ -84,8 +85,9 @@ export function OmnisParameterSlider({
           <span
             className={`px-2 py-0.5 rounded bg-[var(--bg-graphite)] border border-[var(--border-subtle)] font-bold omnis-mono omnis-tabular text-xs sm:text-[13px] whitespace-nowrap ${valueToneClass}`}
           >
-            {value}
-            {unit ? ` ${unit}` : ""}
+            {unit === "bps"
+              ? formatBasisPointsHuman(value)
+              : `${value}${unit ? ` ${unit}` : ""}`}
           </span>
           <button
             type="button"

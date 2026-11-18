@@ -3,7 +3,7 @@ import { OmnisRouteLoadingSkeleton } from "@/components/ui/OmnisPrimitives";
 export default function SettingsLoading() {
   return (
     <OmnisRouteLoadingSkeleton
-      moduleTag="OMNIS • WORKSPACE SETTINGS & TELEMETRY"
+      moduleTag="Settings & Data Health"
       layout="report"
     />
   );

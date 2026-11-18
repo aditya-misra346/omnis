@@ -20,6 +20,10 @@ import {
   buildInfiniteKnowledgeGraph,
   findShortestCausalPath,
 } from "@/lib/graph/engine";
+import {
+  formatRelationshipLabel,
+  formatRelationshipSentence,
+} from "@/lib/formatters";
 import { fetchOpenAlexSources, fetchWikimediaSummary } from "@/lib/providers/live-data";
 import { KnowledgeGraphCanvas } from "@/components/graph/KnowledgeGraphCanvas";
 import { ProvenancePanel, VerificationBadge } from "@/components/ui/ProvenancePanel";
@@ -267,15 +271,15 @@ function KnowledgeGraphContent() {
     <div className="p-4 pb-24 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* Header & Topic Generator */}
       <OmnisModuleHeader
-        moduleTag="MODULE 02 • INFINITE SEMANTIC KNOWLEDGE GRAPH"
-        title="Connected Concept Discovery & Causal Relationship Engine"
-        subtitle="Inspect directed causal relationships across 6 interactive layout engines, drag nodes cleanly, focus 1-hop neighborhoods, and verify citation provenance."
+        moduleTag="Topic Map"
+        title="Connected Ideas & Cause-and-Effect Explorer"
+        subtitle="See how technologies, policies, and economies connect across 6 interactive views, drag topics around, and check sources."
         icon={<Network className="w-3.5 h-3.5" />}
         actions={
           <>
             <OmnisButton onClick={handleSaveGraph}>
               {savedToast ? <Check className="w-3.5 h-3.5" /> : <Bookmark className="w-3.5 h-3.5" />}
-              <span>{savedToast ? "Saved to Workspace" : "Save Graph"}</span>
+              <span>{savedToast ? "Saved to Workspace" : "Save Map"}</span>
             </OmnisButton>
             <OmnisButton variant="secondary" onClick={handleExportJson}>
               <Download className="w-3.5 h-3.5 tone-blue" />
@@ -296,23 +300,23 @@ function KnowledgeGraphContent() {
                 type="text"
                 value={topicInput}
                 onChange={(e) => setTopicInput(e.target.value)}
-                placeholder="Enter any concept, technology, country, or phenomenon..."
+                placeholder="Enter any concept, technology, country, or topic..."
                 className="w-full bg-transparent text-base md:text-[15px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
               />
             </div>
-            <OmnisButton type="submit">Generate Network</OmnisButton>
+            <OmnisButton type="submit">Build Map</OmnisButton>
           </form>
 
           <div className="flex flex-wrap items-center gap-1.5 text-[13px]">
-            <span className="text-[var(--text-muted)] omnis-mono uppercase tracking-wider text-xs">
-              Quick Domains:
+            <span className="text-[var(--text-muted)] text-xs font-medium">
+              Popular topics:
             </span>
             {PRESET_TOPICS.map((preset) => (
               <button
                 key={preset}
                 type="button"
                 onClick={() => selectGraphTopic(preset)}
-                className={`px-2.5 py-1 rounded-full border transition-colors cursor-pointer ${
+                className={`min-h-[44px] sm:min-h-0 px-3 sm:px-2.5 py-2 sm:py-1 rounded-full border transition-colors cursor-pointer ${
                   activeTopic.toLowerCase() === preset.toLowerCase()
                     ? "badge-tone-blue font-semibold"
                     : "bg-[var(--bg-slate)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
@@ -327,7 +331,7 @@ function KnowledgeGraphContent() {
         {/* Layout Modes & Relationship Filters */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-[13px] sm:text-sm">
           <div className="flex flex-wrap items-center gap-2 overflow-x-auto max-w-full">
-            <span className="text-[var(--text-muted)] font-semibold shrink-0">Viewing Mode:</span>
+            <span className="text-[var(--text-muted)] font-semibold shrink-0">Layout:</span>
             <OmnisSegmentedControl
               groupId="kg-layout-mode"
               ariaLabel="Knowledge Graph Layout Engine"
@@ -349,7 +353,7 @@ function KnowledgeGraphContent() {
               leadingIcon={<Filter className="w-3.5 h-3.5 tone-blue" />}
               options={RELATIONSHIP_TYPES.map((r) => ({
                 value: r,
-                label: `Rel: ${r}`,
+                label: r === "ALL" ? "Link: All types" : `Link: ${formatRelationshipLabel(r)}`,
               }))}
             />
 
@@ -480,16 +484,16 @@ function KnowledgeGraphContent() {
                 </p>
               </div>
 
-              {/* Shortest-Path Causal Tracer (BFS) */}
-              <div className="space-y-2 p-3 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)]">
+              {/* Shortest-Path Connection Finder */}
+              <div className="space-y-2 border-y border-[var(--border-subtle)] py-3">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-bold uppercase tracking-wider tone-cyan omnis-mono inline-flex items-center gap-1.5">
+                  <span className="text-xs font-semibold tone-cyan inline-flex items-center gap-1.5">
                     <GitBranch className="w-3.5 h-3.5" />
-                    <span>Trace Causal Path</span>
+                    <span>See how two concepts connect</span>
                   </span>
                   {causalPath?.reachable ? (
-                    <span className="text-[11.5px] font-bold omnis-mono omnis-tabular px-1.5 py-0.5 rounded badge-tone-cyan">
-                      {causalPath.hops} {causalPath.hops === 1 ? "hop" : "hops"}
+                    <span className="text-[11.5px] font-bold omnis-tabular px-1.5 py-0.5 rounded badge-tone-cyan">
+                      {causalPath.hops} {causalPath.hops === 1 ? "step" : "steps"}
                     </span>
                   ) : null}
                 </div>
@@ -498,7 +502,7 @@ function KnowledgeGraphContent() {
                   onChange={setPathTargetId}
                   ariaLabel="Trace Causal Path Target Node"
                   options={[
-                    { value: "", label: "Select target concept to trace path…" },
+                    { value: "", label: "Pick another topic to connect…" },
                     ...graphData.nodes
                       .filter((n) => n.id !== selectedNode.id)
                       .map((n) => ({
@@ -510,7 +514,7 @@ function KnowledgeGraphContent() {
                 />
                 {causalPath ? (
                   causalPath.reachable ? (
-                    <div className="flex flex-wrap items-center gap-1 pt-1 text-xs omnis-mono">
+                    <div className="flex flex-wrap items-center gap-1 pt-1 text-xs">
                       {causalPath.nodeIds.map((nid, idx) => {
                         const node = graphData.nodes.find((x) => x.id === nid);
                         return (
@@ -530,40 +534,55 @@ function KnowledgeGraphContent() {
                       })}
                     </div>
                   ) : (
-                    <div className="text-xs text-[var(--text-muted)] omnis-mono">
-                      No undirected causal chain connects these concepts under current nodes.
+                    <div className="text-xs text-[var(--text-muted)]">
+                      No direct path found yet. Try expanding more topics below.
                     </div>
                   )
                 ) : null}
               </div>
 
-              {/* Connected Semantic Relationships */}
+              {/* Direct Connections */}
               <div className="space-y-2">
-                <div className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
-                  Semantic Relationships ({connectedEdges.length})
+                <div className="text-xs font-semibold text-[var(--text-muted)]">
+                  Direct Connections ({connectedEdges.length})
                 </div>
                 <div className="divide-y divide-[var(--border-subtle)] max-h-52 overflow-y-auto pr-1 border-y border-[var(--border-subtle)]">
                   {connectedEdges.map((edge) => {
                     const otherId =
                       edge.source === selectedNode.id ? edge.target : edge.source;
+                    const srcNode = graphData.nodes.find((n) => n.id === edge.source);
+                    const tgtNode = graphData.nodes.find((n) => n.id === edge.target);
                     const otherNode = graphData.nodes.find((n) => n.id === otherId);
+                    const sentence = formatRelationshipSentence(
+                      srcNode?.label ?? edge.source,
+                      edge.relationshipType,
+                      tgtNode?.label ?? edge.target
+                    );
                     return (
                       <button
                         key={edge.id}
                         type="button"
+                        title={sentence}
                         onClick={() => setSelectedNodeId(otherId)}
                         className="w-full text-left py-2.5 px-1 text-[13.5px] space-y-1 cursor-pointer hover:bg-[var(--bg-slate)]/60 transition-colors rounded-md focus-visible:ring-2 focus-visible:ring-[var(--accent-blue)]"
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <span className="omnis-mono text-[11px] px-1.5 py-0.5 rounded-md badge-tone-blue font-semibold">
-                            {edge.relationshipType}
+                          <span className="text-[11px] px-2 py-0.5 rounded-md badge-tone-blue font-semibold">
+                            {formatRelationshipLabel(edge.relationshipType)}
                           </span>
                           <span
-                            className={`text-[11px] font-semibold px-1.5 py-0.5 rounded ${
-                              edge.isHypothesis ? "badge-tone-violet" : "badge-tone-verified"
+                            className={`text-[11px] font-semibold inline-flex items-center gap-1 ${
+                              edge.isHypothesis ? "tone-violet" : "tone-verified"
                             }`}
                           >
-                            {edge.isHypothesis ? "AI Hypothesis" : "Verified"}
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                edge.isHypothesis
+                                  ? "bg-[var(--accent-violet)]"
+                                  : "bg-[var(--status-verified)]"
+                              }`}
+                            />
+                            {edge.isHypothesis ? "Unconfirmed Scenario" : "Verified"}
                           </span>
                         </div>
                         <div className="font-semibold text-[var(--text-primary)]">
@@ -580,8 +599,8 @@ function KnowledgeGraphContent() {
 
               {/* Supporting Sources */}
               <div className="space-y-1.5">
-                <div className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
-                  Supporting Citations
+                <div className="text-xs font-semibold text-[var(--text-muted)]">
+                  Sources
                 </div>
                 <div className="divide-y divide-[var(--border-subtle)] border-t border-[var(--border-subtle)]">
                   {selectedNode.sources.map((s) => (
@@ -615,7 +634,7 @@ function KnowledgeGraphContent() {
               className="w-full"
             >
               <PlusCircle className="w-3.5 h-3.5" />
-              <span>Expand Node Into +4 Connected Entities</span>
+              <span>Show 4 more connected topics</span>
             </OmnisButton>
             <OmnisButton
               variant="secondary"
@@ -629,7 +648,7 @@ function KnowledgeGraphContent() {
               className="w-full"
             >
               <FileSearch className="w-3.5 h-3.5 tone-blue" />
-              <span>Generate Deep Research Report on Concept</span>
+              <span>Read Full Research Report</span>
             </OmnisButton>
           </div>
         </div>
@@ -644,8 +663,8 @@ function KnowledgeGraphContent() {
             className="w-full omnis-hud-pill rounded-2xl px-4 py-3 flex items-center justify-between gap-3 text-left text-[13px] cursor-pointer"
           >
             <div className="min-w-0">
-              <div className="text-xs omnis-mono uppercase tracking-wider tone-blue font-bold">
-                Selected Concept
+              <div className="text-xs font-semibold tone-blue">
+                Selected Topic
               </div>
               <div className="font-bold text-[var(--text-primary)] truncate">
                 {selectedNode.label}
@@ -673,15 +692,15 @@ function KnowledgeGraphContent() {
               {selectedNode.summary}
             </p>
             <div className="space-y-1.5">
-              <div className="text-xs font-bold uppercase tracking-wider tone-cyan omnis-mono">
-                Trace Causal Path {causalPath?.reachable ? `(${causalPath.hops} hops)` : ""}
+              <div className="text-xs font-semibold tone-cyan">
+                See how two concepts connect {causalPath?.reachable ? `(${causalPath.hops} steps)` : ""}
               </div>
               <OmnisSelect
                 value={pathTargetId}
                 onChange={setPathTargetId}
                 ariaLabel="Mobile Trace Causal Path Target"
                 options={[
-                  { value: "", label: "Select target concept…" },
+                  { value: "", label: "Pick another topic to connect…" },
                   ...graphData.nodes
                     .filter((n) => n.id !== selectedNode.id)
                     .map((n) => ({ value: n.id, label: n.label, hint: n.category })),
@@ -689,8 +708,8 @@ function KnowledgeGraphContent() {
               />
             </div>
             <div className="space-y-1.5">
-              <div className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
-                Edges ({connectedEdges.length})
+              <div className="text-xs font-semibold text-[var(--text-muted)]">
+                Direct Connections ({connectedEdges.length})
               </div>
               <div className="divide-y divide-[var(--border-subtle)]">
                 {connectedEdges.map((edge) => {
@@ -704,7 +723,9 @@ function KnowledgeGraphContent() {
                       className="w-full text-left py-2 text-[13.5px] space-y-0.5 cursor-pointer"
                     >
                       <div className="font-semibold text-[var(--text-primary)]">
-                        <span className="omnis-mono tone-blue mr-1.5">[{edge.relationshipType}]</span>
+                        <span className="text-xs px-1.5 py-0.5 rounded badge-tone-blue mr-1.5">
+                          {formatRelationshipLabel(edge.relationshipType)}
+                        </span>
                         → {otherNode?.label ?? otherId}
                       </div>
                       <div className="text-[13px] text-[var(--text-secondary)]">{edge.evidence}</div>

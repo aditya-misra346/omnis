@@ -17,6 +17,7 @@ import type {
   KnowledgeGraphNode,
   RelationshipType,
 } from "@/types/omnis";
+import { formatRelationshipLabel } from "@/lib/formatters";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 import { useFullscreenBodyLock } from "@/components/ui/OmnisPrimitives";
 import {
@@ -847,8 +848,8 @@ export function KnowledgeGraphCanvas({
               const py =
                 (1 - tP) * (1 - tP) * src.y + 2 * (1 - tP) * tP * cy + tP * tP * tgt.y;
 
-              const formattedRel = edge.relationshipType.replace(/_/g, " ");
-              const pillWidth = Math.max(72, formattedRel.length * 7.6 + 20);
+              const formattedRel = formatRelationshipLabel(edge.relationshipType);
+              const pillWidth = Math.max(76, formattedRel.length * 7.2 + 20);
               const edgeOpacity = isPathEdge
                 ? 1
                 : isRelated
@@ -917,14 +918,13 @@ export function KnowledgeGraphCanvas({
                         textAnchor="middle"
                         fill={
                           isPathEdge
-                            ? "var(--accent-cyan)"
+                            ? "var(--status-cyan)"
                             : edge.isHypothesis
                               ? "var(--accent-violet)"
                               : "var(--accent-blue)"
                         }
                         fontSize="11"
                         fontWeight="600"
-                        className="omnis-mono"
                       >
                         {formattedRel}
                       </text>
@@ -1188,14 +1188,14 @@ export function KnowledgeGraphCanvas({
           <div className="flex flex-wrap items-center gap-3 text-[var(--text-secondary)]">
             <span className="inline-flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-[var(--chart-blue)]" />
-              Verified Arc
+              Verified Link
             </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full border-2 border-dashed border-[var(--chart-violet)]" />
-              AI Hypothesis
+              Unconfirmed Scenario
             </span>
-            <span className="hidden md:inline text-[var(--text-muted)] omnis-mono text-xs">
-              Hex=Tech/Energy • Diamond=Geo • Square=Econ • Circle=Core
+            <span className="hidden md:inline text-[var(--text-muted)] text-xs">
+              Shapes mark topic domains • Click or drag any node
             </span>
           </div>
           {onExpandNode ? (
@@ -1205,7 +1205,7 @@ export function KnowledgeGraphCanvas({
               className="min-h-[44px] sm:min-h-[30px] inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--accent-blue-solid)] hover:brightness-110 text-white font-semibold cursor-pointer"
             >
               <PlusCircle className="w-3.5 h-3.5" />
-              <span>Expand Node (+4)</span>
+              <span>Show +4 More Topics</span>
             </button>
           ) : null}
         </div>

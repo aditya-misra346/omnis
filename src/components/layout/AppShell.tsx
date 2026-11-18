@@ -40,15 +40,15 @@ import { classifyQueryIntent } from "@/lib/research/engine";
 import { OmnisLoader, OmnisWordmark } from "@/components/brand/OmnisLogo";
 
 const NAV_ITEMS = [
-  { label: "Home", href: "/command", icon: Home, badge: "Command", group: "core" },
+  { label: "Home", href: "/command", icon: Home, badge: "Start", group: "core" },
   { label: "Intelligence", href: "/intelligence", icon: Layers, badge: "Compare", group: "core" },
   { label: "Explore", href: "/explore", icon: Compass, badge: "Search", group: "core" },
-  { label: "Global Atlas", href: "/atlas", icon: Globe2, badge: "Mod 01", group: "modules" },
-  { label: "Knowledge Graph", href: "/knowledge-graph", icon: Network, badge: "Mod 02", group: "modules" },
-  { label: "Simulations", href: "/simulations", icon: Sliders, badge: "Mod 03", group: "modules" },
-  { label: "Timeline", href: "/timeline", icon: Clock, badge: "Mod 04", group: "modules" },
-  { label: "Research", href: "/research", icon: FileSearch, badge: "Mod 05", group: "modules" },
-  { label: "Laboratory", href: "/laboratory", icon: FlaskConical, badge: "Mod 06", group: "modules" },
+  { label: "Global Atlas", href: "/atlas", icon: Globe2, badge: "Countries", group: "modules" },
+  { label: "Knowledge Graph", href: "/knowledge-graph", icon: Network, badge: "Topics", group: "modules" },
+  { label: "Simulations", href: "/simulations", icon: Sliders, badge: "Forecasts", group: "modules" },
+  { label: "Timeline", href: "/timeline", icon: Clock, badge: "History", group: "modules" },
+  { label: "Research", href: "/research", icon: FileSearch, badge: "Reports", group: "modules" },
+  { label: "Laboratory", href: "/laboratory", icon: FlaskConical, badge: "Science", group: "modules" },
   { label: "My Workspace", href: "/workspace", icon: Briefcase, group: "system" },
   { label: "Settings", href: "/settings", icon: Settings, group: "system" },
 ];
@@ -491,13 +491,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="min-h-dvh flex flex-col bg-[var(--bg-obsidian)] text-[var(--text-primary)]">
           {/* Top Global Intelligence Header */}
           <header
-            className="sticky top-0 z-40 h-14 backdrop-blur-xl px-3 sm:px-4 flex items-center justify-between gap-2 sm:gap-3 overflow-x-clip"
+            className="sticky top-0 z-40 h-14 backdrop-blur-xl px-2.5 sm:px-4 flex items-center justify-between gap-1.5 sm:gap-3 overflow-x-clip"
             style={{
               backgroundColor: "var(--bg-glass)",
               boxShadow: "inset 0 -1px 0 var(--border-subtle), inset 0 1px 0 var(--border-highlight)",
             }}
           >
-            <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0 min-w-0">
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(true)}
@@ -538,14 +538,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
             {/* Universal Command & Search Trigger */}
             <div
-              className={`flex-1 min-w-[100px] max-w-md ${
+              className={`flex-1 min-w-0 max-w-md ${
                 isLandingPage ? "lg:max-w-[240px]" : "lg:max-w-md"
               } xl:max-w-lg mx-0.5 sm:mx-2`}
             >
               <button
                 type="button"
                 onClick={() => setCommandPaletteOpen(true)}
-                className="w-full min-w-0 min-h-[44px] md:min-h-0 flex items-center justify-between gap-2 px-2.5 sm:px-3 py-2 md:py-1.5 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[13px] text-[var(--text-secondary)] transition-all shadow-2xs"
+                className="w-full min-w-0 min-h-[44px] md:min-h-0 flex items-center justify-between gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 md:py-1.5 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[13px] text-[var(--text-secondary)] transition-all shadow-2xs"
               >
                 <span className="flex items-center gap-2 min-w-0 flex-1">
                   <Search className="w-3.5 h-3.5 tone-blue shrink-0" />
@@ -561,7 +561,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
 
             {/* Right Action Controls */}
-            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
               <Link
                 href="/settings"
                 title={`Provider Telemetry: ${providerTelemetry.operationalCount}/${providerTelemetry.totalCount} operational`}
@@ -674,8 +674,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <div className="p-3 space-y-1">
                   <div className="flex items-center justify-between px-2 py-1.5 mb-2">
                     {!sidebarCollapsed && (
-                      <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--text-muted)] omnis-mono">
-                        Navigation Matrix
+                      <span className="text-xs font-medium text-[var(--text-muted)]">
+                        Navigation
                       </span>
                     )}
                     <button
@@ -704,8 +704,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       <React.Fragment key={item.href}>
                         {showDivider && (
                           <div className="pt-2.5 pb-1 px-2">
-                            <div className="border-t border-[var(--border-subtle)] pt-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)] omnis-mono">
-                              {item.group === "modules" ? "Intelligence Modules" : "Workspace & Governance"}
+                            <div className="border-t border-[var(--border-subtle)] pt-2 text-xs font-medium text-[var(--text-muted)]">
+                              {item.group === "modules" ? "Atlas & Tools" : "Personal"}
                             </div>
                           </div>
                         )}
@@ -724,10 +724,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           </span>
                           {!sidebarCollapsed && item.badge && (
                             <span
-                              className={`text-[11px] px-1.5 py-0.5 rounded-md omnis-mono ${
+                              className={`text-[11.5px] font-normal ${
                                 active
-                                  ? "bg-white/20 text-white"
-                                  : "bg-[var(--bg-slate)] text-[var(--text-muted)] border border-[var(--border-subtle)]"
+                                  ? "text-white/80"
+                                  : "text-[var(--text-muted)]"
                               }`}
                             >
                               {item.badge}
@@ -740,24 +740,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </div>
 
                 {!sidebarCollapsed && (
-                  <div className="p-3.5 m-3 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-xs space-y-2">
-                    <div className="flex items-center justify-between text-[var(--text-primary)] font-semibold">
-                      <span className="flex items-center gap-1.5">
-                        <Terminal className="w-3.5 h-3.5 tone-blue" />
-                        Epistemic Mode
-                      </span>
-                      <span className="px-1.5 py-0.5 rounded text-[11px] font-bold badge-tone-verified omnis-mono">
-                        STRICT
-                      </span>
+                  <div className="p-3.5 m-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-slate)]/55 text-xs space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-[var(--text-primary)] font-semibold">
+                      <ShieldCheck className="w-3.5 h-3.5 tone-verified shrink-0" />
+                      <span>Source-Checked Data</span>
                     </div>
                     <p className="text-[var(--text-secondary)] leading-relaxed">
-                      Every indicator displays source provenance. Zero unlabelled synthetic statistics.
+                      Every statistic links back to its publisher (World Bank, UN, or OpenAlex).
                     </p>
                     <Link
                       href="/"
-                      className="inline-flex items-center gap-1 tone-blue hover:underline font-semibold pt-0.5"
+                      className="inline-flex items-center gap-1 tone-blue hover:underline font-medium pt-0.5"
                     >
-                      Platform Overview <ArrowUpRight className="w-3 h-3" />
+                      About OMNIS <ArrowUpRight className="w-3 h-3" />
                     </Link>
                   </div>
                 )}
@@ -829,10 +824,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             </span>
                             {item.badge && (
                               <span
-                                className={`text-xs px-1.5 py-0.5 rounded omnis-mono ${
+                                className={`text-xs ${
                                   active
-                                    ? "bg-white/20 text-white"
-                                    : "bg-[var(--bg-slate)] text-[var(--text-muted)]"
+                                    ? "text-white/80"
+                                    : "text-[var(--text-muted)]"
                                 }`}
                               >
                                 {item.badge}
@@ -860,8 +855,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         )}
                         <span>{motionPaused ? "Resume motion" : "Pause motion"}</span>
                       </span>
-                      <span className="omnis-mono text-xs text-[var(--text-muted)]">
-                        {motionPaused ? "OFF" : "ON"}
+                      <span className="omnis-tabular text-xs text-[var(--text-muted)]">
+                        {motionPaused ? "Off" : "On"}
                       </span>
                     </button>
                     <Link
@@ -869,7 +864,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       onClick={() => setMobileMenuOpen(false)}
                       className="block py-1.5 tone-blue font-semibold hover:underline"
                     >
-                      ← Return to Landing Presentation
+                      ← Back to Home Overview
                     </Link>
                   </div>
                 </motion.div>
@@ -944,8 +939,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
                   {commandActions.length > 0 ? (
                     <div className="px-3 py-2.5 border-b border-[var(--border-subtle)] bg-[var(--bg-graphite)] space-y-1">
-                      <div className="px-1 text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-muted)] omnis-mono">
-                        Direct Module & Action Matches (↵ to launch)
+                      <div className="px-1 text-xs font-medium text-[var(--text-muted)]">
+                        Top matches (Press Enter to open)
                       </div>
                       {commandActions.slice(0, 6).map((act, idx) => (
                         <button
@@ -980,8 +975,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       <div className="flex items-center gap-2">
                         <Sparkles className="w-3.5 h-3.5 tone-blue" />
                         <span className="text-[var(--text-secondary)]">
-                          Classified Intent:{" "}
-                          <strong className="uppercase tracking-wider tone-blue font-semibold">
+                          Best view:{" "}
+                          <strong className="tone-blue font-semibold capitalize">
                             {liveIntent.intent.replace(/_/g, " ")}
                           </strong>
                         </span>
@@ -994,15 +989,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         }}
                         className="tone-blue hover:underline font-semibold inline-flex items-center gap-1"
                       >
-                        Route directly to module <ArrowUpRight className="w-3.5 h-3.5" />
+                        Open tool <ArrowUpRight className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   )}
 
                   <div className="p-4 space-y-4 max-h-[65vh] overflow-y-auto">
                     <div>
-                      <div className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-muted)] mb-2 omnis-mono">
-                        Natural Language Intelligence Queries
+                      <div className="text-xs font-medium text-[var(--text-muted)] mb-2">
+                        Popular questions
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                         {QUICK_NATURAL_QUERIES.map((q) => (
@@ -1020,8 +1015,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     </div>
 
                     <div>
-                      <div className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-muted)] mb-2 omnis-mono">
-                        Direct Module Launchers
+                      <div className="text-xs font-medium text-[var(--text-muted)] mb-2">
+                        Open a page
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         {NAV_ITEMS.slice(0, 8).map((item) => {
@@ -1078,11 +1073,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       <Sparkles className="w-3.5 h-3.5" />
                     </div>
                     <div>
-                      <div className="text-sm font-bold tracking-wide text-[var(--text-primary)]">
-                        OMNIS Universal AI Assistant
+                      <div className="text-sm font-bold text-[var(--text-primary)]">
+                        OMNIS Assistant
                       </div>
                       <div className="text-xs text-[var(--text-secondary)] truncate max-w-[230px]">
-                        Context: {activeContextLabel} ({activeContextTopic})
+                        Looking at: {activeContextLabel} ({activeContextTopic})
                       </div>
                     </div>
                   </div>
@@ -1145,8 +1140,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         <div className="whitespace-pre-line leading-relaxed">{m.content}</div>
                       {m.citations && m.citations.length > 0 && (
                         <div className="mt-2 pt-2 border-t border-[var(--border-subtle)] space-y-1">
-                          <div className="text-[11.5px] font-semibold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
-                            Verified Sources
+                          <div className="text-xs font-medium text-[var(--text-muted)]">
+                            Sources
                           </div>
                           {m.citations.map((c) => (
                             <a
@@ -1240,8 +1235,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <div className="px-4 py-3.5 border-b border-[var(--border-subtle)] bg-[var(--bg-slate)] flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Terminal className="w-4 h-4 tone-blue" />
-                      <span className="text-[13px] font-bold uppercase tracking-[0.14em] text-[var(--text-primary)] omnis-mono">
-                        OMNIS Keyboard Shortcuts
+                      <span className="text-sm font-bold text-[var(--text-primary)]">
+                        Keyboard Shortcuts
                       </span>
                     </div>
                     <button

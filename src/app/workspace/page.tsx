@@ -142,9 +142,9 @@ export default function WorkspacePage() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* Header & Report/Export Centre */}
       <OmnisModuleHeader
-        moduleTag="PERSONAL RESEARCH WORKSPACE & MULTI-FORMAT EXPORT CENTRE"
-        title="Collections, Saved Reports, Graphs, Simulations & Notes"
-        subtitle="Organise saved country dossiers, deep research reports, causal graphs, and laboratory annotations with clean Markdown, CSV, JSON, and print-ready exports."
+        moduleTag="Saved Workspace & Exports"
+        title="Saved Countries, Reports, Maps & Notes"
+        subtitle="Review your saved country profiles, research briefings, topic maps, and lab notes—or export everything cleanly to Markdown, CSV, JSON, or PDF."
         icon={<Briefcase className="w-3.5 h-3.5" />}
         actions={
           <div className="flex flex-wrap items-center gap-2 no-print omnis-no-print">
@@ -295,21 +295,21 @@ export default function WorkspacePage() {
           <form onSubmit={handleCreateNote} className="omnis-card p-5 space-y-3 text-[13.5px]">
             <h2 className="text-[15px] sm:text-base font-bold flex items-center gap-2 text-[var(--text-primary)]">
               <FileText className="w-4 h-4 tone-blue" />
-              Create Research Note or Bookmark
+              Add Note or Bookmark
             </h2>
             <input
               type="text"
               required
               value={noteTitle}
               onChange={(e) => setNoteTitle(e.target.value)}
-              placeholder="Note title or hypothesis..."
+              placeholder="Note title..."
               className="w-full px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-base md:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-blue)]"
             />
             <textarea
               rows={3}
               value={noteBody}
               onChange={(e) => setNoteBody(e.target.value)}
-              placeholder="Observations, citations, or follow-up questions..."
+              placeholder="Key notes, sources, or follow-up questions..."
               className="w-full px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-base md:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-blue)]"
             />
             <OmnisSelect
@@ -325,14 +325,14 @@ export default function WorkspacePage() {
             />
             <OmnisButton type="submit" className="w-full">
               <Plus className="w-3.5 h-3.5" />
-              <span>Save Note to Workspace</span>
+              <span>Save Note</span>
             </OmnisButton>
           </form>
 
           <div className="omnis-card p-5 space-y-3 text-[13.5px]">
             <h2 className="text-[15px] sm:text-base font-bold flex items-center gap-2 text-[var(--text-primary)]">
               <FolderPlus className="w-4 h-4 tone-violet" />
-              Create Collection Folder
+              New Folder
             </h2>
             <div className="flex gap-2">
               <input
@@ -358,7 +358,7 @@ export default function WorkspacePage() {
                 onClick={clearWorkspace}
                 className="text-[13px] tone-danger hover:underline font-semibold cursor-pointer"
               >
-                Clear All Saved Workspace Items
+                Clear All Saved Items
               </button>
             </div>
           </div>

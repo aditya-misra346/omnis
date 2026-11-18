@@ -3,7 +3,7 @@ import { OmnisRouteLoadingSkeleton } from "@/components/ui/OmnisPrimitives";
 export default function TimelineLoading() {
   return (
     <OmnisRouteLoadingSkeleton
-      moduleTag="MODULE 04 • LOGARITHMIC HISTORICAL TIMELINE"
+      moduleTag="World Timeline"
       layout="split-workbench"
     />
   );

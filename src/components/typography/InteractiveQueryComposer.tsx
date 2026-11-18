@@ -98,8 +98,8 @@ export function InteractiveQueryComposer({
     <div className="space-y-2.5">
       {showPresetStrip && (
         <div className="flex flex-wrap items-center gap-1.5 text-[13px]">
-          <span className="text-[var(--text-muted)] omnis-mono uppercase tracking-wider text-xs">
-            Explore:
+          <span className="text-[var(--text-muted)] text-[13px] font-medium">
+            Try a question:
           </span>
           {QUICK_PRESETS.map((chip) => (
             <button
@@ -116,13 +116,13 @@ export function InteractiveQueryComposer({
 
       {/* Modular Research Query Composer */}
       <div className="omnis-surface-slate p-3 space-y-2.5">
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs omnis-mono">
-          <span className="inline-flex items-center gap-1.5 font-semibold uppercase tracking-wider tone-blue">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <span className="inline-flex items-center gap-1.5 font-semibold tone-blue">
             <Sparkles className="w-3 h-3" />
-            Research Query Composer
+            Build a custom question
           </span>
           <span className="text-[var(--text-muted)]">
-            {tokens.length} {tokens.length === 1 ? "token" : "tokens"}
+            {tokens.length} {tokens.length === 1 ? "part" : "parts"} selected
           </span>
         </div>
 

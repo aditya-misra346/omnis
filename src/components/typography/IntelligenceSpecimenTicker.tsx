@@ -19,7 +19,7 @@ interface SpecimenRow {
 
 const SPECIMEN_ROWS: SpecimenRow[] = [
   {
-    rowLabel: "01 / DATA PROVIDERS",
+    rowLabel: "Data Sources",
     direction: "left",
     items: [
       {
@@ -67,7 +67,7 @@ const SPECIMEN_ROWS: SpecimenRow[] = [
     ],
   },
   {
-    rowLabel: "02 / COMPUTE & MODELS",
+    rowLabel: "Models & Engines",
     direction: "right",
     items: [
       {
@@ -109,7 +109,7 @@ const SPECIMEN_ROWS: SpecimenRow[] = [
     ],
   },
   {
-    rowLabel: "03 / DISCIPLINES",
+    rowLabel: "Subjects",
     direction: "left",
     items: [
       {
@@ -159,12 +159,12 @@ export function IntelligenceSpecimenTicker() {
   return (
     <div className="bg-[var(--bg-obsidian)] px-4 sm:px-6 py-5 border-y border-[var(--border-subtle)] space-y-4 overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-2 text-[13px]">
-        <span className="inline-flex items-center gap-2 font-bold uppercase tracking-widest tone-blue omnis-mono text-xs">
+        <span className="inline-flex items-center gap-2 font-semibold tone-blue text-[13px]">
           <Radio className="w-3.5 h-3.5" />
-          Live Intelligence Specimen Matrix
+          Data Sources & Models Behind OMNIS
         </span>
-        <span className="text-xs text-[var(--text-muted)] omnis-mono">
-          Hover or focus any capability node to inspect provenance & launch
+        <span className="text-xs text-[var(--text-muted)]">
+          Hover or tap any item to see where data comes from
         </span>
       </div>
 
@@ -174,7 +174,7 @@ export function IntelligenceSpecimenTicker() {
             key={row.rowLabel}
             className="omnis-ticker-row relative flex items-center gap-3 overflow-hidden py-1 border-b border-[var(--border-subtle)]/70 last:border-b-0"
           >
-            <div className="shrink-0 w-28 sm:w-44 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono z-10 bg-[var(--bg-obsidian)] pr-2 truncate">
+            <div className="shrink-0 w-28 sm:w-44 text-xs sm:text-[13px] font-medium text-[var(--text-muted)] z-10 bg-[var(--bg-obsidian)] pr-2 truncate">
               {row.rowLabel}
             </div>
 
