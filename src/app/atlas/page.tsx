@@ -25,6 +25,7 @@ import {
   WORLD_COUNTRIES_CATALOG,
   buildPlaceholderCountryProfile,
 } from "@/lib/data/world-catalog";
+import { describeVsBenchmark } from "@/lib/data/world-benchmarks";
 import {
   formatCountryMetricOrNa,
   formatPopulationHuman,
@@ -43,6 +44,7 @@ import { ProvenancePanel } from "@/components/ui/ProvenancePanel";
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
 import {
   OmnisButton,
+  OmnisGlossaryTip,
   OmnisModuleHeader,
   OmnisSegmentedControl,
 } from "@/components/ui/OmnisPrimitives";
@@ -345,24 +347,24 @@ function GlobalAtlasContent() {
         selectedIso3={selectedIso3}
         onSelectCountry={selectCountry}
         activeLayer={activeLayer}
-        heightClass="h-[480px]"
+        heightClass="h-[340px] sm:h-[420px] xl:h-[480px]"
       />
 
       {countryLookupStatus === "loading" && (
-        <div className="px-4 py-2.5 rounded-xl badge-tone-cyan text-[13px] omnis-mono">
-          Hydrating live REST Countries &amp; World Bank telemetry for {selectedIso3}…
+        <div className="px-4 py-2.5 rounded-xl badge-tone-cyan text-[13.5px]">
+          Updating World Bank data for {selectedIso3}…
         </div>
       )}
 
       {countryLookupStatus === "missing" && (
-        <div className="px-4 py-2.5 rounded-xl badge-tone-warning text-[13px] omnis-mono">
-          No federated sovereign profile resolved for &ldquo;{selectedIso3}&rdquo; (HTTP 404). Showing sovereign placeholder coordinates &amp; telemetry shell below.
+        <div className="px-4 py-2.5 rounded-xl badge-tone-warning text-[13.5px]">
+          Detailed live data isn&apos;t available for &ldquo;{selectedIso3}&rdquo; right now. Basic geographic facts are shown below.
         </div>
       )}
 
       {countryLookupStatus === "error" && (
-        <div className="px-4 py-2.5 rounded-xl badge-tone-warning text-[13px] omnis-mono">
-          Live upstream World Bank / REST Countries fetch timed out or rate-limited for {selectedIso3}. Displaying sovereign placeholder frame without fabricated indicators.
+        <div className="px-4 py-2.5 rounded-xl badge-tone-warning text-[13.5px]">
+          Live World Bank data timed out for {selectedIso3}. Showing saved geographic profile without guessed numbers.
         </div>
       )}
 
@@ -453,36 +455,56 @@ function GlobalAtlasContent() {
                   ) : null}
                 </span>
               </div>
-              <div className="flex items-baseline justify-between py-2 gap-2">
-                <span className="text-[var(--text-secondary)]">Average Income per Person</span>
-                <span className="font-bold omnis-mono omnis-tabular text-[var(--text-primary)]">
-                  {hasSectorMetricValue(country, country.gdpPerCapitaUsd) && country.gdpPerCapitaUsd > 0
-                    ? `$${country.gdpPerCapitaUsd.toLocaleString()}`
-                    : "N/A"}
-                </span>
+              <div className="py-2 space-y-0.5">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="inline-flex items-center gap-1 text-[var(--text-secondary)]">
+                    Average Income per Person
+                    <OmnisGlossaryTip term="GDP Per Capita" />
+                  </span>
+                  <span className="font-bold omnis-mono omnis-tabular text-[var(--text-primary)]">
+                    {hasSectorMetricValue(country, country.gdpPerCapitaUsd) && country.gdpPerCapitaUsd > 0
+                      ? `$${country.gdpPerCapitaUsd.toLocaleString()}`
+                      : "N/A"}
+                  </span>
+                </div>
+                {hasSectorMetricValue(country, country.gdpPerCapitaUsd) && country.gdpPerCapitaUsd > 0 ? (
+                  <div className="text-[11.5px] text-[var(--text-muted)] text-right">
+                    Compared to world avg: {describeVsBenchmark("gdpPerCapitaUsd", country.gdpPerCapitaUsd).summary}
+                  </div>
+                ) : null}
               </div>
-              <div className="flex items-baseline justify-between py-2 gap-2">
-                <span className="text-[var(--text-secondary)]">Annual Growth Rate</span>
-                <span
-                  className={`font-bold omnis-mono omnis-tabular ${
-                    country.provenance.missingData &&
+              <div className="py-2 space-y-0.5">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-[var(--text-secondary)]">Annual Growth Rate</span>
+                  <span
+                    className={`font-bold omnis-mono omnis-tabular ${
+                      country.provenance.missingData &&
+                      country.gdpGrowthPct === 0 &&
+                      effectiveGdpUsdBn === 0
+                        ? "text-[var(--text-muted)]"
+                        : country.gdpGrowthPct >= 0
+                          ? "tone-verified"
+                          : "tone-warning"
+                    }`}
+                  >
+                    {country.provenance.missingData &&
                     country.gdpGrowthPct === 0 &&
                     effectiveGdpUsdBn === 0
-                      ? "text-[var(--text-muted)]"
-                      : country.gdpGrowthPct >= 0
-                        ? "tone-verified"
-                        : "tone-warning"
-                  }`}
-                >
-                  {country.provenance.missingData &&
-                  country.gdpGrowthPct === 0 &&
-                  effectiveGdpUsdBn === 0
-                    ? "N/A"
-                    : `${formatSignedPct(country.gdpGrowthPct)} / yr`}
-                </span>
+                      ? "N/A"
+                      : `${formatSignedPct(country.gdpGrowthPct)} / yr`}
+                  </span>
+                </div>
+                {!(country.provenance.missingData && country.gdpGrowthPct === 0 && effectiveGdpUsdBn === 0) ? (
+                  <div className="text-[11.5px] text-[var(--text-muted)] text-right">
+                    {describeVsBenchmark("gdpGrowthPct", country.gdpGrowthPct).summary}
+                  </div>
+                ) : null}
               </div>
               <div className="flex items-baseline justify-between py-2 gap-2">
-                <span className="text-[var(--text-secondary)]">Annual Price Rise (Inflation)</span>
+                <span className="inline-flex items-center gap-1 text-[var(--text-secondary)]">
+                  Annual Price Rise (Inflation)
+                  <OmnisGlossaryTip term="CPI / Inflation" />
+                </span>
                 <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
                   {formatCountryMetricOrNa(country, country.inflationPct, (v) => `${v}%`)}
                 </span>
@@ -493,11 +515,21 @@ function GlobalAtlasContent() {
                   {formatCountryMetricOrNa(country, country.unemploymentPct, (v) => `${v}%`)}
                 </span>
               </div>
-              <div className="flex items-baseline justify-between py-2 gap-2">
-                <span className="text-[var(--text-secondary)]">Public Debt (% of Economy)</span>
-                <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
-                  {formatCountryMetricOrNa(country, country.publicDebtPctGdp, (v) => `${v}%`)}
-                </span>
+              <div className="py-2 space-y-0.5">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="inline-flex items-center gap-1 text-[var(--text-secondary)]">
+                    Public Debt (% of Economy)
+                    <OmnisGlossaryTip term="Public Debt (% of GDP)" />
+                  </span>
+                  <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
+                    {formatCountryMetricOrNa(country, country.publicDebtPctGdp, (v) => `${v}%`)}
+                  </span>
+                </div>
+                {hasSectorMetricValue(country, country.publicDebtPctGdp) ? (
+                  <div className="text-[11.5px] text-[var(--text-muted)] text-right">
+                    {describeVsBenchmark("publicDebtPctGdp", country.publicDebtPctGdp).summary}
+                  </div>
+                ) : null}
               </div>
               <div className="flex items-baseline justify-between py-2 gap-2">
                 <span className="text-[var(--text-secondary)]">Government Spending</span>
@@ -506,7 +538,10 @@ function GlobalAtlasContent() {
                 </span>
               </div>
               <div className="flex items-baseline justify-between pt-2 gap-2">
-                <span className="text-[var(--text-secondary)]">Foreign Investment Inflow</span>
+                <span className="inline-flex items-center gap-1 text-[var(--text-secondary)]">
+                  Foreign Investment Inflow
+                  <OmnisGlossaryTip term="Foreign Investment (FDI)" />
+                </span>
                 <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
                   {formatCountryMetricOrNa(country, country.fdiNetInflowsUsdBn, (v) => `$${v}B`)}
                 </span>
@@ -574,9 +609,11 @@ function GlobalAtlasContent() {
               </div>
               <div className="flex items-baseline justify-between pt-2 gap-2">
                 <span className="text-[var(--text-secondary)]">Healthcare Spending</span>
-                <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
+                <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)] text-right">
                   {hasSectorMetricValue(country, country.educationHealthcare.healthcareSpendPctGdp)
-                    ? `${country.educationHealthcare.healthcareSpendPctGdp}% of GDP (${country.educationHealthcare.physiciansPer1000} doctors/1k)`
+                    ? `${country.educationHealthcare.healthcareSpendPctGdp}% of GDP (${country.educationHealthcare.physiciansPer1000} ${
+                        country.educationHealthcare.physiciansPer1000 === 1 ? "doctor" : "doctors"
+                      } per 1,000 people)`
                     : "N/A"}
                 </span>
               </div>
@@ -600,13 +637,20 @@ function GlobalAtlasContent() {
                   )}
                 </span>
               </div>
-              <div className="flex items-baseline justify-between py-2 gap-2">
-                <span className="text-[var(--text-secondary)]">Renewable Share</span>
-                <span className="font-bold omnis-mono omnis-tabular tone-verified">
-                  {!country.provenance.missingData || country.energyProfile.renewableSharePct > 0
-                    ? `${country.energyProfile.renewableSharePct}%`
-                    : "N/A"}
-                </span>
+              <div className="py-2 space-y-0.5">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-[var(--text-secondary)]">Renewable Share</span>
+                  <span className="font-bold omnis-mono omnis-tabular tone-verified">
+                    {!country.provenance.missingData || country.energyProfile.renewableSharePct > 0
+                      ? `${country.energyProfile.renewableSharePct}%`
+                      : "N/A"}
+                  </span>
+                </div>
+                {!country.provenance.missingData || country.energyProfile.renewableSharePct > 0 ? (
+                  <div className="text-[11.5px] text-[var(--text-muted)] text-right">
+                    {describeVsBenchmark("renewableSharePct", country.energyProfile.renewableSharePct).summary}
+                  </div>
+                ) : null}
               </div>
               <div className="flex items-baseline justify-between py-2 gap-2">
                 <span className="text-[var(--text-secondary)]">Nuclear Share</span>
@@ -621,7 +665,7 @@ function GlobalAtlasContent() {
                 </span>
               </div>
               <div className="flex items-baseline justify-between py-2 gap-2">
-                <span className="text-[var(--text-secondary)]">Oil &amp; Gas Output</span>
+                <span className="text-[var(--text-secondary)]">Oil &amp; Gas Production</span>
                 <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
                   {hasSectorMetricValue(country, country.energyProfile.oilProductionMbpd) ||
                   hasSectorMetricValue(country, country.energyProfile.naturalGasBcm)
@@ -629,29 +673,53 @@ function GlobalAtlasContent() {
                     : "N/A"}
                 </span>
               </div>
-              <div className="flex items-baseline justify-between py-1.5 gap-2">
-                <span className="text-[var(--text-muted)]">CO2 Total / Per Capita</span>
+              <div className="flex items-baseline justify-between py-2 gap-2">
+                <span className="text-[var(--text-secondary)]">CO2 Emissions</span>
                 <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
                   {hasSectorMetricValue(country, country.environmentProfile.co2EmissionsMt)
-                    ? `${country.environmentProfile.co2EmissionsMt} Mt (${country.environmentProfile.co2PerCapitaTons}t)`
+                    ? `${country.environmentProfile.co2EmissionsMt} Mt • ${country.environmentProfile.co2PerCapitaTons} t per person`
                     : "N/A"}
                 </span>
               </div>
-              <div className="flex items-baseline justify-between py-1.5 gap-2">
-                <span className="text-[var(--text-muted)]">Forest / PM2.5 / Temp</span>
+              <div className="flex items-baseline justify-between py-2 gap-2">
+                <span className="text-[var(--text-secondary)]">Forest Cover</span>
+                <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
+                  {formatCountryMetricOrNa(
+                    country,
+                    country.environmentProfile.forestCoveragePct,
+                    (v) => `${v}%`
+                  )}
+                </span>
+              </div>
+              <div className="py-2 space-y-0.5">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="inline-flex items-center gap-1 text-[var(--text-secondary)]">
+                    Air Quality (PM2.5)
+                    <OmnisGlossaryTip term="PM2.5 Air Pollution" />
+                  </span>
+                  <span className="font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]">
+                    {formatCountryMetricOrNa(
+                      country,
+                      country.environmentProfile.pm25AirQualityUgM3,
+                      (v) => `${v} µg/m³`
+                    )}
+                  </span>
+                </div>
+                {hasSectorMetricValue(country, country.environmentProfile.pm25AirQualityUgM3) &&
+                country.environmentProfile.pm25AirQualityUgM3 > 0 ? (
+                  <div className="text-[11.5px] text-[var(--text-muted)] text-right">
+                    {describeVsBenchmark("pm25AirQualityUgM3", country.environmentProfile.pm25AirQualityUgM3).summary}
+                  </div>
+                ) : null}
+              </div>
+              <div className="flex items-baseline justify-between py-2 gap-2">
+                <span className="text-[var(--text-secondary)]">Local Warming</span>
                 <span className="font-semibold omnis-mono omnis-tabular tone-warning">
-                  {hasSectorMetricValue(country, country.environmentProfile.forestCoveragePct) ||
-                  hasSectorMetricValue(country, country.environmentProfile.tempAnomalyC)
-                    ? `${formatCountryMetricOrNa(
-                        country,
-                        country.environmentProfile.forestCoveragePct,
-                        (v) => `${v}%`
-                      )} • ${formatCountryMetricOrNa(
-                        country,
-                        country.environmentProfile.tempAnomalyC,
-                        (v) => formatSignedValue(v, "°C")
-                      )}`
-                    : "N/A"}
+                  {formatCountryMetricOrNa(
+                    country,
+                    country.environmentProfile.tempAnomalyC,
+                    (v) => formatSignedValue(v, "°C")
+                  )}
                 </span>
               </div>
             </div>
@@ -661,7 +729,7 @@ function GlobalAtlasContent() {
                   <div className="flex justify-between text-xs omnis-mono omnis-tabular text-[var(--text-muted)]">
                     <span>{country.energyProfile.renewableSharePct}% Clean</span>
                     <span>{country.energyProfile.nuclearSharePct}% Nuclear</span>
-                    <span>{fossilShare.toFixed(0)}% Thermal</span>
+                    <span>{fossilShare.toFixed(0)}% Fossil fuels</span>
                   </div>
                   <div className="h-2 w-full rounded-full overflow-hidden flex bg-[var(--bg-graphite)] border border-[var(--border-subtle)]">
                     <div
@@ -684,19 +752,19 @@ function GlobalAtlasContent() {
                         backgroundColor: "var(--chart-amber)",
                         opacity: 0.7,
                       }}
-                      title="Fossil / Thermal"
+                      title="Fossil fuels"
                     />
                   </div>
                 </>
               ) : (
                 <>
-                  <div className="flex justify-between text-xs omnis-mono omnis-tabular text-[var(--text-muted)]">
+                  <div className="flex justify-between text-xs omnis-tabular text-[var(--text-muted)]">
                     <span>
                       {country.energyProfile.renewableSharePct > 0
                         ? `${country.energyProfile.renewableSharePct}% Clean`
                         : "Clean N/A"}
                     </span>
-                    <span>Data N/A (Upstream Pending)</span>
+                    <span>Waiting on official data</span>
                   </div>
                   <svg
                     className="h-2.5 w-full rounded-full overflow-hidden border border-[var(--border-subtle)]"
@@ -750,15 +818,25 @@ function GlobalAtlasContent() {
                   {formatCountryMetricOrNa(country, country.technologyProfile.aiReadinessIndex, String)}
                 </span>
               </div>
-              <div className="flex items-baseline justify-between py-1.5 gap-2">
-                <span className="text-[var(--text-muted)]">R&D Intensity</span>
-                <span className="font-bold omnis-mono omnis-tabular text-[var(--text-primary)]">
-                  {formatCountryMetricOrNa(
-                    country,
-                    country.technologyProfile.rdSpendPctGdp,
-                    (v) => `${v}% GDP`
-                  )}
-                </span>
+              <div className="py-1.5 space-y-0.5">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="inline-flex items-center gap-1 text-[var(--text-muted)]">
+                    R&amp;D Intensity
+                    <OmnisGlossaryTip term="R&D Intensity" />
+                  </span>
+                  <span className="font-bold omnis-mono omnis-tabular text-[var(--text-primary)]">
+                    {formatCountryMetricOrNa(
+                      country,
+                      country.technologyProfile.rdSpendPctGdp,
+                      (v) => `${v}% GDP`
+                    )}
+                  </span>
+                </div>
+                {hasSectorMetricValue(country, country.technologyProfile.rdSpendPctGdp) ? (
+                  <div className="text-[11.5px] text-[var(--text-muted)] text-right">
+                    {describeVsBenchmark("rdSpendPctGdp", country.technologyProfile.rdSpendPctGdp).summary}
+                  </div>
+                ) : null}
               </div>
               <div className="flex items-baseline justify-between py-1.5 gap-2">
                 <span className="text-[var(--text-muted)]">Internet Penetration</span>
@@ -900,13 +978,19 @@ function GlobalAtlasContent() {
                 </thead>
                 <tbody className="divide-y divide-[var(--border-subtle)] omnis-mono omnis-tabular text-[var(--text-primary)]">
                   <tr>
-                    <td className="py-2.5 font-sans text-[var(--text-secondary)]">Nominal GDP</td>
-                    <td className="py-2.5 font-bold">
-                      {effectiveGdpUsdBn > 0 ? `$${effectiveGdpUsdBn.toLocaleString()}B` : "N/A"}
+                    <td className="py-2.5 font-sans text-[var(--text-secondary)]">Total Economy</td>
+                    <td
+                      className="py-2.5 font-bold"
+                      title={effectiveGdpUsdBn > 0 ? `$${effectiveGdpUsdBn.toLocaleString()}B` : "N/A"}
+                    >
+                      {effectiveGdpUsdBn > 0 ? formatUsdBnCompact(effectiveGdpUsdBn) : "N/A"}
                     </td>
-                    <td className="py-2.5 font-bold">
+                    <td
+                      className="py-2.5 font-bold"
+                      title={compareEffectiveGdpUsdBn > 0 ? `$${compareEffectiveGdpUsdBn.toLocaleString()}B` : "N/A"}
+                    >
                       {compareEffectiveGdpUsdBn > 0
-                        ? `$${compareEffectiveGdpUsdBn.toLocaleString()}B`
+                        ? formatUsdBnCompact(compareEffectiveGdpUsdBn)
                         : "N/A"}
                     </td>
                   </tr>
@@ -1020,7 +1104,7 @@ function GlobalAtlasContent() {
               href={`/intelligence?left=${country.iso3}&right=${compareCountry.iso3}`}
               className="omnis-magnetic-arrow inline-flex items-center gap-1.5 text-[13.5px] font-semibold tone-blue hover:underline"
             >
-              <span>Open Full Multi-Axis Radar & Historical Comparison Engine</span>
+              <span>Open Full Comparison &amp; Charts</span>
               <ArrowRight className="omnis-arrow-glyph w-3.5 h-3.5" />
             </Link>
           </div>
@@ -1035,7 +1119,7 @@ export default function GlobalAtlasPage() {
     <Suspense
       fallback={
         <div className="p-8 max-w-7xl mx-auto">
-          <OmnisLoader label="Initialising 3D Global Intelligence Atlas..." />
+          <OmnisLoader label="Loading World Earth Globe…" />
         </div>
       }
     >

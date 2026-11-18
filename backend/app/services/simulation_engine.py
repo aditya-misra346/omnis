@@ -51,8 +51,8 @@ def run_numerical_simulation(req: SimulationRequest) -> SimulationResponse:
         sens_defs = [
             ("oilPriceShockPct", "Oil Price Shock (%)", -3.2 * (1 + abs(oil_shock)), 2.8),
             ("interestRateDeltaBps", "Policy Rate Shift (bps)", -2.6, 2.5),
-            ("fiscalStimulusPctGdp", "Fiscal Expenditure (% GDP)", -1.9, 2.4),
-            ("tariffRatePct", "Trade Tariff Barrier (%)", -2.1, 1.4),
+            ("fiscalStimulusPctGdp", "Government Investment Boost (% GDP)", -1.9, 2.4),
+            ("tariffRatePct", "Average Import Tariffs (%)", -2.1, 1.4),
         ]
 
     elif req.category == "demographics":

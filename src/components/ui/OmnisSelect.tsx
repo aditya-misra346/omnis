@@ -198,7 +198,7 @@ export function OmnisSelect({
   return (
     <div
       ref={containerRef}
-      className={`relative ${fullWidth ? "w-full" : "inline-block"} ${className}`}
+      className={`relative ${fullWidth ? "w-full" : "inline-block max-w-full"} ${className}`}
     >
       <button
         ref={triggerRef}
@@ -209,7 +209,7 @@ export function OmnisSelect({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={open ? listboxId : undefined}
-        className={`flex items-center justify-between gap-2 ${fullWidth ? "w-full" : ""} ${sizeClass} rounded-lg bg-[var(--bg-slate)] border ${borderToneClass} text-[var(--text-primary)] font-medium transition-colors cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-blue)]`}
+        className={`flex items-center justify-between gap-2 ${fullWidth ? "w-full" : "max-w-full"} ${sizeClass} rounded-lg bg-[var(--bg-slate)] border ${borderToneClass} text-[var(--text-primary)] font-medium transition-colors cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-blue)]`}
       >
         <span className="flex items-center gap-1.5 min-w-0 truncate">
           {leadingIcon ? <span className="shrink-0">{leadingIcon}</span> : null}

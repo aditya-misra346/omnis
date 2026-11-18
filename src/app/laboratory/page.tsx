@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/OmnisPrimitives";
 import { OmnisParameterSlider } from "@/components/ui/OmnisParameterSlider";
 import { OmnisMathBlock } from "@/components/ui/OmnisMathBlock";
+import { formatSignedValue } from "@/lib/formatters";
 
 const LAB_EQUATIONS_LATEX: Record<string, string> = {
   physics:
@@ -431,7 +432,7 @@ function LaboratoryContent() {
         muted: isLight ? "#475569" : "#94A3B8",
         blue: isLight ? "#1D4ED8" : "#3B82F6",
         cyan: isLight ? "#0284C7" : "#38BDF8",
-        emerald: isLight ? "#059669" : "#10B981",
+        emerald: isLight ? "#047857" : "#10B981",
         amber: isLight ? "#B45309" : "#F59E0B",
         danger: isLight ? "#DC2626" : "#EF4444",
         rod: isLight ? "#334155" : "#94A3B8",
@@ -913,18 +914,20 @@ function LaboratoryContent() {
     setTimeout(() => setSavedNotice(false), 2500);
   };
 
+  const eqClimateTemp =
+    14.0 + 5.35 * Math.log(p1 / 280) * 0.8 - (p2 - 0.3) * 85 + (p3 - 1361) * 0.07;
   const observationText =
     activeId === "physics"
-      ? `1 full swing takes ${(2 * Math.PI * Math.sqrt(p2 / p1)).toFixed(2)} s (ω₀ = ${Math.sqrt(p1 / p2).toFixed(2)} rad/s)`
+      ? `1 full swing takes ${(2 * Math.PI * Math.sqrt(p2 / p1)).toFixed(2)}s (natural frequency ${(Math.sqrt(p1 / p2)).toFixed(2)} rad/s)`
       : activeId === "space"
-      ? `1 orbit takes ${Math.sqrt(Math.pow(p3, 3) / p1).toFixed(2)} yr • Closest ${(p3 * (1 - p2)).toFixed(2)} AU, farthest ${(p3 * (1 + p2)).toFixed(2)} AU`
+      ? `1 orbit takes ${Math.sqrt(Math.pow(p3, 3) / p1).toFixed(2)} years • Closest ${(p3 * (1 - p2)).toFixed(2)} AU, farthest ${(p3 * (1 + p2)).toFixed(2)} AU`
       : activeId === "chemistry"
-      ? `Bond angle ${p1}° • Polarity ${(p3 * Math.cos(((p1 / 2) * Math.PI) / 180) * 2.4).toFixed(2)} Debye`
+      ? `Bond angle ${p1}° • Polarity strength ${(p3 * Math.cos(((p1 / 2) * Math.PI) / 180) * 2.4).toFixed(2)} Debye`
       : activeId === "biology"
-      ? `Steady balance ≈ ${(p3 / (0.02 * p2)).toFixed(0)} prey & ${(p1 / (0.05 * p2)).toFixed(0)} predators`
+      ? `Stable ecosystem holds about ${(p3 / (0.02 * p2)).toFixed(0)} prey & ${(p1 / (0.05 * p2)).toFixed(0)} predators`
       : activeId === "climate"
-      ? `Equilibrium temp: ${(14.0 + 5.35 * Math.log(p1 / 280) * 0.8 - (p2 - 0.3) * 85 + (p3 - 1361) * 0.07).toFixed(2)} °C (ΔF +${(5.35 * Math.log(p1 / 280)).toFixed(2)} W/m²)`
-      : `Center bend ${((p1 * Math.pow(p2, 2)) / (45000 * Math.pow(p3, 2))).toFixed(2)} cm • Safety factor ${Math.max(0.8, (350 * p3) / (p1 * 1.4)).toFixed(2)}×`;
+      ? `Earth warms to ${eqClimateTemp.toFixed(1)}°C (${formatSignedValue(eqClimateTemp - 14.0, "°C", 1)} above pre-industrial • +${(5.35 * Math.log(p1 / 280)).toFixed(2)} W/m² forcing)`
+      : `Center bridge dip ${((p1 * Math.pow(p2, 2)) / (45000 * Math.pow(p3, 2))).toFixed(2)} cm • Safety margin ${Math.max(0.8, (350 * p3) / (p1 * 1.4)).toFixed(2)}×`;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
@@ -1101,7 +1104,7 @@ export default function LaboratoryPage() {
     <Suspense
       fallback={
         <div className="p-8 max-w-7xl mx-auto">
-          <OmnisLoader label="Initialising Digital World Scientific Laboratory..." />
+          <OmnisLoader label="Loading science labs…" />
         </div>
       }
     >

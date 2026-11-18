@@ -208,7 +208,7 @@ function ExploreContent() {
               type="text"
               value={queryInput}
               onChange={(e) => setQueryInput(e.target.value)}
-              placeholder="Search anything (typo-tolerant & natural language enabled)..."
+              placeholder="Search any country, topic, event, or question..."
               className="w-full bg-transparent text-base md:text-[15px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
             />
           </div>
@@ -226,38 +226,40 @@ function ExploreContent() {
               { value: "worldbank", label: "World Bank & IMF" },
               { value: "openalex", label: "OpenAlex Peer-Reviewed" },
               { value: "wikimedia", label: "Wikimedia & Archives" },
-              { value: "curated", label: "Curated OMNIS Benchmarks" },
+              { value: "curated", label: "Built-in Industry Guides" },
             ]}
           />
-          <OmnisButton type="submit">Search OMNIS</OmnisButton>
+          <OmnisButton type="submit">Search</OmnisButton>
         </form>
 
-        {/* Natural Language Intent Classification Banner */}
-        <div className="p-3.5 rounded-xl badge-tone-blue flex flex-wrap items-center justify-between gap-2.5 text-[13px]">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 shrink-0" />
-            <span>
-              Semantic Intent:{" "}
-              <strong className="uppercase tracking-wider">
-                {searchResults.classification.intent.replace(/_/g, " ")}
-              </strong>{" "}
-              (Confidence: {(searchResults.classification.confidence * 100).toFixed(0)}%)
+        {/* Quick Routing Helper */}
+        <div className="p-3.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-slate)]/50 flex flex-wrap items-center justify-between gap-2.5 text-[13px]">
+          <div className="flex items-center gap-2 text-[var(--text-secondary)]">
+            <Sparkles className="w-4 h-4 tone-blue shrink-0" />
+            <span className="font-medium">
+              Best tools for this topic:
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Link
               href={`/research?q=${encodeURIComponent(activeQuery)}`}
-              className="px-3 py-1.5 rounded-lg bg-[var(--accent-blue-solid)] text-white font-semibold inline-flex items-center gap-1.5 shadow-2xs"
+              className="min-h-[44px] sm:min-h-0 px-3 py-1.5 rounded-lg bg-[var(--accent-blue-solid)] text-white font-semibold inline-flex items-center gap-1.5 shadow-2xs"
             >
               <FileSearch className="w-3.5 h-3.5" />
-              <span>Synthesise Full Research Report</span>
+              <span>Read Full Research Report</span>
             </Link>
             <Link
               href={`/knowledge-graph?topic=${encodeURIComponent(activeQuery.slice(0, 45))}`}
-              className="px-3 py-1.5 rounded-lg bg-[var(--bg-graphite)] border border-[var(--border-subtle)] text-[var(--text-primary)] font-semibold inline-flex items-center gap-1.5 hover:border-[var(--border-strong)]"
+              className="min-h-[44px] sm:min-h-0 px-3 py-1.5 rounded-lg bg-[var(--bg-graphite)] border border-[var(--border-subtle)] text-[var(--text-primary)] font-semibold inline-flex items-center gap-1.5 hover:border-[var(--border-strong)]"
             >
               <Network className="w-3.5 h-3.5 tone-violet" />
-              <span>Open in Knowledge Graph</span>
+              <span>Open in Concept Map</span>
+            </Link>
+            <Link
+              href="/intelligence"
+              className="min-h-[44px] sm:min-h-0 px-3 py-1.5 rounded-lg bg-[var(--bg-graphite)] border border-[var(--border-subtle)] text-[var(--text-primary)] font-semibold inline-flex items-center gap-1.5 hover:border-[var(--border-strong)]"
+            >
+              <span>Compare Countries</span>
             </Link>
           </div>
         </div>
@@ -292,8 +294,8 @@ function ExploreContent() {
               <section className="omnis-card p-6 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <div className="text-xs omnis-mono font-bold uppercase tracking-[0.16em] tone-warning mb-1">
-                      ZERO DIRECT MATCHES IN INDEX
+                    <div className="text-xs font-semibold tone-warning mb-1">
+                      No matches found
                     </div>
                     <h2 className="text-base sm:text-lg font-bold text-[var(--text-primary)]">
                       No verified records matched &ldquo;{activeQuery}&rdquo;

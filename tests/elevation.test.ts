@@ -4,7 +4,17 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { COUNTRIES_DATA } from "@/lib/data/global-intelligence";
+import {
+  describeVsBenchmark,
+  GLOSSARY_DEFINITIONS,
+  resolveGlossaryTerm,
+} from "@/lib/data/world-benchmarks";
 import { buildComparisonTakeaways, buildSovereignComparisonMatrix } from "@/lib/research/compare";
+import {
+  BANNED_AI_PHRASES,
+  buildEditorialSystemPrompt,
+  sanitizeEditorialProse,
+} from "@/lib/research/prompts";
 import { buildInfiniteKnowledgeGraph, findShortestCausalPath } from "@/lib/graph/engine";
 import { executeWhatIfSimulation, parseSimulationQueryPrompt } from "@/lib/simulations/engine";
 import {
@@ -57,6 +67,7 @@ import {
   probeUpstreamProviders,
 } from "@/lib/providers/health";
 import {
+  OmnisGlossaryTip,
   OmnisMobileBottomSheet,
   OmnisModuleErrorFallback,
   OmnisModuleHeader,
@@ -1373,5 +1384,90 @@ describe("OMNIS Elevation & Credibility Regression Suite", () => {
     const unknownBody = (await unknownTopicRes.json()) as { reply?: string };
     expect(unknownBody.reply).not.toContain("No pre-cached sovereign dossier");
     expect((unknownBody.reply ?? "").length).toBeGreaterThan(40);
+  });
+
+  it("verifies global benchmarks, glossary tips, atlas PM2.5/grammar fixes, research sub-topic routing, prompts, and fair comparison scales", async () => {
+    // 1. world-benchmarks calculations & glossary completeness
+    expect(describeVsBenchmark("pm25AirQualityUgM3", 51.4).summary).toContain("WHO clean-air limit");
+    expect(describeVsBenchmark("pm25AirQualityUgM3", 4.5).tone).toBe("verified");
+    expect(describeVsBenchmark("gdpPerCapitaUsd", 2713.8).summary).toContain("below world avg");
+    expect(describeVsBenchmark("gdpPerCapitaUsd", 85000).summary).toContain("world avg");
+    expect(describeVsBenchmark("gdpGrowthPct", 6.8).summary).toContain("+3.6 pp vs world avg");
+    expect(describeVsBenchmark("lifeExpectancyYears", 84.5).summary).toContain("above world avg");
+    expect(describeVsBenchmark("rdSpendPctGdp", Number.NaN).tone).toBe("neutral");
+
+    const requiredGlossary = [
+      "CPI / Inflation",
+      "GDP Per Capita",
+      "Public Debt (% of GDP)",
+      "Foreign Investment (FDI)",
+      "Basis Points (bps)",
+      "R&D Intensity",
+      "PM2.5 Air Pollution",
+      "Index (2026 = 100)",
+      "Confidence Band (P10–P90)",
+    ] as const;
+    for (const term of requiredGlossary) {
+      expect(GLOSSARY_DEFINITIONS[term]?.definition.length).toBeGreaterThan(20);
+      expect(resolveGlossaryTerm(term)?.term).toBe(term);
+    }
+    const tipHtml = renderToStaticMarkup(
+      React.createElement(OmnisGlossaryTip, { term: "Basis Points (bps)" })
+    );
+    expect(tipHtml).toContain("Explain Basis Points (bps)");
+
+    // 2. prompts.ts mode compliance & cliché sanitizer
+    for (const mode of ["quick", "deep", "comparative", "historical", "scientific", "economic"] as const) {
+      const promptText = buildEditorialSystemPrompt(mode, "India CPI = 4.9%");
+      expect(promptText).toContain(`Mode objective (${mode})`);
+      expect(promptText).toContain("VERIFIED_CONTEXT:");
+      expect(promptText).toContain(BANNED_AI_PHRASES[0]);
+    }
+    expect(sanitizeEditorialProse("Delving into India: Inflation stands at 4.9%.")).toBe(
+      "India: Inflation stands at 4.9%."
+    );
+    expect(sanitizeEditorialProse("Multi-source synthesis: GDP rose 6.8%.")).toBe("GDP rose 6.8%.");
+
+    // 3. /atlas PM2.5 rendering & plural doctor grammar source check
+    const atlasSrc = fs.readFileSync(path.join(process.cwd(), "src/app/atlas/page.tsx"), "utf8");
+    expect(atlasSrc).toContain("pm25AirQualityUgM3");
+    expect(atlasSrc).toContain('"doctor" : "doctors"');
+    expect(atlasSrc).toContain("per 1,000 people");
+    expect(atlasSrc).not.toContain("doctors/1k");
+
+    // 4. compare.ts fair per-capita vs national-scale buckets
+    const indVsChn = buildSovereignComparisonMatrix(COUNTRIES_DATA.IND, COUNTRIES_DATA.CHN);
+    expect(indVsChn.some((r) => r.scaleGroup === "fair_per_capita" && r.label.includes("GDP Per Capita"))).toBe(true);
+    expect(indVsChn.some((r) => r.scaleGroup === "national_scale" && r.label === "Total Population")).toBe(true);
+
+    // 5. Research sub-topic routing precedes generic 1991 India bucket + general country tailoring
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Offline timeout")));
+    const inflationReport = await orchestrateDeepResearch("Why is inflation rising in India?", "deep");
+    expect(inflationReport.executiveSummary.toLowerCase()).toContain("inflation");
+    expect(inflationReport.executiveSummary).toContain("4.9%");
+    expect(inflationReport.executiveSummary).not.toContain("Since opening its economy in July 1991");
+    expect(inflationReport.relevantStatistics[0].metric).toContain("Inflation");
+
+    const deuDebtReport = await orchestrateDeepResearch("What is Germany's public debt level?", "economic");
+    expect(deuDebtReport.executiveSummary).toContain("Germany");
+
+    // 6. Assistant conversational sub-topic reply (inflation focus without rigid bullets)
+    const { POST } = await import("@/app/api/v1/assistant/route");
+    const infRes = await POST(
+      new Request("http://localhost/api/v1/assistant", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-forwarded-for": "198.51.100.143" },
+        body: JSON.stringify({
+          message: "Why is inflation high in India?",
+          contextLabel: "Global Atlas",
+          contextTopic: "IND",
+        }),
+      })
+    );
+    expect(infRes.status).toBe(200);
+    const infBody = (await infRes.json()) as { reply?: string };
+    expect(infBody.reply).toContain("India (IND)");
+    expect(infBody.reply).toContain("4.9%");
+    expect(infBody.reply).not.toContain("• **Prices & Innovation**:");
   });
 });

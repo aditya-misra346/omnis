@@ -115,7 +115,7 @@ export default function CommandCenterPage() {
               onClick={() => setCustomizeOpen((prev) => !prev)}
             >
               <LayoutGrid className="w-3.5 h-3.5 tone-blue" />
-              <span>{customizeOpen ? "Close Customiser" : "Customise Cockpit"}</span>
+              <span>{customizeOpen ? "Done Editing" : "Edit Layout"}</span>
             </OmnisButton>
             <OmnisButton onClick={() => setAssistantOpen(true)}>
               <Sparkles className="w-3.5 h-3.5" />
@@ -134,7 +134,7 @@ export default function CommandCenterPage() {
               type="text"
               value={commandInput}
               onChange={(e) => setCommandInput(e.target.value)}
-              placeholder="Natural language command: 'Explain India's economic development since 1991', 'Compare India and China', 'Graph Semiconductors'..."
+              placeholder="Ask a question or enter a country: 'India economy since 1991', 'Compare India and China'..."
               className="w-full bg-transparent text-base md:text-[15px] focus:outline-none text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
             />
           </div>
@@ -171,10 +171,10 @@ export default function CommandCenterPage() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h2 className="text-base font-bold text-[var(--text-primary)]">
-                Customise Command Cockpit Sections
+                Choose Sections to Show
               </h2>
               <p className="text-sm text-[var(--text-secondary)]">
-                Toggle section visibility or adjust layout priorities. Persisted in local storage.
+                Show, hide, or reorder sections. Saved automatically in this browser.
               </p>
             </div>
             <OmnisButton variant="secondary" size="sm" onClick={resetWidgets}>
@@ -440,63 +440,63 @@ export default function CommandCenterPage() {
             </section>
               ),
               "recommended-paths": (
-                <section className="omnis-card p-5 space-y-4">
+                <section className="space-y-4 pt-2 border-t border-[var(--border-subtle)]">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <Sparkles className="w-4 h-4 text-[var(--accent-blue)]" />
-                      <h2 className="text-[15px] font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono">
-                        Recommended Cross-Disciplinary Explorations
+                      <h2 className="text-[17px] font-bold text-[var(--text-primary)]">
+                        Guided Topics
                       </h2>
                     </div>
-                    <span className="text-xs font-mono text-[var(--text-muted)]">
-                      MULTI-MODULE WORKFLOWS
+                    <span className="text-xs font-medium text-[var(--text-muted)]">
+                      Step-by-Step Paths
                     </span>
                   </div>
-                  <div className="-mx-5 -mb-5 grid grid-cols-1 md:grid-cols-2 gap-px border-t border-[var(--border-subtle)] bg-[var(--border-subtle)] rounded-b-2xl overflow-hidden">
+                  <div className="grid grid-cols-1 md:grid-cols-2 border border-[var(--border-subtle)] rounded-xl overflow-hidden divide-y md:divide-y-0 md:grid-rows-2 bg-[var(--bg-graphite)]">
                     {[
                       {
                         title: "Submarine Cable & Sovereign AI Compute",
-                        chain: "Atlas → Knowledge Graph → Research",
+                        chain: "Atlas → Concept Map → Research",
                         detail:
-                          "Compare submarine cable bottlenecks, semiconductor fabs, and sovereign AI infrastructure readiness across key corridor nations.",
+                          "Compare submarine cable bottlenecks, chip factories, and AI infrastructure readiness across key corridor countries.",
                         href: "/atlas",
                         accent: "text-[var(--accent-blue)]",
                       },
                       {
-                        title: "Atmospheric Carbon & Clean Transition Risk",
-                        chain: "Knowledge Graph → Simulations → Report",
+                        title: "Clean Power Grids & Carbon Risk",
+                        chain: "Concept Map → What-If Forecast → Research",
                         detail:
-                          "Trace causal pathways from emissions intensity to grid decarbonization, industrial output, and policy shock sensitivity.",
+                          "See how carbon emissions intensity ties into clean power builds, factory output, and fuel price shocks.",
                         href: "/knowledge-graph",
                         accent: "text-[var(--accent-cyan)]",
                       },
                       {
-                        title: "Macro Monetary Tightening & EM Resilience",
-                        chain: "Simulations → Atlas → Timeline",
+                        title: "Higher Interest Rates & Developing Economies",
+                        chain: "What-If Forecast → Atlas → Timeline",
                         detail:
-                          "Stress-test reserve adequacy, trade openness, and external debt vulnerability under high-rate macro regimes.",
+                          "Test how higher borrowing costs, trade openness, and public debt affect growth in developing economies.",
                         href: "/simulations",
                         accent: "text-[var(--accent-amber)]",
                       },
                       {
-                        title: "Orbital Launch Cadence & Space Infrastructure",
-                        chain: "Research → Digital Lab → Workspace",
+                        title: "Orbital Launches & Space Infrastructure",
+                        chain: "Research → Science Lab → Workspace",
                         detail:
-                          "Synthesize multi-source dossiers on LEO constellations, orbital mechanics, and launch economics into saved briefs.",
+                          "Combine multi-source research on satellite constellations, orbital mechanics, and launch costs into saved notes.",
                         href: "/research",
                         accent: "text-[var(--accent-blue)]",
                       },
-                    ].map((path) => (
+                    ].map((path, idx) => (
                       <Link
                         key={path.title}
                         href={path.href}
-                        className="group bg-[var(--bg-graphite)] hover:bg-[var(--bg-slate)] p-4 transition-colors flex flex-col justify-between gap-2.5"
+                        className={`group bg-[var(--bg-graphite)] hover:bg-[var(--bg-slate)] p-4 transition-colors flex flex-col justify-between gap-2.5 ${
+                          idx < 2 ? "md:border-b md:border-[var(--border-subtle)]" : ""
+                        } ${idx % 2 === 0 ? "md:border-r md:border-[var(--border-subtle)]" : ""}`}
                       >
                         <div className="space-y-1.5">
                           <div className="flex items-center justify-between gap-2">
-                            <span
-                              className={`text-xs font-mono uppercase tracking-[0.12em] ${path.accent}`}
-                            >
+                            <span className={`text-xs font-medium ${path.accent}`}>
                               {path.chain}
                             </span>
                             <ArrowRight className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover:translate-x-0.5 group-hover:text-[var(--text-primary)] transition-transform shrink-0" />
@@ -518,13 +518,13 @@ export default function CommandCenterPage() {
                   <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[var(--border-subtle)]">
                     <div className="flex items-center gap-2">
                       <Bookmark className="w-4 h-4 tone-violet" />
-                      <h2 className="text-[15px] font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono">
-                        Recently Explored & Pinned Workspace
+                      <h2 className="text-base font-bold text-[var(--text-primary)]">
+                        Recently Explored &amp; Saved Workspace
                       </h2>
                     </div>
                     <Link
                       href="/workspace"
-                      className="text-xs tone-blue font-semibold hover:underline omnis-mono"
+                      className="text-xs tone-blue font-semibold hover:underline"
                     >
                       Open Workspace ({workspaceItems.length}) →
                     </Link>

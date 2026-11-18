@@ -3,6 +3,7 @@ import {
   COUNTRIES_DATA,
   TIMELINE_EVENTS,
 } from "@/lib/data/global-intelligence";
+import { describeVsBenchmark } from "@/lib/data/world-benchmarks";
 import { buildPlaceholderCountryProfile } from "@/lib/data/world-catalog";
 import {
   formatCountryMetricOrNa,
@@ -12,6 +13,7 @@ import {
   formatUsdBnCompact,
   getEffectiveGdpUsdBn,
   getEffectiveGdpYear,
+  hasSectorMetricValue,
 } from "@/lib/formatters";
 import { buildInfiniteKnowledgeGraph } from "@/lib/graph/engine";
 import { matchCountryCatalogFromText } from "@/lib/intelligence/spatial-sync";
@@ -21,6 +23,7 @@ import {
   fetchWikimediaSummary,
 } from "@/lib/providers/live-data";
 import { classifyQueryIntent } from "@/lib/research/engine";
+import { sanitizeEditorialProse } from "@/lib/research/prompts";
 import { enforceRequestRateLimit, validateAndSanitizeInput } from "@/lib/security/guardrails";
 
 export async function POST(request: Request) {
@@ -111,23 +114,62 @@ export async function POST(request: Request) {
         matchedCountry.technologyProfile.rdSpendPctGdp,
         (v) => `${v}% of GDP`
       );
+      const asksBroadOverview = /\b(macro baseline|overview|summarize|summary|tell me about)\b/i.test(msg);
+      const asksInflation = !asksBroadOverview && /\b(inflation|prices|cpi|cost of living)\b/i.test(msg);
+      const asksPower = !asksBroadOverview && /\b(energy|clean|renewable|solar|nuclear|coal|power|grid|emissions|climate)\b/i.test(msg);
+      const asksDebt = !asksBroadOverview && /\b(debt|deficit|spending|fiscal)\b/i.test(msg);
 
-      const openingSentence =
-        effectiveGdp > 0
-          ? `**${matchedCountry.name} (${matchedCountry.iso3})** has an economy of ${gdpLabel}${
-              popLabel ? ` across ${popLabel} people` : ""
-            }, averaging ${perCapitaLabel} and ${growthLabel === "growth unavailable" ? "unreported recent growth" : `growing ${growthLabel}`}.`
-          : `**${matchedCountry.name} (${matchedCountry.iso3})** currently has partial live economic data available from World Bank sources.`;
-      const energySentence =
-        renewLabel !== "not reported"
-          ? ` Clean and renewable sources provide ${renewLabel} of its electricity generation.`
-          : "";
+      if (asksInflation && hasSectorMetricValue(matchedCountry, matchedCountry.inflationPct)) {
+        const cpiBench = describeVsBenchmark("inflationPct", matchedCountry.inflationPct).summary;
+        reply = sanitizeEditorialProse(
+          `**${matchedCountry.name} (${matchedCountry.iso3})** currently runs an annual consumer inflation rate of ${cpiLabel} (${cpiBench}). Alongside ${
+            growthLabel === "growth unavailable" ? "its recent activity" : `annual output growth of ${growthLabel}`
+          }, household costs hinge on food supplies, fuel import prices, and interest-rate policy.\n\nSource: ${matchedCountry.provenance.source}${liveYear ? ` (${liveYear})` : ""}.`
+        );
+      } else if (asksPower && renewLabel !== "not reported") {
+        const powBench = describeVsBenchmark("renewableSharePct", matchedCountry.energyProfile.renewableSharePct).summary;
+        reply = sanitizeEditorialProse(
+          `**${matchedCountry.name} (${matchedCountry.iso3})** gets ${renewLabel} of its electricity from renewables (${powBench}) and ${nuclearLabel} from nuclear power${
+            hasSectorMetricValue(matchedCountry, matchedCountry.energyProfile.electricityGenerationTwh)
+              ? `, generating ${matchedCountry.energyProfile.electricityGenerationTwh.toLocaleString()} TWh total each year`
+              : ""
+          }${
+            growthLabel !== "growth unavailable" ? `, alongside ${growthLabel} annual GDP growth` : ""
+          }.\n\nSource: ${matchedCountry.provenance.source}${liveYear ? ` (${liveYear})` : ""}.`
+        );
+      } else if (asksDebt && hasSectorMetricValue(matchedCountry, matchedCountry.publicDebtPctGdp)) {
+        const debtBench = describeVsBenchmark("publicDebtPctGdp", matchedCountry.publicDebtPctGdp).summary;
+        reply = sanitizeEditorialProse(
+          `**${matchedCountry.name} (${matchedCountry.iso3})** carries public debt equal to ${matchedCountry.publicDebtPctGdp}% of its annual economy (${debtBench}), while annual government spending is ${formatCountryMetricOrNa(
+            matchedCountry,
+            matchedCountry.govExpenditurePctGdp,
+            (v) => `${v}% of GDP`
+          )}${
+            growthLabel !== "growth unavailable" ? ` and annual growth stands at ${growthLabel}` : ""
+          }.\n\nSource: ${matchedCountry.provenance.source}${liveYear ? ` (${liveYear})` : ""}.`
+        );
+      } else {
+        const perCapBench =
+          matchedCountry.gdpPerCapitaUsd > 0
+            ? ` (${describeVsBenchmark("gdpPerCapitaUsd", matchedCountry.gdpPerCapitaUsd).summary})`
+            : "";
+        const openingSentence =
+          effectiveGdp > 0
+            ? `**${matchedCountry.name} (${matchedCountry.iso3})** has an economy of ${gdpLabel}${
+                popLabel ? ` across ${popLabel} people` : ""
+              }, averaging ${perCapitaLabel}${perCapBench} and ${
+                growthLabel === "growth unavailable" ? "with recent annual growth still updating" : `growing ${growthLabel}`
+              }.`
+            : `**${matchedCountry.name} (${matchedCountry.iso3})** currently has partial live economic data available from World Bank sources.`;
+        const secondSentence =
+          renewLabel !== "not reported"
+            ? ` Renewable sources provide ${renewLabel} of electricity generation, annual inflation is ${cpiLabel}, and R&D spending is ${rdLabel}.`
+            : ` Latest measured inflation is ${cpiLabel}, and R&D spending stands at ${rdLabel}.`;
 
-      reply =
-        `${openingSentence}${energySentence}\n\n` +
-        `• **Prices & Innovation**: Annual inflation stands at ${cpiLabel}; R&D investment is ${rdLabel}.\n` +
-        `• **Power Mix**: Renewables ${renewLabel} • Nuclear ${nuclearLabel}.\n` +
-        `• **Source**: ${matchedCountry.provenance.source}${liveYear ? ` (${liveYear})` : ""}.`;
+        reply = sanitizeEditorialProse(
+          `${openingSentence}${secondSentence}\n\nSource: ${matchedCountry.provenance.source}${liveYear ? ` (${liveYear})` : ""}.`
+        );
+      }
     } else if (openAlexWorks.length > 0 || wikiSummary) {
       const leadIntro = wikiSummary
         ? `${wikiSummary.extract.slice(0, 280)}${wikiSummary.extract.length > 280 ? "..." : ""}`

@@ -2,9 +2,10 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronUp, Globe2, Home, RotateCcw, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Globe2, HelpCircle, Home, RotateCcw, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { OmnisMark } from "@/components/brand/OmnisLogo";
+import { resolveGlossaryTerm } from "@/lib/data/world-benchmarks";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
@@ -129,11 +130,17 @@ export function OmnisStatTile({
   label,
   value,
   subValue,
+  benchmarkNote,
+  glossaryTerm,
+  variant = "hairline",
   tone = "default",
 }: {
   label: string;
   value: string;
   subValue?: string;
+  benchmarkNote?: string;
+  glossaryTerm?: string;
+  variant?: "hairline" | "surface";
   tone?: "default" | "blue" | "verified" | "violet" | "warning";
 }) {
   const toneClass = {
@@ -144,10 +151,16 @@ export function OmnisStatTile({
     warning: "tone-warning",
   }[tone];
 
+  const shellClass =
+    variant === "surface"
+      ? "omnis-surface-slate p-4"
+      : "border-t border-[var(--border-subtle)] bg-transparent pt-3 pb-2 px-1";
+
   return (
-    <div className="omnis-surface-slate p-4 space-y-1.5 hover:border-[var(--border-strong)] min-w-0">
-      <div className="text-[13px] font-medium text-[var(--text-muted)] leading-snug">
-        {label}
+    <div className={`${shellClass} space-y-1.5 min-w-0`}>
+      <div className="flex items-center gap-1 text-[13px] font-medium text-[var(--text-muted)] leading-snug">
+        <span>{label}</span>
+        {glossaryTerm ? <OmnisGlossaryTip term={glossaryTerm} /> : null}
       </div>
       <div className={`text-[21px] sm:text-[26px] font-bold omnis-mono omnis-tabular leading-tight ${toneClass}`}>
         {value}
@@ -155,6 +168,11 @@ export function OmnisStatTile({
       {subValue && (
         <div className="text-[12.5px] sm:text-[13px] text-[var(--text-secondary)] omnis-tabular leading-snug break-words">
           {subValue}
+        </div>
+      )}
+      {benchmarkNote && (
+        <div className="text-[12px] text-[var(--text-muted)] leading-snug break-words">
+          {benchmarkNote}
         </div>
       )}
     </div>
@@ -262,7 +280,7 @@ export function OmnisSegmentedControl<T extends string = string>({
     <div
       role="tablist"
       aria-label={ariaLabel}
-      className={`inline-flex flex-wrap items-center gap-1 p-1 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] ${className}`}
+      className={`inline-flex flex-wrap items-center gap-1 p-1 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] max-w-full ${className}`}
     >
       {options.map((opt) => {
         const active = opt.value === value;
@@ -273,7 +291,7 @@ export function OmnisSegmentedControl<T extends string = string>({
             role="tab"
             aria-selected={active}
             onClick={() => onChange(opt.value)}
-            className={`relative inline-flex items-center gap-1.5 rounded-lg font-medium transition-colors cursor-pointer whitespace-nowrap min-h-[44px] sm:min-h-0 ${padClass} ${
+            className={`relative inline-flex items-center gap-1.5 rounded-lg font-medium transition-colors cursor-pointer text-left leading-snug max-w-full sm:whitespace-nowrap min-h-[44px] sm:min-h-0 ${padClass} ${
               active
                 ? "text-white"
                 : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
@@ -444,7 +462,7 @@ export function OmnisMobileBottomSheet({
             <div className="flex items-center justify-between gap-2 pb-2 border-b border-[var(--border-subtle)]">
               <div className="min-w-0">
                 {eyebrow ? (
-                  <div className="text-xs omnis-mono font-bold tone-blue truncate">{eyebrow}</div>
+                  <div className="text-xs font-semibold tone-blue truncate">{eyebrow}</div>
                 ) : null}
                 <div className="font-bold text-lg text-[var(--text-primary)] truncate">{title}</div>
                 {subtitle ? (
@@ -486,7 +504,7 @@ export function OmnisModuleErrorFallback({
           <div className="p-3 rounded-2xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] inline-flex items-center justify-center">
             <OmnisMark size={40} />
           </div>
-          <div className="text-xs font-bold uppercase tracking-[0.18em] tone-warning omnis-mono">
+          <div className="text-xs font-semibold tone-warning">
             {moduleName} • Isolated Recovery Boundary
           </div>
           <h1 className="omnis-display-section text-[var(--text-primary)] font-bold">
@@ -528,5 +546,100 @@ export function OmnisModuleErrorFallback({
         </div>
       </div>
     </div>
+  );
+}
+
+/** Accessible inline plain-English definition popover for technical terms across OMNIS. */
+export function OmnisGlossaryTip({
+  term,
+  label,
+}: {
+  term: string;
+  label?: string;
+}) {
+  const entry = resolveGlossaryTerm(term);
+  const [open, setOpen] = useState(false);
+  const [align, setAlign] = useState<"left" | "center" | "right">("center");
+  const containerRef = useRef<HTMLSpanElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  if (!entry) return null;
+
+  const updateAlign = (el: HTMLElement) => {
+    if (typeof window === "undefined") return;
+    const r = el.getBoundingClientRect();
+    if (r.left < 150) setAlign("left");
+    else if (window.innerWidth - r.right < 150) setAlign("right");
+    else setAlign("center");
+  };
+
+  const posClass =
+    align === "left"
+      ? "sm:left-0 sm:translate-x-0"
+      : align === "right"
+        ? "sm:right-0 sm:left-auto sm:translate-x-0"
+        : "sm:left-1/2 sm:-translate-x-1/2";
+
+  return (
+    <span ref={containerRef} className="relative inline-flex items-center">
+      <button
+        type="button"
+        aria-label={label ?? `Explain ${entry.term}`}
+        aria-expanded={open}
+        onClick={(e) => {
+          updateAlign(e.currentTarget);
+          setOpen((prev) => !prev);
+        }}
+        className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] sm:min-h-[20px] sm:min-w-[20px] -m-3 sm:m-0 p-1 rounded-full text-[var(--text-muted)] hover:text-[var(--accent-blue)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-blue)] transition-colors cursor-pointer"
+      >
+        <HelpCircle className="w-3.5 h-3.5 shrink-0" />
+      </button>
+
+      {open ? (
+        <div
+          role="dialog"
+          aria-label={entry.term}
+          className={`fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] sm:inset-auto sm:absolute sm:bottom-full ${posClass} sm:mb-2 sm:w-72 p-3.5 rounded-xl bg-[var(--bg-graphite)] border border-[var(--border-strong)] shadow-2xl z-50 text-left space-y-1.5`}
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <div className="text-xs font-semibold tone-blue">{entry.shortLabel}</div>
+              <div className="font-bold text-[13.5px] text-[var(--text-primary)]">{entry.term}</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label={`Close ${entry.term} explanation`}
+              className="sm:hidden min-h-[44px] min-w-[44px] -mr-2 -mt-2 inline-flex items-center justify-center rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed">
+            {entry.definition}
+          </p>
+          <p className="text-xs text-[var(--text-muted)] leading-relaxed pt-1 border-t border-[var(--border-subtle)]">
+            <strong className="text-[var(--text-secondary)]">Example:</strong> {entry.example}
+          </p>
+        </div>
+      ) : null}
+    </span>
   );
 }

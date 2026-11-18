@@ -102,11 +102,11 @@ export function HistoricalTrajectoryChart({
   const maxVal = rawMax === minVal ? minVal + 1 : rawMax * 1.12;
 
   const w = 640;
-  const h = 248;
-  const padL = 56;
-  const padR = 20;
-  const padT = 26;
-  const padB = 34;
+  const h = 256;
+  const padL = 70;
+  const padR = 24;
+  const padT = 32;
+  const padB = 44;
 
   const toX = (i: number) =>
     padL + (i / Math.max(1, series.length - 1)) * (w - padL - padR);
@@ -214,18 +214,18 @@ export function HistoricalTrajectoryChart({
             </div>
           )}
           {activePoint && (
-            <div className="flex items-center gap-2">
-              <span className="text-[var(--text-muted)]">{activePoint.year}:</span>
+            <div className="flex flex-wrap items-center gap-2 text-[13px]">
+              <span className="text-[var(--text-muted)]">In {activePoint.year}:</span>
               <span className="font-bold text-[var(--text-primary)]">
-                {meta.format(activePoint.val)}
+                {country.name} {meta.format(activePoint.val)}
               </span>
               {activePoint.compareVal !== undefined && compareCountry && (
                 <span className="tone-violet font-semibold">
-                  / {compareCountry.iso3}: {meta.format(activePoint.compareVal)}
+                  vs {compareCountry.name} {meta.format(activePoint.compareVal)}
                 </span>
               )}
-              <span className={activePoint.growth >= 0 ? "tone-verified" : "tone-danger"}>
-                ({formatSignedPct(activePoint.growth)} GDP/yr)
+              <span className={`omnis-tabular ${activePoint.growth >= 0 ? "tone-verified" : "tone-danger"}`}>
+                ({formatSignedPct(activePoint.growth)}/yr)
               </span>
             </div>
           )}
@@ -235,7 +235,7 @@ export function HistoricalTrajectoryChart({
       <div className="relative rounded-xl bg-[var(--bg-graphite)] border border-[var(--border-subtle)] p-2">
         <svg
           viewBox={`0 0 ${w} ${h}`}
-          className="w-full h-56 overflow-visible touch-pan-y select-none"
+          className="w-full h-60 sm:h-56 overflow-visible touch-pan-y select-none"
           onPointerDown={(e) => {
             const idx = resolveSvgPlotIndex(e.clientX, e.currentTarget, w, padL, padR, points.length);
             if (idx !== null) setHoverIdx(idx);
@@ -270,11 +270,10 @@ export function HistoricalTrajectoryChart({
                 />
                 <text
                   x={padL - 8}
-                  y={y + 4}
+                  y={y + 5}
                   textAnchor="end"
-                  fontSize="11.5"
                   fill="var(--chart-axis)"
-                  className="omnis-mono"
+                  className="omnis-mono text-[20px] sm:text-[11.5px]"
                 >
                   {metric === "gdpUsdBn" || metric === "gdpPerCapitaUsd"
                     ? formatMonetaryAxisTick(val, metric, tickStep)
@@ -297,11 +296,10 @@ export function HistoricalTrajectoryChart({
               />
               <text
                 x={m.x}
-                y={padT - 7}
+                y={padT - 9}
                 textAnchor="middle"
-                fontSize="10.5"
                 fill="var(--status-warning)"
-                className="omnis-mono"
+                className="text-[18px] sm:text-[10.5px] font-medium"
               >
                 {m.label}
               </text>
@@ -378,11 +376,10 @@ export function HistoricalTrajectoryChart({
                 {showTickLabel && (
                   <text
                     x={p.x}
-                    y={h - 9}
+                    y={h - 12}
                     textAnchor="middle"
-                    fontSize="11.5"
                     fill="var(--chart-axis)"
-                    className="omnis-mono"
+                    className="omnis-mono text-[20px] sm:text-[11.5px]"
                   >
                     {p.year}
                   </text>
@@ -394,6 +391,7 @@ export function HistoricalTrajectoryChart({
                   height={h - padT - padB}
                   fill="transparent"
                   className="cursor-crosshair"
+                  onPointerDown={() => setHoverIdx(idx)}
                   onMouseEnter={() => setHoverIdx(idx)}
                   onMouseLeave={() => setHoverIdx(null)}
                 />
@@ -401,6 +399,9 @@ export function HistoricalTrajectoryChart({
             );
           })}
         </svg>
+        <div className="sm:hidden text-[11.5px] text-[var(--text-muted)] text-center pt-0.5">
+          Tap or drag chart to inspect any year
+        </div>
       </div>
     </div>
   );
@@ -417,12 +418,12 @@ export function MonteCarloFanChart({
   const [showBaseline, setShowBaseline] = useState(true);
   const [showUncertainty, setShowUncertainty] = useState(true);
 
-  const w = 740;
-  const h = 324;
-  const padL = 60;
-  const padR = 96;
-  const padT = 30;
-  const padB = 38;
+  const w = 780;
+  const h = 330;
+  const padL = 72;
+  const padR = 172;
+  const padT = 32;
+  const padB = 44;
 
   const { minVal, maxVal } = useMemo(() => {
     const vals = trajectory.flatMap((p) => [p.baseline, p.modifiedP10, p.modifiedP90]);
@@ -514,23 +515,24 @@ export function MonteCarloFanChart({
         </div>
 
         {hovered && (
-          <div className="px-3 py-1 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] omnis-mono text-xs flex flex-wrap items-center gap-3">
-            <span className="font-bold text-[var(--text-primary)]">{hovered.year}</span>
-            <span className="tone-blue font-semibold">
-              Scenario: {hovered.modifiedP50} {units.split(" ")[0]}
-            </span>
-            <span className="text-[var(--text-muted)]">
-              [{hovered.modifiedP10}–{hovered.modifiedP90}]
-            </span>
-            <span className="text-[var(--text-secondary)]">Trend: {hovered.baseline}</span>
+          <div className="px-3 py-2 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[13px] leading-relaxed text-[var(--text-secondary)]">
+            <strong className="text-[var(--text-primary)]">In {hovered.year}:</strong>{" "}
+            Your scenario reaches{" "}
+            <strong className="tone-blue omnis-tabular">{hovered.modifiedP50}</strong>
+            {units.includes("= 100")
+              ? ` (${hovered.modifiedP50 >= 100 ? "+" : ""}${(hovered.modifiedP50 - 100).toFixed(0)}% vs 2026)`
+              : ` ${units.split(" ")[0]}`}{" "}
+            compared with <span className="font-semibold omnis-tabular">{hovered.baseline}</span> on trend — 8 of 10 runs land between{" "}
+            <span className="font-semibold omnis-tabular">{hovered.modifiedP10}</span> and{" "}
+            <span className="font-semibold omnis-tabular">{hovered.modifiedP90}</span>.
           </div>
         )}
       </div>
 
-      <div className="w-full">
+      <div className="w-full space-y-1">
         <svg
           viewBox={`0 0 ${w} ${h}`}
-          className="w-full h-60 sm:h-72 touch-pan-y select-none"
+          className="w-full h-64 sm:h-72 touch-pan-y select-none"
           onPointerDown={(e) => {
             const idx = resolveSvgPlotIndex(e.clientX, e.currentTarget, w, padL, padR, trajectory.length);
             if (idx !== null) setHoverIndex(idx);
@@ -564,11 +566,10 @@ export function MonteCarloFanChart({
                 />
                 <text
                   x={padL - 8}
-                  y={y + 4}
+                  y={y + 5}
                   textAnchor="end"
-                  fontSize="11.5"
                   fill="var(--chart-axis)"
-                  className="omnis-mono"
+                  className="omnis-mono text-[21px] sm:text-[11.5px]"
                 >
                   {val.toFixed(1)}
                 </text>
@@ -587,10 +588,9 @@ export function MonteCarloFanChart({
           />
           <text
             x={toX(boundaryIdx) + 6}
-            y={padT + 12}
-            fontSize="11"
+            y={padT + 14}
             fill="var(--status-warning)"
-            className="omnis-mono"
+            className="text-[19px] sm:text-[11px] font-medium"
           >
             2026 Measured → Simulated
           </text>
@@ -643,10 +643,9 @@ export function MonteCarloFanChart({
                   <text
                     x={toX(lastIdx) + 7}
                     y={baseLabelY}
-                    fontSize="11.5"
                     fontWeight="600"
                     fill="var(--chart-axis)"
-                    className="omnis-mono"
+                    className="omnis-mono text-[19px] sm:text-[11.5px]"
                   >
                     Trend {terminalPt.baseline}
                   </text>
@@ -661,10 +660,9 @@ export function MonteCarloFanChart({
               <text
                 x={toX(lastIdx) + 7}
                 y={modLabelY}
-                fontSize="11.5"
                 fontWeight="700"
                 fill="var(--chart-blue)"
-                className="omnis-mono"
+                className="omnis-mono text-[19px] sm:text-[11.5px]"
               >
                 Scenario {terminalPt.modifiedP50}
               </text>
@@ -704,11 +702,10 @@ export function MonteCarloFanChart({
                 {showTick && (
                   <text
                     x={toX(i)}
-                    y={h - 9}
+                    y={h - 12}
                     textAnchor="middle"
-                    fontSize="11.5"
                     fill="var(--chart-axis)"
-                    className="omnis-mono"
+                    className="omnis-mono text-[21px] sm:text-[11.5px]"
                   >
                     {pt.year}
                   </text>
@@ -720,6 +717,7 @@ export function MonteCarloFanChart({
                 height={h - padT - padB}
                 fill="transparent"
                 className="cursor-crosshair"
+                onPointerDown={() => setHoverIndex(i)}
                 onMouseEnter={() => setHoverIndex(i)}
                 onMouseLeave={() => setHoverIndex(null)}
               />
@@ -727,6 +725,9 @@ export function MonteCarloFanChart({
             );
           })}
         </svg>
+        <div className="sm:hidden text-[11.5px] text-[var(--text-muted)] text-center">
+          Tap or drag chart to inspect any year
+        </div>
       </div>
     </div>
   );
@@ -737,6 +738,7 @@ export function TornadoSensitivityChart({
 }: {
   sensitivity: SimulationSensitivityItem[];
 }) {
+  const [activeKey, setActiveKey] = useState<string | null>(null);
   const maxAbs = Math.max(
     0.01,
     ...sensitivity.flatMap((s) => [Math.abs(s.lowOutcomeDelta), Math.abs(s.highOutcomeDelta)])
@@ -751,12 +753,19 @@ export function TornadoSensitivityChart({
         const posDelta = Math.max(0, item.lowOutcomeDelta, item.highOutcomeDelta);
         const leftWidth = Math.min(48, (Math.abs(negDelta) / maxAbs) * 48);
         const rightWidth = Math.min(48, (Math.abs(posDelta) / maxAbs) * 48);
+        const isActive = activeKey === item.parameterKey;
         return (
-          <div key={item.parameterKey} className="space-y-1.5 text-[13px] sm:text-sm">
-            <div className="flex items-center justify-between gap-2">
+          <button
+            key={item.parameterKey}
+            type="button"
+            onClick={() => setActiveKey(isActive ? null : item.parameterKey)}
+            aria-expanded={isActive}
+            className="w-full text-left space-y-1.5 text-[13px] sm:text-sm py-1 rounded-lg hover:bg-[var(--bg-slate)]/45 px-1.5 -mx-1.5 transition-colors cursor-pointer"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="font-semibold text-[var(--text-primary)]">{item.label}</span>
-              <span className="omnis-mono omnis-tabular text-xs sm:text-[13px] text-[var(--text-muted)] shrink-0">
-                min {fmtSigned(item.lowOutcomeDelta)} / max {fmtSigned(item.highOutcomeDelta)}
+              <span className="omnis-tabular text-xs sm:text-[13px] text-[var(--text-muted)] shrink-0">
+                {fmtSigned(item.lowOutcomeDelta)} to {fmtSigned(item.highOutcomeDelta)} impact
               </span>
             </div>
             <div className="relative h-3 rounded-full bg-[var(--bg-slate)] border border-[var(--border-subtle)] overflow-hidden">
@@ -787,7 +796,14 @@ export function TornadoSensitivityChart({
                 />
               ) : null}
             </div>
-          </div>
+            {isActive ? (
+              <div className="text-xs text-[var(--text-secondary)] pt-0.5">
+                Setting this slider near its low end shifts the outcome by{" "}
+                <strong className="text-[var(--text-primary)]">{fmtSigned(item.lowOutcomeDelta)}</strong>; testing its high end shifts it by{" "}
+                <strong className="text-[var(--text-primary)]">{fmtSigned(item.highOutcomeDelta)}</strong>.
+              </div>
+            ) : null}
+          </button>
         );
       })}
     </div>
@@ -1005,8 +1021,8 @@ export function ComparisonRadarChart({
           value={viewMode}
           onChange={setViewMode}
           options={[
-            { value: "bars", label: "Direct Range" },
-            { value: "radar", label: "Shape View" },
+            { value: "bars", label: "Side-by-Side Bars" },
+            { value: "radar", label: "Radar Overview" },
           ]}
         />
         <div className="flex items-center gap-3 text-xs font-semibold">
@@ -1145,19 +1161,18 @@ export function ComparisonRadarChart({
                     x={lx}
                     y={ly}
                     textAnchor="middle"
-                    fontSize="11.5"
                     fontWeight={hoveredAxis === i ? "700" : "500"}
                     fill={hoveredAxis === i ? "var(--text-primary)" : "var(--chart-axis)"}
+                    className="text-[13.5px] sm:text-[11.5px]"
                   >
                     {axis.label}
                   </text>
                   <text
                     x={lx}
-                    y={ly + 12}
+                    y={ly + 13}
                     textAnchor="middle"
-                    fontSize="10"
                     fill="var(--text-muted)"
-                    className="omnis-mono"
+                    className="omnis-mono text-[11.5px] sm:text-[10px]"
                   >
                     {axis.maxLabel}
                   </text>
@@ -1230,15 +1245,13 @@ export function ComparisonRadarChart({
       ) : null}
 
       {viewMode === "radar" && activeAxis ? (
-        <div className="border-t border-[var(--border-subtle)] pt-2.5 px-1 text-[13px] flex flex-wrap items-center justify-between gap-2 omnis-mono">
-          <span className="font-sans font-bold text-[var(--text-primary)]">{activeAxis.label}</span>
-          <span className="tone-blue font-semibold">
-            {leftCountry.iso3}: {activeAxis.rawL}
+        <div className="border-t border-[var(--border-subtle)] pt-2.5 px-1 text-[13px] text-[var(--text-secondary)] flex flex-wrap items-center justify-between gap-2">
+          <span>
+            <strong className="text-[var(--text-primary)]">{activeAxis.label}:</strong>{" "}
+            <span className="tone-blue font-semibold">{leftCountry.name} {activeAxis.rawL}</span> compared with{" "}
+            <span className="tone-violet font-semibold">{rightCountry.name} {activeAxis.rawR}</span>.
           </span>
-          <span className="tone-violet font-semibold">
-            {rightCountry.iso3}: {activeAxis.rawR}
-          </span>
-          <span className="px-1.5 py-0.5 rounded badge-tone-blue text-xs font-bold">
+          <span className="px-2 py-0.5 rounded badge-tone-blue text-xs font-semibold">
             {activeAxis.deltaLabel}
           </span>
         </div>

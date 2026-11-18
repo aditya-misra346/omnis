@@ -30,6 +30,7 @@ import {
 } from "@/lib/research/compare";
 import {
   formatMultipleOrGap,
+  formatPopulationHuman,
   formatSignedPct,
   formatUsdBnCompact,
   getEffectiveGdpUsdBn,
@@ -39,6 +40,7 @@ import { ComparisonRadarChart } from "@/components/charts/OmnisCharts";
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
 import {
   OmnisButton,
+  OmnisGlossaryTip,
   OmnisModuleHeader,
   OmnisSegmentedControl,
   OmnisSkeleton,
@@ -227,7 +229,7 @@ function IntelligenceCompareContent() {
   const hydratedRef = useRef<Record<string, CountryIntelligenceProfile>>({});
   const [hydratingIsoList, setHydratingIsoList] = useState<string[]>([]);
   const [savedNotice, setSavedNotice] = useState(false);
-  const [indicatorTab, setIndicatorTab] = useState<"all" | "economy" | "tech_energy">("all");
+  const [indicatorTab, setIndicatorTab] = useState<"all" | "fair_per_capita" | "national_scale">("all");
   const [pinnedTopics, setPinnedTopics] = useState<Record<string, boolean>>({});
   const [liveBriefings, setLiveBriefings] = useState<Record<string, ResearchSourceItem | null>>({});
   const fetchedTopicsRef = useRef<Set<string>>(new Set());
@@ -378,7 +380,79 @@ function IntelligenceCompareContent() {
   const visibleRows =
     indicatorTab === "all"
       ? metricsComparison
-      : metricsComparison.filter((r) => r.category === indicatorTab);
+      : metricsComparison.filter((r) => r.scaleGroup === indicatorTab);
+
+  const preparedRows = visibleRows.map((row) => {
+    const isHydratingRow =
+      hydratingIsoList.length > 0 &&
+      ((hydratingIsoList.includes(leftIso) && row.leftVal === 0) ||
+        (hydratingIsoList.includes(rightIso) && row.rightVal === 0));
+    const anyMissing = Boolean(row.leftMissing || row.rightMissing);
+    const diffVal = row.leftVal - row.rightVal;
+    const bothZero = row.leftVal === 0 && row.rightVal === 0;
+    const sum = Math.max(1e-6, Math.abs(row.leftVal) + Math.abs(row.rightVal));
+    const leftShare =
+      anyMissing || bothZero
+        ? 50
+        : Math.min(92, Math.max(8, (Math.abs(row.leftVal) / sum) * 100));
+
+    const formatCellValue = (val: number) => {
+      if (row.unit === "$B") return formatUsdBnCompact(val);
+      if (row.unit === "$") return `$${val.toLocaleString()}`;
+      if (row.unit === "pop") return formatPopulationHuman(val, "compact");
+      return `${val.toLocaleString()} ${row.unit}`;
+    };
+
+    let deltaText = "—";
+    if (isHydratingRow) {
+      deltaText = "Syncing…";
+    } else if (anyMissing) {
+      deltaText = "N/A";
+    } else if (bothZero) {
+      deltaText = "Even";
+    } else if (row.deltaKind === "ratio") {
+      const higherVal = Math.max(row.leftVal, row.rightVal);
+      const lowerVal = Math.min(row.leftVal, row.rightVal);
+      const leader = row.leftVal >= row.rightVal ? leftCountry.iso3 : rightCountry.iso3;
+      const gapStr = formatMultipleOrGap(higherVal, lowerVal, "ratio");
+      deltaText = gapStr === "Roughly equal" ? gapStr : `${leader} ${gapStr}`;
+    } else if (row.deltaKind === "pp") {
+      const faster = row.leftVal >= row.rightVal ? leftCountry.iso3 : rightCountry.iso3;
+      const unitHint = row.label.includes("Growth") ? "faster" : "higher";
+      const ppGap = formatMultipleOrGap(
+        Math.max(row.leftVal, row.rightVal),
+        Math.min(row.leftVal, row.rightVal),
+        "pp",
+        unitHint
+      );
+      const shortPp = ppGap.replace("percentage points", "pp");
+      deltaText = shortPp === "Same rate" ? shortPp : `${faster} ${shortPp}`;
+    } else {
+      const higherVal = Math.max(row.leftVal, row.rightVal);
+      const lowerVal = Math.min(row.leftVal, row.rightVal);
+      const leader = row.leftVal >= row.rightVal ? leftCountry.iso3 : rightCountry.iso3;
+      const gapStr = formatMultipleOrGap(higherVal, lowerVal, "diff", row.unit.replace("/", ""));
+      deltaText = gapStr === "No gap" ? gapStr : `${leader} ${gapStr}`;
+    }
+
+    const glossaryTerm = row.label.includes("Per Capita")
+      ? "GDP Per Capita"
+      : row.label.includes("R&D")
+        ? "R&D Intensity"
+        : undefined;
+
+    return {
+      row,
+      isHydratingRow,
+      anyMissing,
+      diffVal,
+      leftShare,
+      leftDisplay: formatCellValue(row.leftVal),
+      rightDisplay: formatCellValue(row.rightVal),
+      deltaText,
+      glossaryTerm,
+    };
+  });
 
   const handleSaveComparison = () => {
     addWorkspaceItem({
@@ -512,22 +586,97 @@ function IntelligenceCompareContent() {
             </div>
           </div>
 
-          <div className="overflow-x-auto max-w-full">
-            <OmnisSegmentedControl<"all" | "economy" | "tech_energy">
+          <div className="space-y-1.5">
+            <OmnisSegmentedControl<"all" | "fair_per_capita" | "national_scale">
               groupId="compare-table-category"
               ariaLabel="Filter comparison metrics"
               size="sm"
+              className="w-full sm:w-auto"
               value={indicatorTab}
               onChange={setIndicatorTab}
               options={[
                 { value: "all", label: "All Indicators" },
-                { value: "economy", label: "Economy & Living Standards" },
-                { value: "tech_energy", label: "Energy, Tech & Health" },
+                { value: "fair_per_capita", label: "Fair Comparison (Per Person & Living Standards)" },
+                { value: "national_scale", label: "National Scale (Total Output)" },
               ]}
             />
+            <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+              Per-person and percentage metrics prevent population size from distorting living-standard comparisons.
+            </p>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Mobile Card Stack (< sm) for Effortless 360px/390px Comparison */}
+          <div className="grid grid-cols-1 gap-3 sm:hidden">
+            {preparedRows.map((item) => {
+              const { row, isHydratingRow, anyMissing, diffVal, leftShare, leftDisplay, rightDisplay, deltaText, glossaryTerm } = item;
+              return (
+                <div
+                  key={`mob-${row.label}`}
+                  className="p-3.5 rounded-xl bg-[var(--bg-slate)]/55 border border-[var(--border-subtle)] space-y-2.5"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="inline-flex items-center gap-1 font-semibold text-sm text-[var(--text-primary)]">
+                        <span>{row.label}</span>
+                        {glossaryTerm ? <OmnisGlossaryTip term={glossaryTerm} /> : null}
+                      </div>
+                      <div className="text-[11.5px] text-[var(--text-muted)]">{row.scaleNote}</div>
+                    </div>
+                    <span
+                      className={`shrink-0 px-2 py-0.5 rounded-md text-xs font-semibold ${
+                        isHydratingRow || anyMissing
+                          ? "bg-[var(--bg-graphite)] text-[var(--text-muted)]"
+                          : diffVal >= 0
+                            ? "badge-tone-verified"
+                            : "badge-tone-warning"
+                      }`}
+                    >
+                      {deltaText}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-[13px]">
+                    <div>
+                      <div className="text-xs tone-blue truncate">
+                        {leftCountry.flagEmoji} {leftCountry.name}
+                      </div>
+                      <div className="font-bold omnis-mono omnis-tabular text-[var(--text-primary)] mt-0.5">
+                        {isHydratingRow && row.leftVal === 0 ? (
+                          <OmnisSkeleton className="h-4 w-16 rounded" />
+                        ) : row.leftMissing ? (
+                          <span className="text-[var(--text-muted)]">N/A</span>
+                        ) : (
+                          leftDisplay
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs tone-violet truncate">
+                        {rightCountry.flagEmoji} {rightCountry.name}
+                      </div>
+                      <div className="font-bold omnis-mono omnis-tabular text-[var(--text-primary)] mt-0.5">
+                        {isHydratingRow && row.rightVal === 0 ? (
+                          <OmnisSkeleton className="h-4 w-16 rounded ml-auto" />
+                        ) : row.rightMissing ? (
+                          <span className="text-[var(--text-muted)]">N/A</span>
+                        ) : (
+                          rightDisplay
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="relative h-2 w-full rounded-full bg-[var(--bg-graphite)] overflow-hidden flex border border-[var(--border-subtle)]">
+                    <div style={{ width: `${leftShare}%`, backgroundColor: "var(--chart-blue)" }} />
+                    <div style={{ width: `${100 - leftShare}%`, backgroundColor: "var(--chart-violet)" }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop & Tablet 4-Column Comparison Table (>= sm) */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-left text-[13.5px] sm:text-sm">
               <thead>
                 <tr className="border-b border-[var(--border-subtle)] text-xs text-[var(--text-muted)]">
@@ -542,63 +691,14 @@ function IntelligenceCompareContent() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border-subtle)] omnis-tabular text-[var(--text-primary)]">
-                {visibleRows.map((row) => {
-                  const isHydratingRow =
-                    hydratingIsoList.length > 0 &&
-                    ((hydratingIsoList.includes(leftIso) && row.leftVal === 0) ||
-                      (hydratingIsoList.includes(rightIso) && row.rightVal === 0));
-                  const anyMissing = Boolean(row.leftMissing || row.rightMissing);
-                  const diffVal = row.leftVal - row.rightVal;
-                  const bothZero = row.leftVal === 0 && row.rightVal === 0;
-                  const sum = Math.max(1e-6, Math.abs(row.leftVal) + Math.abs(row.rightVal));
-                  const leftShare =
-                    anyMissing || bothZero
-                      ? 50
-                      : Math.min(92, Math.max(8, (Math.abs(row.leftVal) / sum) * 100));
-
-                  const formatCellValue = (val: number) => {
-                    if (row.unit === "$B") return formatUsdBnCompact(val);
-                    if (row.unit === "$") return `$${val.toLocaleString()}`;
-                    return `${val.toLocaleString()} ${row.unit}`;
-                  };
-
-                  let deltaText = "—";
-                  if (isHydratingRow) {
-                    deltaText = "Syncing…";
-                  } else if (anyMissing) {
-                    deltaText = "N/A";
-                  } else if (bothZero) {
-                    deltaText = "Even";
-                  } else if (row.deltaKind === "ratio") {
-                    const higherVal = Math.max(row.leftVal, row.rightVal);
-                    const lowerVal = Math.min(row.leftVal, row.rightVal);
-                    const leader = row.leftVal >= row.rightVal ? leftCountry.iso3 : rightCountry.iso3;
-                    const gapStr = formatMultipleOrGap(higherVal, lowerVal, "ratio");
-                    deltaText = gapStr === "Roughly equal" ? gapStr : `${leader} ${gapStr}`;
-                  } else if (row.deltaKind === "pp") {
-                    const faster = row.leftVal >= row.rightVal ? leftCountry.iso3 : rightCountry.iso3;
-                    const unitHint = row.label.includes("Growth") ? "faster" : "higher";
-                    const ppGap = formatMultipleOrGap(
-                      Math.max(row.leftVal, row.rightVal),
-                      Math.min(row.leftVal, row.rightVal),
-                      "pp",
-                      unitHint
-                    );
-                    const shortPp = ppGap.replace("percentage points", "pp");
-                    deltaText = shortPp === "Same rate" ? shortPp : `${faster} ${shortPp}`;
-                  } else {
-                    const higherVal = Math.max(row.leftVal, row.rightVal);
-                    const lowerVal = Math.min(row.leftVal, row.rightVal);
-                    const leader = row.leftVal >= row.rightVal ? leftCountry.iso3 : rightCountry.iso3;
-                    const gapStr = formatMultipleOrGap(higherVal, lowerVal, "diff", row.unit.replace("/", ""));
-                    deltaText = gapStr === "No gap" ? gapStr : `${leader} ${gapStr}`;
-                  }
-
+                {preparedRows.map((item) => {
+                  const { row, isHydratingRow, anyMissing, diffVal, leftShare, leftDisplay, rightDisplay, deltaText, glossaryTerm } = item;
                   return (
                     <tr key={row.label} className="hover:bg-[var(--bg-slate)]/50 transition-colors">
                       <td className="py-2.5 pr-3 font-medium text-[var(--text-primary)]">
                         <div className="flex flex-wrap items-center gap-1.5">
                           <span>{row.label}</span>
+                          {glossaryTerm ? <OmnisGlossaryTip term={glossaryTerm} /> : null}
                           <span className="text-[11px] font-normal text-[var(--text-muted)]">
                             • {row.scaleNote}
                           </span>
@@ -614,7 +714,7 @@ function IntelligenceCompareContent() {
                         ) : row.leftMissing ? (
                           <span className="text-[var(--text-muted)]">N/A</span>
                         ) : (
-                          formatCellValue(row.leftVal)
+                          leftDisplay
                         )}
                       </td>
                       <td className="py-2.5 pr-3 font-bold omnis-mono">
@@ -623,7 +723,7 @@ function IntelligenceCompareContent() {
                         ) : row.rightMissing ? (
                           <span className="text-[var(--text-muted)]">N/A</span>
                         ) : (
-                          formatCellValue(row.rightVal)
+                          rightDisplay
                         )}
                       </td>
                       <td
@@ -646,7 +746,7 @@ function IntelligenceCompareContent() {
         </div>
 
         {/* Direct Comparison Visual & Shape View */}
-        <div className="lg:col-span-5 min-w-0 omnis-card p-6 flex flex-col justify-between space-y-4">
+        <div className="lg:col-span-5 min-w-0 omnis-card p-6 flex flex-col space-y-4">
           <div>
             <h2 className="text-[15px] sm:text-base font-bold text-[var(--text-primary)]">
               Visual Range &amp; Score Comparison
@@ -660,26 +760,31 @@ function IntelligenceCompareContent() {
         </div>
       </div>
 
-      {/* Key Industries & Companies */}
-      <div className="omnis-card p-6 space-y-4">
-        <h2 className="text-[15px] sm:text-base font-bold flex items-center gap-2 text-[var(--text-primary)]">
-          <TrendingUp className="w-4 h-4 tone-verified" />
-          Global Industry &amp; Technology Benchmarks
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 border border-[var(--border-subtle)] rounded-2xl overflow-hidden bg-[var(--bg-graphite)]">
+      {/* Key Industries & Companies (De-carded Open Hairline Ledger) */}
+      <section className="pt-4 border-t border-[var(--border-subtle)] space-y-4">
+        <div>
+          <h2 className="text-[17px] font-bold flex items-center gap-2 text-[var(--text-primary)]">
+            <TrendingUp className="w-4 h-4 tone-verified" />
+            Global Industry &amp; Technology Benchmarks
+          </h2>
+          <p className="text-[13px] text-[var(--text-muted)] mt-0.5">
+            Pace score measures how rapidly each industry is expanding capacity or adoption (out of 100).
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 border-t border-b border-[var(--border-subtle)]">
           {COMPARABLE_ENTITIES.map((ent, idx) => (
             <div
               key={ent.id}
-              className={`p-5 space-y-2.5 text-sm ${
+              className={`py-5 md:px-5 space-y-2.5 text-sm ${
                 idx < COMPARABLE_ENTITIES.length - 1 ? "border-b border-[var(--border-subtle)]" : ""
-              } ${idx % 2 === 0 ? "md:border-r md:border-[var(--border-subtle)]" : ""}`}
+              } ${idx % 2 === 0 ? "md:border-r md:border-[var(--border-subtle)] md:pl-0" : "md:pr-0"}`}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[11.5px] font-bold uppercase px-2 py-0.5 rounded-md badge-tone-blue omnis-mono">
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-md badge-tone-blue">
                   {ent.category}
                 </span>
-                <span className="omnis-mono omnis-tabular text-xs tone-verified font-semibold">
-                  Velocity: {ent.metrics.growthVelocity}/100
+                <span className="text-xs tone-verified font-semibold omnis-tabular">
+                  Pace score: {ent.metrics.growthVelocity} / 100
                 </span>
               </div>
               <h3 className="font-bold text-base sm:text-[17px] text-[var(--text-primary)]">{ent.name}</h3>
@@ -698,7 +803,7 @@ function IntelligenceCompareContent() {
             </div>
           ))}
         </div>
-      </div>
+      </section>
 
       {/* Topics You Follow */}
       <div className="omnis-card p-6 space-y-4">

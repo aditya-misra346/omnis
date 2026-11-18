@@ -86,8 +86,15 @@ function KnowledgeGraphContent() {
   const [layoutMode, setLayoutMode] = useState<GraphLayoutMode>("force");
   const [relFilter, setRelFilter] = useState<RelationshipType | "ALL">("ALL");
   const [nodeSearch, setNodeSearch] = useState("");
-  const [maxNodes, setMaxNodes] = useState(24);
+  const [maxNodes, setMaxNodes] = useState(12);
+  const userSetDensityRef = useRef(false);
   const [expandTargetId, setExpandTargetId] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 640 && !userSetDensityRef.current) {
+      setMaxNodes(8);
+    }
+  }, []);
   const [savedToast, setSavedToast] = useState(false);
   const [liveGraphFetch, setLiveGraphFetch] = useState<{
     topic: string;
@@ -346,6 +353,21 @@ function KnowledgeGraphContent() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <OmnisSegmentedControl<"8" | "16" | "28">
+              groupId="kg-density-tier"
+              ariaLabel="Map detail level"
+              size="sm"
+              value={maxNodes <= 10 ? "8" : maxNodes <= 20 ? "16" : "28"}
+              onChange={(val) => {
+                userSetDensityRef.current = true;
+                setMaxNodes(Number(val));
+              }}
+              options={[
+                { value: "8", label: "Core (8)" },
+                { value: "16", label: "Standard (16)" },
+                { value: "28", label: "Expanded (28)" },
+              ]}
+            />
             <OmnisSelect
               value={relFilter}
               onChange={(val) => setRelFilter(val as RelationshipType | "ALL")}
@@ -374,19 +396,19 @@ function KnowledgeGraphContent() {
         {liveFetchState === "loading" ? (
           <div className="flex-1 min-w-[240px] flex items-center gap-3 px-3.5 py-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-graphite)]">
             <OmnisSkeleton className="h-3.5 w-36 rounded-md" />
-            <span className="text-[var(--text-muted)] omnis-mono text-xs">
-              Hydrating OpenAlex Scholarly Works &amp; Wikimedia entities for &ldquo;{activeTopic}&rdquo;…
+            <span className="text-[var(--text-muted)] text-xs">
+              Finding related OpenAlex studies &amp; topics for &ldquo;{activeTopic}&rdquo;…
             </span>
           </div>
         ) : (
           <span
-            className={`px-2.5 py-1 rounded-full text-xs font-semibold omnis-mono ${
+            className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
               liveFetchState === "verified" ? "badge-tone-verified" : "badge-tone-warning"
             }`}
           >
             {liveFetchState === "verified"
-              ? `Live OpenAlex + Ontology Verified (${liveWorks.length} works ingested)`
-              : "Curated Offline Ontology Active"}
+              ? `Live sources verified (${liveWorks.length} academic works)`
+              : "Built-in topic map loaded"}
           </span>
         )}
         {activeFocusedSignal ? (
@@ -473,7 +495,7 @@ function KnowledgeGraphContent() {
             <div className="space-y-4">
               <div className="space-y-2 pb-3 border-b border-[var(--border-subtle)]">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11.5px] sm:text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-md badge-tone-blue omnis-mono">
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-md badge-tone-blue">
                     {selectedNode.category}
                   </span>
                   <VerificationBadge status={selectedNode.verificationStatus} />
@@ -586,7 +608,10 @@ function KnowledgeGraphContent() {
                           </span>
                         </div>
                         <div className="font-semibold text-[var(--text-primary)]">
-                          → {otherNode?.label ?? otherId}
+                          {sentence}
+                        </div>
+                        <div className="text-xs text-[var(--text-muted)]">
+                          Open → {otherNode?.label ?? otherId}
                         </div>
                         <div className="text-[13px] text-[var(--text-secondary)] leading-snug">
                           {edge.evidence}
@@ -714,7 +739,13 @@ function KnowledgeGraphContent() {
               <div className="divide-y divide-[var(--border-subtle)]">
                 {connectedEdges.map((edge) => {
                   const otherId = edge.source === selectedNode.id ? edge.target : edge.source;
-                  const otherNode = graphData.nodes.find((n) => n.id === otherId);
+                  const srcNode = graphData.nodes.find((n) => n.id === edge.source);
+                  const tgtNode = graphData.nodes.find((n) => n.id === edge.target);
+                  const sentence = formatRelationshipSentence(
+                    srcNode?.label ?? edge.source,
+                    edge.relationshipType,
+                    tgtNode?.label ?? edge.target
+                  );
                   return (
                     <button
                       key={edge.id}
@@ -726,7 +757,7 @@ function KnowledgeGraphContent() {
                         <span className="text-xs px-1.5 py-0.5 rounded badge-tone-blue mr-1.5">
                           {formatRelationshipLabel(edge.relationshipType)}
                         </span>
-                        → {otherNode?.label ?? otherId}
+                        {sentence}
                       </div>
                       <div className="text-[13px] text-[var(--text-secondary)]">{edge.evidence}</div>
                     </button>
@@ -775,7 +806,7 @@ export default function KnowledgeGraphPage() {
     <Suspense
       fallback={
         <div className="p-8 max-w-7xl mx-auto">
-          <OmnisLoader label="Constructing Infinite Semantic Knowledge Graph..." />
+          <OmnisLoader label="Loading topic map…" />
         </div>
       }
     >

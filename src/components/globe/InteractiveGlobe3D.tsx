@@ -1826,7 +1826,7 @@ totalEmissiveRadiance *= omnisNightMask * omnisEmissiveGain * uCityLightsEnabled
         <button
           type="button"
           onClick={() => setTouchOrbitLocked((prev) => !prev)}
-          className={`min-h-[44px] inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.1em] backdrop-blur-md transition-all cursor-pointer ${
+          className={`min-h-[44px] inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium backdrop-blur-md transition-all cursor-pointer ${
             touchOrbitLocked
               ? "badge-tone-warning"
               : "omnis-hud-pill text-[var(--text-secondary)]"

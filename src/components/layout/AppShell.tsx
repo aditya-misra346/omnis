@@ -1128,12 +1128,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                               }`}
                             >
                               {m.provenanceMeta.verificationStatus === "verified"
-                                ? "Verified"
+                                ? "Verified Multi-Source"
                                 : m.provenanceMeta.verificationStatus === "single_source"
-                                  ? "Proxy Derived"
+                                  ? "Single Source"
                                   : m.provenanceMeta.verificationStatus === "unverified"
-                                    ? "Missing Live Telemetry"
-                                    : "Model / Analytical"}
+                                    ? "Unverified Claim"
+                                    : "Modeled Estimate"}
                             </span>
                           </div>
                         ) : null}
@@ -1179,7 +1179,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   ))}
                   {assistantLoading && (
                     <div className="p-3 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)]">
-                      <OmnisLoader label="Verifying indicators across live providers..." />
+                      <OmnisLoader label="Checking World Bank & academic sources…" />
                     </div>
                   )}
                 </div>

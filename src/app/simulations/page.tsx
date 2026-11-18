@@ -36,6 +36,7 @@ import { MonteCarloFanChart, TornadoSensitivityChart } from "@/components/charts
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
 import {
   OmnisButton,
+  OmnisGlossaryTip,
   OmnisModuleHeader,
   OmnisSegmentedControl,
   OmnisStatTile,
@@ -589,6 +590,7 @@ function SimulationsContent() {
               ariaLabel="Country Baseline Calibration"
               leadingIcon={<Globe2 className="w-3.5 h-3.5 tone-blue" />}
               size="md"
+              fullWidth
               options={countryOptions}
             />
           </div>
@@ -639,39 +641,44 @@ function SimulationsContent() {
                 onReset={() => setHorizonYears(15)}
               />
 
-              <div className="flex items-center justify-between px-3.5 py-2.5 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-[13.5px]">
-                <span className="text-[13px] text-[var(--text-secondary)]">
-                  Monte Carlo Seed (500 paths):
-                </span>
-                <input
-                  type="number"
-                  min={0}
-                  max={999999}
-                  value={seedInput}
-                  aria-label="Monte Carlo Seed"
-                  onChange={(e) => {
-                    const raw = e.target.value;
-                    setSeedInput(raw);
-                    if (raw.trim() === "") return;
-                    const parsed = Number(raw);
-                    if (Number.isInteger(parsed) && parsed >= 0 && parsed <= 999999) {
-                      setSeed(parsed);
-                    }
-                  }}
-                  onBlur={() => {
-                    const parsed = Number(seedInput);
-                    if (seedInput.trim() === "" || !Number.isFinite(parsed) || parsed < 0) {
-                      setSeed(42);
-                      setSeedInput("42");
-                    } else {
-                      const clean = Math.min(999999, Math.max(0, Math.round(parsed)));
-                      setSeed(clean);
-                      setSeedInput(String(clean));
-                    }
-                  }}
-                  className="w-24 px-2.5 py-1.5 rounded-md bg-[var(--bg-graphite)] border border-[var(--border-subtle)] text-base md:text-sm font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]"
-                />
-              </div>
+              <details className="rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] px-3.5 py-2 text-[13.5px]">
+                <summary className="min-h-[44px] sm:min-h-0 inline-flex items-center gap-1.5 text-[13px] font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer select-none">
+                  <span>Advanced repeatability option</span>
+                </summary>
+                <div className="flex items-center justify-between gap-2 pt-2.5 mt-1 border-t border-[var(--border-subtle)]">
+                  <span className="text-[13px] text-[var(--text-secondary)]">
+                    Repeatability Seed (500 runs):
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={999999}
+                    value={seedInput}
+                    aria-label="Monte Carlo Seed"
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      setSeedInput(raw);
+                      if (raw.trim() === "") return;
+                      const parsed = Number(raw);
+                      if (Number.isInteger(parsed) && parsed >= 0 && parsed <= 999999) {
+                        setSeed(parsed);
+                      }
+                    }}
+                    onBlur={() => {
+                      const parsed = Number(seedInput);
+                      if (seedInput.trim() === "" || !Number.isFinite(parsed) || parsed < 0) {
+                        setSeed(42);
+                        setSeedInput("42");
+                      } else {
+                        const clean = Math.min(999999, Math.max(0, Math.round(parsed)));
+                        setSeed(clean);
+                        setSeedInput(String(clean));
+                      }
+                    }}
+                    className="w-24 px-2.5 py-1.5 rounded-md bg-[var(--bg-graphite)] border border-[var(--border-subtle)] text-base md:text-sm font-semibold omnis-mono omnis-tabular text-[var(--text-primary)]"
+                  />
+                </div>
+              </details>
             </div>
           </div>
         </div>
@@ -702,6 +709,7 @@ function SimulationsContent() {
               label="Likely Range (80% of runs)"
               value={`±${(simulationOutput.summaryMetrics.uncertaintySpreadP90MinusP10 / 2).toFixed(2)}`}
               subValue="Low to high spread"
+              glossaryTerm="Confidence Band (P10–P90)"
               tone="violet"
             />
           </div>
@@ -715,8 +723,9 @@ function SimulationsContent() {
                   <span>{activeSpec.dependentVariableLabel} • 2023–{2026 + horizonYears}</span>
                 </div>
                 {simulationOutput.units.toLowerCase().includes("index") && (
-                  <span className="text-xs text-[var(--text-muted)]">
+                  <span className="inline-flex items-center gap-1 text-xs text-[var(--text-muted)]">
                     100 = 2026 starting level; 155 means 55% larger than today
+                    <OmnisGlossaryTip term="Index (2026 = 100)" />
                   </span>
                 )}
               </div>
@@ -861,7 +870,7 @@ export default function SimulationsPage() {
     <Suspense
       fallback={
         <div className="p-8 max-w-7xl mx-auto">
-          <OmnisLoader label="Initialising 500-Path Stochastic Simulation Engine..." />
+          <OmnisLoader label="Loading what-if scenarios…" />
         </div>
       }
     >

@@ -1215,7 +1215,7 @@ export function KnowledgeGraphCanvas({
           <button
             type="button"
             onClick={() => setTouchGraphLocked((prev) => !prev)}
-            className={`min-h-[44px] inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] backdrop-blur-md transition-all cursor-pointer ${
+            className={`min-h-[44px] inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium backdrop-blur-md transition-all cursor-pointer ${
               touchGraphLocked
                 ? "badge-tone-warning"
                 : "omnis-hud-pill text-[var(--text-secondary)]"

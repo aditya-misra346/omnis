@@ -503,13 +503,15 @@ export default function LandingPage() {
               <ScrollFocusNarrative text={ARCHITECTURAL_NARRATIVE} />
             </div>
 
-            <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 border-t border-l border-[var(--border-subtle)]">
-              {DISCIPLINES.map((item) => {
+            <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 border-t border-[var(--border-subtle)]">
+              {DISCIPLINES.map((item, idx) => {
                 const Icon = item.icon;
                 return (
                   <div
                     key={item.title}
-                    className="p-5 border-r border-b border-[var(--border-subtle)] bg-[var(--bg-graphite)] hover:bg-[var(--bg-slate)]/50 transition-colors space-y-2.5"
+                    className={`p-5 border-b border-[var(--border-subtle)] ${
+                      idx % 2 === 0 ? "sm:border-r" : ""
+                    } hover:bg-[var(--bg-slate)]/40 transition-colors space-y-2.5`}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="p-1.5 rounded-md badge-tone-blue">
@@ -592,19 +594,19 @@ export default function LandingPage() {
             })}
           </div>
 
-          {/* Secondary Hairline Ledger: Modules 03–06 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 border-t border-l border-[var(--border-subtle)] bg-[var(--bg-graphite)]">
+            {/* Secondary Hairline Ledger: Modules 03–06 (De-carded) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 border-t border-[var(--border-subtle)] divide-y sm:divide-y-0 sm:divide-x divide-[var(--border-subtle)]">
             {FLAGSHIP_MODULES.slice(2).map((mod) => {
               const Icon = mod.icon;
               return (
                 <Link
                   key={mod.number}
                   href={mod.href}
-                  className="p-5 border-r border-b border-[var(--border-subtle)] hover:bg-[var(--bg-slate)]/55 flex flex-col justify-between gap-4 group transition-colors"
+                  className="p-5 hover:bg-[var(--bg-slate)]/45 flex flex-col justify-between gap-4 group transition-colors"
                 >
                   <div className="space-y-2.5">
                     <div className="flex items-center justify-between">
-                      <span className={`text-xs font-bold tracking-widest omnis-mono ${mod.accentText}`}>
+                      <span className={`text-xs font-semibold ${mod.accentText}`}>
                         {mod.number}
                       </span>
                       <div className={`p-1.5 rounded-md ${mod.tone}`}>
@@ -619,7 +621,7 @@ export default function LandingPage() {
                     </p>
                   </div>
 
-                  <div className="pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between gap-2 text-xs text-[var(--text-muted)] omnis-mono">
+                  <div className="pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between gap-2 text-xs text-[var(--text-muted)]">
                     <span>{mod.metrics}</span>
                     <ArrowRight className={`w-3.5 h-3.5 shrink-0 ${mod.accentText} group-hover:translate-x-0.5 transition-transform`} />
                   </div>
@@ -667,8 +669,8 @@ export default function LandingPage() {
                       variant="pill"
                     />
                     {isHydratingSelected && (
-                      <span className="px-2 py-0.5 rounded-md badge-tone-cyan text-xs omnis-mono animate-pulse">
-                        Syncing Live World Bank WDI Telemetry…
+                      <span className="px-2 py-0.5 rounded-md badge-tone-cyan text-xs animate-pulse">
+                        Updating World Bank figures…
                       </span>
                     )}
                   </div>
@@ -772,7 +774,7 @@ export default function LandingPage() {
                   href={`/atlas?country=${activeCountry.iso3}`}
                   className="group px-4 py-2 rounded-xl bg-[var(--accent-blue-solid)] hover:brightness-110 text-white text-sm font-semibold inline-flex items-center gap-1.5 shadow-sm transition-all"
                 >
-                  Open Full {activeCountry.name} Intelligence Dossier{" "}
+                  View Full {activeCountry.name} Profile{" "}
                   <ArrowRight className="w-3.5 h-3.5 omnis-magnetic-arrow" />
                 </Link>
                 <Link
@@ -1155,22 +1157,21 @@ export default function LandingPage() {
             </span>
           </ClipMaskHeading>
           <p className="text-base sm:text-[18px] text-[var(--text-secondary)] leading-relaxed">
-            Enter the OMNIS Intelligence Command Center to investigate sovereign economies, expand
-            infinite knowledge graphs, run Monte Carlo simulations, and organize your research.
+            Open the Command Hub to explore countries, map cause and effect, test what-if forecasts, and organize your notes.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <Link
               href="/command"
               className="omnis-magnetic-arrow px-6 py-3 rounded-xl bg-[var(--accent-blue-solid)] hover:brightness-110 text-white text-[15px] font-semibold inline-flex items-center gap-2 shadow-md transition-all"
             >
-              <span>Enter Intelligence Command Center</span>
+              <span>Open Command Hub</span>
               <ArrowRight className="omnis-arrow-glyph w-4 h-4" />
             </Link>
             <Link
               href="/explore"
               className="omnis-magnetic-arrow px-6 py-3 rounded-xl bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[15px] font-semibold text-[var(--text-primary)] inline-flex items-center gap-2 transition-all"
             >
-              <span>Open Universal Search Engine</span>
+              <span>Search All Topics</span>
               <ArrowRight className="omnis-arrow-glyph w-3.5 h-3.5 opacity-75" />
             </Link>
           </div>

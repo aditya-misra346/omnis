@@ -3,6 +3,7 @@ import {
   COUNTRIES_DATA,
   TIMELINE_EVENTS,
 } from "@/lib/data/global-intelligence";
+import { describeVsBenchmark } from "@/lib/data/world-benchmarks";
 import {
   WORLD_COUNTRIES_CATALOG,
   buildPlaceholderCountryProfile,
@@ -15,7 +16,9 @@ import {
   formatUsdBnCompact,
   getEffectiveGdpUsdBn,
   getEffectiveGdpYear,
+  hasSectorMetricValue,
 } from "@/lib/formatters";
+import { sanitizeEditorialProse } from "@/lib/research/prompts";
 import {
   fetchLiveCountryIntelligence,
   fetchOpenAlexPublicationTrend,
@@ -371,7 +374,22 @@ export async function orchestrateDeepResearch(
   const secondarySourceId = allSources[1]?.id ?? "src-imf-weo";
 
   const lowerQuery = cleanQuery.toLowerCase();
-  const isIndiaQuery = /india|1991|upi|rupee/i.test(cleanQuery);
+  const subTopic: "inflation" | "debt" | "jobs" | "energy" | "tech" | "trade" | null =
+    /\b(inflation|prices|cpi|cost of living|expensive)\b/i.test(cleanQuery)
+      ? "inflation"
+      : /\b(debt|deficit|borrowing|fiscal|budget|spending)\b/i.test(cleanQuery)
+        ? "debt"
+        : /\b(jobs|unemployment|employment|wages|labour|labor|workforce)\b/i.test(cleanQuery)
+          ? "jobs"
+          : /\b(renewable|solar|wind|coal|nuclear|clean power|electricity|grid|carbon|emission|warming|climate)\b/i.test(cleanQuery)
+            ? "energy"
+            : /\b(ai|artificial intelligence|semiconductor|chip|euv|tsmc|r&d|rd|innovation|patent|quantum|software)\b/i.test(cleanQuery)
+              ? "tech"
+              : /\b(tariff|trade|export|import|corridor|sanction)\b/i.test(cleanQuery)
+                ? "trade"
+                : null;
+  const isIndiaBroadQuery =
+    subTopic === null && /\b(india|1991|upi|rupee|liberalisation|liberalization)\b/i.test(cleanQuery);
   const isSemiQuery = /semiconductor|chip|euv|tsmc|geopolit/i.test(cleanQuery);
   const isClimateQuery = /climate|carbon|warming|energy|nuclear/i.test(cleanQuery);
 
@@ -440,33 +458,116 @@ export async function orchestrateDeepResearch(
   const indiaGrowthStr = formatSignedPct(effectiveIndia.gdpGrowthPct);
   const indiaPerCapita = `$${effectiveIndia.gdpPerCapitaUsd.toLocaleString()}`;
 
+  const leadInflation = leadCountry
+    ? formatCountryMetricOrNa(leadCountry, leadCountry.inflationPct, (v) => `${v}%`)
+    : "N/A";
+  const leadDebt = leadCountry
+    ? formatCountryMetricOrNa(leadCountry, leadCountry.publicDebtPctGdp, (v) => `${v}% of GDP`)
+    : "N/A";
+  const leadUnemployment = leadCountry
+    ? formatCountryMetricOrNa(leadCountry, leadCountry.unemploymentPct, (v) => `${v}%`)
+    : "N/A";
+  const leadRd = leadCountry
+    ? formatCountryMetricOrNa(leadCountry, leadCountry.technologyProfile.rdSpendPctGdp, (v) => `${v}% of GDP`)
+    : "N/A";
+  const leadPerCapBenchmark =
+    leadCountry && hasSectorMetricValue(leadCountry, leadCountry.gdpPerCapitaUsd) && leadCountry.gdpPerCapitaUsd > 0
+      ? describeVsBenchmark("gdpPerCapitaUsd", leadCountry.gdpPerCapitaUsd).summary
+      : null;
+
   const queryKeywords = lowerQuery.split(/\s+/).filter((t) => t.length >= 4);
   const matchingEvents = TIMELINE_EVENTS.filter((evt) => {
     const hay = `${evt.title} ${evt.description} ${evt.historicalContext}`.toLowerCase();
     return queryKeywords.some((kw) => hay.includes(kw));
   }).sort((a, b) => a.yearNumeric - b.yearNumeric);
 
-  const topicLeadBaseline = isIndiaQuery
-    ? `Since opening its economy in July 1991, India grew from a $270.1 billion economy into a ${indiaGdpHuman} market (${indiaLiveYear} World Bank data, averaging ${indiaPerCapita} per person and growing ${indiaGrowthStr} a year). Lowering trade barriers, flexible exchange rates, and digital infrastructure like UPI and Aadhaar helped lift productivity, though job creation and income levels per person still lag peers.`
-    : isSemiQuery
-      ? `Modern computing chips rely on one of the most tightly specialized global supply chains ever built: U.S. companies design over 65% of chip architectures, Europe (ASML and Carl Zeiss) builds every extreme-ultraviolet lithography machine, and East Asia manufactures over 90% of sub-3nm processors. Because no single country controls all stages, export controls and domestic foundry subsidies have reshaped trade across continents.`
-      : isClimateQuery
-        ? `Human greenhouse-gas emissions have lifted Earth's average temperature by +1.32°C above pre-industrial levels. Bringing emissions down requires switching grids to cheap solar, wind, battery storage, and nuclear power while cutting industrial heat and methane leaks—without triggering local power shortages.`
-        : leadCountry
-          ? `${leadCountry.name} (${leadCountry.iso3}) represents a ${leadGdpHuman} economy${
-              leadCountry.population > 0
-                ? ` of ${formatPopulationHuman(leadCountry.population, "long")} people`
-                : ""
-            }, ${
-              leadGrowthDisplay === "N/A"
-                ? "with partial live macro coverage returned"
-                : `growing at ${leadGrowthDisplay} annually`
-            } and generating ${leadRenewableDisplay} of its electricity from renewables.${
-              wikiSummary ? ` ${wikiSummary.extract.slice(0, 180)}${wikiSummary.extract.length > 180 ? "..." : ""}` : ""
-            }`
-          : wikiSummary
-            ? `${wikiSummary.extract.slice(0, 320)}${wikiSummary.extract.length > 320 ? "..." : ""} Across ${allSources.length} checked institutional and scholarly records, evidence points to physical capacity, skilled workforces, and steady rules as the main engines of long-term change.`
-            : `Cross-checking "${cleanQuery}" across ${allSources.length} World Bank, IMF, and academic records shows how investment levels, energy reliability, and policy stability shape real-world outcomes over time.`;
+  const buildSubTopicLead = (): string | null => {
+    if (!leadCountry) return null;
+    if (subTopic === "inflation") {
+      const cpiBench =
+        hasSectorMetricValue(leadCountry, leadCountry.inflationPct)
+          ? describeVsBenchmark("inflationPct", leadCountry.inflationPct).summary
+          : "global median ~4.5%";
+      return `${leadCountry.name}'s annual consumer inflation (everyday cost-of-living price rise, CPI) sits near ${leadInflation} (${cpiBench}), alongside ${leadGrowthDisplay} annual economic growth. Food harvests, fuel import bills, and central-bank borrowing rates are the main levers pushing household prices up or down.`;
+    }
+    if (subTopic === "debt") {
+      const debtBench =
+        hasSectorMetricValue(leadCountry, leadCountry.publicDebtPctGdp)
+          ? describeVsBenchmark("publicDebtPctGdp", leadCountry.publicDebtPctGdp).summary
+          : "global median 64%";
+      return `${leadCountry.name}'s public debt stands at ${leadDebt} (${debtBench}), while government spending accounts for ${formatCountryMetricOrNa(
+        leadCountry,
+        leadCountry.govExpenditurePctGdp,
+        (v) => `${v}% of GDP`
+      )}. Growing faster than borrowing costs helps shrink debt burdens without sharp budget cuts.`;
+    }
+    if (subTopic === "jobs") {
+      return `In ${leadCountry.name}, headline unemployment sits at ${leadUnemployment} across a population of ${formatPopulationHuman(
+        leadCountry.population,
+        "long"
+      )} earning ${
+        leadCountry.gdpPerCapitaUsd > 0
+          ? `$${leadCountry.gdpPerCapitaUsd.toLocaleString()} per person on average`
+          : "varying regional wages"
+      }. Closing gaps between informal work and higher-skill manufacturing or services jobs determines how broadly growth raises take-home pay.`;
+    }
+    if (subTopic === "energy") {
+      const renewBench =
+        !leadCountry.provenance.missingData || leadCountry.energyProfile.renewableSharePct > 0
+          ? describeVsBenchmark("renewableSharePct", leadCountry.energyProfile.renewableSharePct).summary
+          : "world grid average 30.2%";
+      return `${leadCountry.name} draws ${leadRenewableDisplay} of its electricity from renewable sources (${renewBench}) and ${formatCountryMetricOrNa(
+        leadCountry,
+        leadCountry.energyProfile.nuclearSharePct,
+        (v) => `${v}%`
+      )} from nuclear power. Pairing solar and wind expansion with firm backup and grid storage cuts emissions without risking evening power shortages.`;
+    }
+    if (subTopic === "tech") {
+      return `${leadCountry.name} invests ${leadRd} in research and development (${leadCountry.technologyProfile.semiconductorRole.toLowerCase()}), scoring ${formatCountryMetricOrNa(
+        leadCountry,
+        leadCountry.technologyProfile.aiReadinessIndex,
+        (v) => `${v}/100`
+      )} on AI readiness. Turning digital infrastructure into broader wage gains depends on reliable clean power, skilled engineers, and business adoption.`;
+    }
+    if (subTopic === "trade") {
+      return `${leadCountry.name} trades heavily with ${leadCountry.internationalRelations.topTradePartners
+        .slice(0, 3)
+        .join(", ")}, running an economy of ${leadGdpHuman}${
+        leadCountry.tradeBalanceUsdBn !== 0
+          ? ` and an annual trade balance near ${formatSignedPct(
+              (leadCountry.tradeBalanceUsdBn / Math.max(1, leadGdpUsdBn || 1000)) * 100
+            )} of GDP`
+          : ""
+      }. Higher import tariffs raise input costs for local factories while shifting supply chains toward domestic or allied suppliers.`;
+    }
+    return null;
+  };
+
+  const subTopicLead = buildSubTopicLead();
+
+  const topicLeadBaseline = subTopicLead
+    ? subTopicLead
+    : isIndiaBroadQuery
+      ? `Since opening its economy in July 1991, India grew from a $270.1 billion economy into a ${indiaGdpHuman} market (${indiaLiveYear} World Bank data, averaging ${indiaPerCapita} per person and growing ${indiaGrowthStr} a year). Lowering trade barriers, flexible exchange rates, and digital infrastructure like UPI and Aadhaar helped lift productivity, though job creation and income levels per person still lag peers.`
+      : isSemiQuery
+        ? `Modern computing chips rely on one of the most tightly specialized global supply chains ever built: U.S. companies design over 65% of chip architectures, Europe (ASML and Carl Zeiss) builds every extreme-ultraviolet lithography machine, and East Asia manufactures over 90% of sub-3nm processors. Because no single country controls all stages, export controls and domestic foundry subsidies have reshaped trade across continents.`
+        : isClimateQuery
+          ? `Human greenhouse-gas emissions have lifted Earth's average temperature by +1.32°C above pre-industrial levels. Bringing emissions down requires switching grids to cheap solar, wind, battery storage, and nuclear power while cutting industrial heat and methane leaks—without triggering local power shortages.`
+          : leadCountry
+            ? `${leadCountry.name} (${leadCountry.iso3}) operates a ${leadGdpHuman} economy${
+                leadCountry.population > 0
+                  ? ` of ${formatPopulationHuman(leadCountry.population, "long")} people`
+                  : ""
+              }, ${
+                leadGrowthDisplay === "N/A"
+                  ? "with partial live macro coverage returned"
+                  : `growing at ${leadGrowthDisplay} annually`
+              }${leadPerCapBenchmark ? ` (${leadPerCapBenchmark})` : ""} and generating ${leadRenewableDisplay} of its electricity from renewables.${
+                wikiSummary ? ` ${wikiSummary.extract.slice(0, 180)}${wikiSummary.extract.length > 180 ? "..." : ""}` : ""
+              }`
+            : wikiSummary
+              ? `${wikiSummary.extract.slice(0, 320)}${wikiSummary.extract.length > 320 ? "..." : ""} Across ${allSources.length} checked institutional and scholarly records, evidence points to physical capacity, skilled workforces, and steady rules as the main engines of long-term change.`
+              : `Cross-checking "${cleanQuery}" across ${allSources.length} World Bank, IMF, and academic records shows how investment levels, energy reliability, and policy stability shape real-world outcomes over time.`;
 
   const compareBaselineCountry = compareCountry ?? (leadCountry?.iso3 === "IND" ? COUNTRIES_DATA.CHN : COUNTRIES_DATA.IND);
   const compGdpA = leadCountry ? getEffectiveGdpUsdBn(leadCountry) : indiaEffectiveGdp;
@@ -533,92 +634,138 @@ export async function orchestrateDeepResearch(
           .slice(0, 2)
           .map((e) => `In ${e.dateDisplay}, ${e.title} reshaped incentives because ${e.causes[0]?.toLowerCase() ?? "policy rules changed"}`)
           .join("; ")}. Earlier reforms lowered friction well before consumer growth peaked.`
-      : isIndiaQuery
-        ? `Key drivers include post-1991 tariff cuts, services-export competitiveness, highway and rail capital spending, and population-scale digital rails (UPI and Aadhaar). Yet per-capita income (${indiaPerCapita}) shows substantial catch-up room in formal manufacturing employment and clean baseload power (${effectiveIndia.energyProfile.renewableSharePct}% renewable share).`
-        : leadCountry
-          ? `${leadCountry.name}'s trajectory rests on an electricity system running ${leadRenewableDisplay} on renewables alongside ${
-              leadCountry.population > 0 ? formatPopulationHuman(leadCountry.population, "long") : "its working-age"
-            } population base and ${formatCountryMetricOrNa(
-              leadCountry,
-              leadCountry.technologyProfile.rdSpendPctGdp,
-              (v) => `${v}% of GDP`
-            )} committed to research and development.`
-          : `Measured outcomes reflect how capital formation, workforce training, and reliable infrastructure translate raw investment into everyday goods and services.`;
+      : subTopic === "inflation" && leadCountry
+        ? `${leadCountry.name}'s ${leadInflation} inflation rate reflects fuel and agricultural supply swings alongside consumer demand. When core prices run above central-bank comfort ranges, policymakers raise interest rates (measured in basis points, where 100 bps = 1 percentage point) to cool borrowing without stalling factory output.`
+        : isIndiaBroadQuery
+          ? `Key drivers include post-1991 tariff cuts, services-export competitiveness, highway and rail capital spending, and population-scale digital rails (UPI and Aadhaar). Yet per-capita income (${indiaPerCapita}) shows substantial catch-up room in formal manufacturing employment and clean baseload power (${effectiveIndia.energyProfile.renewableSharePct}% renewable share).`
+          : leadCountry
+            ? `${leadCountry.name}'s trajectory rests on an electricity system running ${leadRenewableDisplay} on renewables alongside ${
+                leadCountry.population > 0 ? formatPopulationHuman(leadCountry.population, "long") : "its working-age"
+              } population base and ${leadRd} committed to research and development.`
+            : `Measured outcomes reflect how capital formation, workforce training, and reliable infrastructure translate raw investment into everyday goods and services.`;
 
-  const transmissionSection = isSemiQuery
-    ? `In practice, disruptions hit downstream makers unevenly: a delay in specialty photoresists or lithography parts slows leading-edge foundry expansion immediately, raising chip prices for servers, vehicles, and phones across every importing region.`
-    : isClimateQuery
-      ? `In real energy markets, fuel price spikes raise household power and shipping bills quickly, whereas shifting grids toward solar plus 4-to-8 hour battery storage stabilizes costs once upfront transmission lines are finished.`
-      : `In everyday economies, shocks in fuel costs, interest rates, or trade tariffs pass quickly into transport and household prices, while gains from new research or infrastructure tend to compound gradually over several years.`;
+  const transmissionSection =
+    subTopic === "inflation"
+      ? `Energy, shipping, and food prices hit household budgets almost immediately, whereas higher central-bank borrowing rates take 9 to 18 months to cool retail inflation.`
+      : isSemiQuery
+        ? `In practice, disruptions hit downstream makers unevenly: a delay in specialty photoresists or lithography parts slows leading-edge foundry expansion immediately, raising chip prices for servers, vehicles, and phones across every importing region.`
+        : isClimateQuery
+          ? `In real energy markets, fuel price spikes raise household power and shipping bills quickly, whereas shifting grids toward solar plus 4-to-8 hour battery storage stabilizes costs once upfront transmission lines are finished.`
+          : `In everyday economies, shocks in fuel costs, interest rates, or trade tariffs pass quickly into transport and household prices, while gains from new research or infrastructure tend to compound gradually over several years.`;
 
   const credibilitySection = `Checked across ${allSources.length} named sources (${openAlexSources.length} OpenAlex studies plus World Bank and IMF tables as of ${nowIso.slice(0, 10)}). Forward-looking scenarios below are clearly separated from measured past data so forecasts are never confused with historical fact.`;
 
-  const contradictionByDomain = isIndiaQuery
-    ? {
-        pointOfContention: "Rapid Headline Growth vs. Broad Formal Job Creation",
-        perspectiveA: `High GDP expansion (${indiaGrowthStr}) and rapid digital adoption point to durable productivity gains and strong urban consumption.`,
-        perspectiveB: "Labor force surveys show a large share of workers still in low-wage agriculture and informal services, slowing broad wage growth.",
-        epistemicResolution: "Both patterns exist side by side: high-skill digital and capital sectors are scaling rapidly while labor-intensive manufacturing is still catching up.",
-      }
-    : isSemiQuery
+  const contradictionByDomain =
+    subTopic === "inflation"
       ? {
-          pointOfContention: "Global Supply Efficiency vs. Domestic Chip Sovereignty",
-          perspectiveA: "Concentrated regional specialization keeps wafer costs low and speeds up generational node shrinks like 2nm GAA.",
-          perspectiveB: "Geographic concentration leaves global electronics vulnerable to export bans, natural disasters, and maritime chokepoints.",
-          epistemicResolution: "Resilient chip ecosystems balance comparative advantage with multi-region fabs, even though duplicating supply lines carries a permanent cost premium.",
+          pointOfContention: "Supply-Side Food & Fuel Shocks vs. Overheated Demand",
+          perspectiveA: "Central-bank hawks warn sticky services inflation requires keeping interest rates elevated until wage pressure eases.",
+          perspectiveB: "Supply-side economists note weather-driven food and imported fuel spikes respond poorly to rate hikes and fade as harvests and shipping normalize.",
+          epistemicResolution: "Both forces move headline CPI: interest rates anchor long-term inflation expectations while logistics and crop supplies determine month-to-month price swings.",
         }
-      : isClimateQuery
+      : isIndiaBroadQuery
         ? {
-            pointOfContention: "Grid Transition Speed vs. System Cost & Reliability",
-            perspectiveA: "Falling solar and battery costs make fast renewable buildouts the cheapest source of new electricity in most sunny and windy regions.",
-            perspectiveB: "High renewable shares still demand expensive transmission upgrades, long-duration storage, or firm nuclear/gas backup during cloudy peaks.",
-            epistemicResolution: "Combining cheap variable renewables with firm clean baseload (nuclear/hydro) and regional grid interconnects lowers total system cost over time.",
+            pointOfContention: "Rapid Headline Growth vs. Broad Formal Job Creation",
+            perspectiveA: `High GDP expansion (${indiaGrowthStr}) and rapid digital adoption point to durable productivity gains and strong urban consumption.`,
+            perspectiveB: "Labor force surveys show a large share of workers still in low-wage agriculture and informal services, slowing broad wage growth.",
+            epistemicResolution: "Both patterns exist side by side: high-skill digital and capital sectors are scaling rapidly while labor-intensive manufacturing is still catching up.",
           }
-        : mode === "historical"
+        : isSemiQuery
           ? {
-              pointOfContention: "Policy Reforms vs. Global Tailwinds in Historical Shifts",
-              perspectiveA: "Proponents attribute inflection points directly to domestic policy reforms, institutional laws, and scientific breakthroughs.",
-              perspectiveB: "Revisionist accounts emphasize external commodity cycles, demographics, and global trade timing outside any government's control.",
-              epistemicResolution: "Domestic policy unlocks growth potential, while global economic conditions often determine how fast and far that boom carries.",
+              pointOfContention: "Global Supply Efficiency vs. Domestic Chip Sovereignty",
+              perspectiveA: "Concentrated regional specialization keeps wafer costs low and speeds up generational node shrinks like 2nm GAA.",
+              perspectiveB: "Geographic concentration leaves global electronics vulnerable to export bans, natural disasters, and maritime chokepoints.",
+              epistemicResolution: "Resilient chip ecosystems balance comparative advantage with multi-region fabs, even though duplicating supply lines carries a permanent cost premium.",
             }
-          : {
-              pointOfContention: "Fast Narrow Benchmarks vs. Economy-Wide Payoffs",
-              perspectiveA: "Controlled pilot tests and single-industry studies often show striking efficiency jumps within months.",
-              perspectiveB: "National statistics frequently reflect gains more slowly because organizations take years to retrain staff and rebuild workflows.",
-              epistemicResolution: "Separating laboratory or pilot gains from economy-wide averages explains why rapid tech news coexists with steady national productivity growth.",
-            };
+          : isClimateQuery
+            ? {
+                pointOfContention: "Grid Transition Speed vs. System Cost & Reliability",
+                perspectiveA: "Falling solar and battery costs make fast renewable buildouts the cheapest source of new electricity in most sunny and windy regions.",
+                perspectiveB: "High renewable shares still demand expensive transmission upgrades, long-duration storage, or firm nuclear/gas backup during cloudy peaks.",
+                epistemicResolution: "Combining cheap variable renewables with firm clean baseload (nuclear/hydro) and regional grid interconnects lowers total system cost over time.",
+              }
+            : mode === "historical"
+              ? {
+                  pointOfContention: "Policy Reforms vs. Global Tailwinds in Historical Shifts",
+                  perspectiveA: "Proponents attribute inflection points directly to domestic policy reforms, institutional laws, and scientific breakthroughs.",
+                  perspectiveB: "Revisionist accounts emphasize external commodity cycles, demographics, and global trade timing outside any government's control.",
+                  epistemicResolution: "Domestic policy unlocks growth potential, while global economic conditions often determine how fast and far that boom carries.",
+                }
+              : {
+                  pointOfContention: "Fast Narrow Benchmarks vs. Economy-Wide Payoffs",
+                  perspectiveA: "Controlled pilot tests and single-industry studies often show striking efficiency jumps within months.",
+                  perspectiveB: "National statistics frequently reflect gains more slowly because organizations take years to retrain staff and rebuild workflows.",
+                  epistemicResolution: "Separating laboratory or pilot gains from economy-wide averages explains why rapid tech news coexists with steady national productivity growth.",
+                };
 
   const relevantStatistics: ResearchReportData["relevantStatistics"] = leadCountry
-    ? [
-        {
-          metric: `${leadCountry.name} Total Economy (GDP)`,
-          value: leadGdpUsdBn > 0 ? leadGdpHuman : "N/A",
-          unit: leadGdpDisplay,
-          period: leadGdpYear ? `${leadGdpYear} World Bank` : "World Bank Data",
-          sourceId: "src-wb-wdi",
-        },
-        {
-          metric: `${leadCountry.name} Annual Growth`,
-          value: leadGrowthDisplay,
-          unit: "Real GDP / yr",
-          period: leadGdpYear ? `${leadGdpYear} World Bank` : "World Bank Data",
-          sourceId: "src-wb-wdi",
-        },
-        {
-          metric: `${leadCountry.name} Clean Electricity`,
-          value: leadRenewableDisplay,
-          unit: "Renewables share",
-          period: "Latest Power Mix",
-          sourceId: "src-wb-wdi",
-        },
-        {
-          metric: "Academic Studies Found",
-          value: String(openAlexSources.length),
-          unit: "OpenAlex matches",
-          period: "Live Search",
-          sourceId: primarySourceId,
-        },
-      ]
+    ? subTopic === "inflation"
+      ? [
+          {
+            metric: `${leadCountry.name} Annual Inflation (CPI)`,
+            value: leadInflation,
+            unit: hasSectorMetricValue(leadCountry, leadCountry.inflationPct)
+              ? describeVsBenchmark("inflationPct", leadCountry.inflationPct).summary
+              : "Consumer price change",
+            period: leadGdpYear ? `${leadGdpYear} World Bank` : "World Bank Data",
+            sourceId: "src-wb-wdi",
+          },
+          {
+            metric: `${leadCountry.name} Total Economy (GDP)`,
+            value: leadGdpUsdBn > 0 ? leadGdpHuman : "N/A",
+            unit: leadGdpDisplay,
+            period: leadGdpYear ? `${leadGdpYear} World Bank` : "World Bank Data",
+            sourceId: "src-wb-wdi",
+          },
+          {
+            metric: `${leadCountry.name} Annual Growth`,
+            value: leadGrowthDisplay,
+            unit: "Real GDP / yr",
+            period: leadGdpYear ? `${leadGdpYear} World Bank` : "World Bank Data",
+            sourceId: "src-wb-wdi",
+          },
+          {
+            metric: "Academic Studies Found",
+            value: String(openAlexSources.length),
+            unit: "OpenAlex matches",
+            period: "Live Search",
+            sourceId: primarySourceId,
+          },
+        ]
+      : [
+          {
+            metric: `${leadCountry.name} Total Economy (GDP)`,
+            value: leadGdpUsdBn > 0 ? leadGdpHuman : "N/A",
+            unit: leadPerCapBenchmark ?? leadGdpDisplay,
+            period: leadGdpYear ? `${leadGdpYear} World Bank` : "World Bank Data",
+            sourceId: "src-wb-wdi",
+          },
+          {
+            metric: `${leadCountry.name} Annual Growth`,
+            value: leadGrowthDisplay,
+            unit: !leadCountry.provenance.missingData
+              ? describeVsBenchmark("gdpGrowthPct", leadCountry.gdpGrowthPct).summary
+              : "Real GDP / yr",
+            period: leadGdpYear ? `${leadGdpYear} World Bank` : "World Bank Data",
+            sourceId: "src-wb-wdi",
+          },
+          {
+            metric: `${leadCountry.name} Clean Electricity`,
+            value: leadRenewableDisplay,
+            unit: !leadCountry.provenance.missingData
+              ? describeVsBenchmark("renewableSharePct", leadCountry.energyProfile.renewableSharePct).summary
+              : "Renewables share",
+            period: "Latest Power Mix",
+            sourceId: "src-wb-wdi",
+          },
+          {
+            metric: "Academic Studies Found",
+            value: String(openAlexSources.length),
+            unit: "OpenAlex matches",
+            period: "Live Search",
+            sourceId: primarySourceId,
+          },
+        ]
     : [
         ...comparableStats,
         {
@@ -713,7 +860,7 @@ export async function orchestrateDeepResearch(
         status: "completed",
       },
     ],
-    executiveSummary,
+    executiveSummary: sanitizeEditorialProse(executiveSummary),
     keyFindings:
       mode === "quick"
         ? [
@@ -805,7 +952,7 @@ export async function orchestrateDeepResearch(
     ],
     conclusions: `Taken together, the evidence on "${cleanQuery}" weighs near-term policy stability against long-term infrastructure investments. Use the Interactive Topic Map or What-If Simulator next to explore cause-and-effect links or test specific scenarios.`,
     sources: allSources,
-    relatedGraphTopic: isIndiaQuery
+    relatedGraphTopic: isIndiaBroadQuery
       ? "Indian Economy"
       : isSemiQuery
         ? "Semiconductors"

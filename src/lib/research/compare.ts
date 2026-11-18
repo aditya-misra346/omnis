@@ -1,5 +1,6 @@
 import {
   formatMultipleOrGap,
+  formatPopulationHuman,
   formatSignedPct,
   formatUsdBnCompact,
   getEffectiveGdpUsdBn,
@@ -8,6 +9,7 @@ import {
 import type { CountryIntelligenceProfile } from "@/types/omnis";
 
 export type ComparisonCategory = "economy" | "tech_energy";
+export type ComparisonScaleGroup = "fair_per_capita" | "national_scale";
 
 export interface SovereignComparisonRow {
   label: string;
@@ -15,6 +17,7 @@ export interface SovereignComparisonRow {
   rightVal: number;
   unit: string;
   category: ComparisonCategory;
+  scaleGroup: ComparisonScaleGroup;
   scaleNote: "Total Scale" | "Per Person" | "Rate";
   deltaKind: "ratio" | "pp" | "diff";
   leftMissing?: boolean;
@@ -50,6 +53,7 @@ export function buildSovereignComparisonMatrix(
       rightVal: rightGdp,
       unit: "$B",
       category: "economy",
+      scaleGroup: "national_scale",
       scaleNote: "Total Scale",
       deltaKind: "ratio",
       leftMissing: leftCountry.provenance.missingData && leftGdp === 0,
@@ -61,6 +65,7 @@ export function buildSovereignComparisonMatrix(
       rightVal: rightCountry.gdpPerCapitaUsd,
       unit: "$",
       category: "economy",
+      scaleGroup: "fair_per_capita",
       scaleNote: "Per Person",
       deltaKind: "ratio",
       leftMissing: !hasSectorMetricValue(leftCountry, leftCountry.gdpPerCapitaUsd) || leftCountry.gdpPerCapitaUsd === 0,
@@ -72,6 +77,7 @@ export function buildSovereignComparisonMatrix(
       rightVal: rightCountry.gdpGrowthPct,
       unit: "%",
       category: "economy",
+      scaleGroup: "fair_per_capita",
       scaleNote: "Rate",
       deltaKind: "pp",
       leftMissing: isMissingGrowth(leftCountry),
@@ -83,6 +89,7 @@ export function buildSovereignComparisonMatrix(
       rightVal: rightCountry.energyProfile.renewableSharePct,
       unit: "%",
       category: "tech_energy",
+      scaleGroup: "fair_per_capita",
       scaleNote: "Rate",
       deltaKind: "pp",
       leftMissing: isMissingRenewable(leftCountry),
@@ -94,6 +101,7 @@ export function buildSovereignComparisonMatrix(
       rightVal: rightCountry.technologyProfile.aiReadinessIndex,
       unit: "/100",
       category: "tech_energy",
+      scaleGroup: "fair_per_capita",
       scaleNote: "Rate",
       deltaKind: "diff",
       leftMissing: !hasSectorMetricValue(leftCountry, leftCountry.technologyProfile.aiReadinessIndex),
@@ -105,6 +113,7 @@ export function buildSovereignComparisonMatrix(
       rightVal: rightCountry.technologyProfile.rdSpendPctGdp,
       unit: "%",
       category: "tech_energy",
+      scaleGroup: "fair_per_capita",
       scaleNote: "Rate",
       deltaKind: "pp",
       leftMissing: !hasSectorMetricValue(leftCountry, leftCountry.technologyProfile.rdSpendPctGdp),
@@ -116,6 +125,7 @@ export function buildSovereignComparisonMatrix(
       rightVal: rightCountry.technologyProfile.internetPenetrationPct,
       unit: "%",
       category: "tech_energy",
+      scaleGroup: "fair_per_capita",
       scaleNote: "Rate",
       deltaKind: "pp",
       leftMissing: !hasSectorMetricValue(leftCountry, leftCountry.technologyProfile.internetPenetrationPct),
@@ -127,13 +137,52 @@ export function buildSovereignComparisonMatrix(
       rightVal: rightCountry.lifeExpectancyYears,
       unit: "yrs",
       category: "tech_energy",
+      scaleGroup: "fair_per_capita",
       scaleNote: "Per Person",
       deltaKind: "diff",
       leftMissing: !hasSectorMetricValue(leftCountry, leftCountry.lifeExpectancyYears) || leftCountry.lifeExpectancyYears < 25,
       rightMissing: !hasSectorMetricValue(rightCountry, rightCountry.lifeExpectancyYears) || rightCountry.lifeExpectancyYears < 25,
     },
+    {
+      label: "Total Population",
+      leftVal: leftCountry.population,
+      rightVal: rightCountry.population,
+      unit: "pop",
+      category: "economy",
+      scaleGroup: "national_scale",
+      scaleNote: "Total Scale",
+      deltaKind: "ratio",
+      leftMissing: leftCountry.population <= 0,
+      rightMissing: rightCountry.population <= 0,
+    },
+    {
+      label: "Total Electricity Output",
+      leftVal: leftCountry.energyProfile.electricityGenerationTwh,
+      rightVal: rightCountry.energyProfile.electricityGenerationTwh,
+      unit: "TWh",
+      category: "tech_energy",
+      scaleGroup: "national_scale",
+      scaleNote: "Total Scale",
+      deltaKind: "ratio",
+      leftMissing: !hasSectorMetricValue(leftCountry, leftCountry.energyProfile.electricityGenerationTwh),
+      rightMissing: !hasSectorMetricValue(rightCountry, rightCountry.energyProfile.electricityGenerationTwh),
+    },
+    {
+      label: "Total CO2 Emissions",
+      leftVal: leftCountry.environmentProfile.co2EmissionsMt,
+      rightVal: rightCountry.environmentProfile.co2EmissionsMt,
+      unit: "Mt",
+      category: "tech_energy",
+      scaleGroup: "national_scale",
+      scaleNote: "Total Scale",
+      deltaKind: "ratio",
+      leftMissing: !hasSectorMetricValue(leftCountry, leftCountry.environmentProfile.co2EmissionsMt),
+      rightMissing: !hasSectorMetricValue(rightCountry, rightCountry.environmentProfile.co2EmissionsMt),
+    },
   ];
 }
+
+export { formatPopulationHuman };
 
 /**
  * Generates 3 plain-English key differences comparing two country profiles.
