@@ -595,9 +595,9 @@ function IntelligenceCompareContent() {
               value={indicatorTab}
               onChange={setIndicatorTab}
               options={[
-                { value: "all", label: "All Indicators" },
-                { value: "fair_per_capita", label: "Fair Comparison (Per Person & Living Standards)" },
-                { value: "national_scale", label: "National Scale (Total Output)" },
+                { value: "all", label: "All Metrics" },
+                { value: "fair_per_capita", label: "Per Person (Living Standards)" },
+                { value: "national_scale", label: "Total Scale" },
               ]}
             />
             <p className="text-xs text-[var(--text-muted)] leading-relaxed">
@@ -745,14 +745,14 @@ function IntelligenceCompareContent() {
           </div>
         </div>
 
-        {/* Direct Comparison Visual & Shape View */}
+        {/* Direct Comparison Visual & Radar Overview */}
         <div className="lg:col-span-5 min-w-0 omnis-card p-6 flex flex-col space-y-4">
           <div>
             <h2 className="text-[15px] sm:text-base font-bold text-[var(--text-primary)]">
               Visual Range &amp; Score Comparison
             </h2>
             <p className="text-[13.5px] sm:text-sm text-[var(--text-secondary)] mt-1">
-              Direct numbers plotted on global scales, or switch to Shape View for an overall profile.
+              Direct numbers on global ranges, or switch to Radar Overview for an overall profile.
             </p>
           </div>
 

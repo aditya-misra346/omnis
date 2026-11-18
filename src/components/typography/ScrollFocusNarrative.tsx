@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, X } from "lucide-react";
 import { useOmnisStore } from "@/lib/store/use-omnis-store";
 
 export interface NarrativeTermDefinition {
@@ -14,46 +14,81 @@ export interface NarrativeTermDefinition {
 
 const NARRATIVE_TERMS: NarrativeTermDefinition[] = [
   {
+    phrase: "clear numbers",
+    href: "/atlas",
+    moduleName: "World Atlas • 3D Earth",
+    summary:
+      "Every indicator traces directly to World Bank, IMF, UN DESA, and REST Countries records with official borders.",
+  },
+  {
+    phrase: "source-checked research",
+    href: "/research",
+    moduleName: "Deep Research • Cited Answers",
+    summary:
+      "Breaks questions down and cross-checks academic studies in OpenAlex alongside World Bank and IMF tables.",
+  },
+  {
+    phrase: "history timelines",
+    href: "/timeline",
+    moduleName: "World Timeline • 3000 BCE – Today",
+    summary:
+      "Connects major historical turning points directly to modern economic indicators and cause-and-effect maps.",
+  },
+  {
+    phrase: "topic maps",
+    href: "/knowledge-graph",
+    moduleName: "Topic Map • Cause & Effect",
+    summary:
+      "Visual concept maps separating proven connections from unconfirmed scenarios across plain-English links.",
+  },
+  {
+    phrase: "interactive models",
+    href: "/simulations",
+    moduleName: "What-If Forecasts & Science Labs",
+    summary:
+      "Tests 500 possible futures across oil shocks, interest rates, clean grids, jobs, and real-time physics instruments.",
+  },
+  {
     phrase: "source-traceable",
     href: "/explore",
-    moduleName: "Universal Search & Provenance",
+    moduleName: "Universal Search & Sources",
     summary:
       "Every indicator, historical claim, and citation traces directly to World Bank, OpenAlex, UN DESA, or REST Countries records.",
   },
   {
     phrase: "Survey-Aligned 3D Global Atlas",
     href: "/atlas",
-    moduleName: "Module 01 • Sovereign Globe",
+    moduleName: "World Atlas • 3D Earth",
     summary:
-      "Interactive 3D geodesic projection with official Survey of India boundaries and 7 macroeconomic, demographic, and energy layers.",
+      "Interactive 3D Earth with official Survey of India borders and 7 economy, population, energy, and climate layers.",
   },
   {
     phrase: "Infinite Knowledge Graphs",
     href: "/knowledge-graph",
-    moduleName: "Module 02 • Causal Networks",
+    moduleName: "Concept Map • Cause & Effect",
     summary:
-      "Multi-layout semantic networks separating empirically verified links from AI hypotheses across 11 relationship classes.",
+      "Visual concept maps separating proven connections from unconfirmed scenarios across plain-English links.",
   },
   {
     phrase: "Monte Carlo Scenario Simulations",
     href: "/simulations",
-    moduleName: "Module 03 • What-If Engine",
+    moduleName: "What-If Forecasts • 500 Runs",
     summary:
-      "500-path stochastic macro, grid decarbonisation, cohort demography, and 2-box carbon cycle differential solvers.",
+      "Tests 500 possible futures across oil shocks, interest rates, clean grids, jobs, and climate warming.",
   },
   {
     phrase: "Deep Research",
     href: "/research",
-    moduleName: "Module 05 • Literature Synthesis",
+    moduleName: "Deep Research • Cited Answers",
     summary:
-      "Multi-step claim decomposition retrieving OpenAlex peer-reviewed works and Wikimedia references with grading.",
+      "Breaks questions down and cross-checks academic studies in OpenAlex alongside World Bank and IMF tables.",
   },
   {
     phrase: "Digital Scientific Laboratory",
     href: "/laboratory",
-    moduleName: "Module 06 • Real-Time Solvers",
+    moduleName: "Science Lab • Live Physics & Climate",
     summary:
-      "High-DPI differential-equation instruments across Physics, Orbital Mechanics, Chemistry, Biology, Climate, and Engineering.",
+      "Hands-on interactive instruments for pendulums, planetary orbits, molecules, ecosystems, climate, and bridges.",
   },
 ];
 
@@ -111,9 +146,33 @@ interface ScrollFocusNarrativeProps {
 export function ScrollFocusNarrative({ text, className = "" }: ScrollFocusNarrativeProps) {
   const { motionPaused } = useOmnisStore();
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const pointerTypeRef = useRef<string>("");
+  const interceptedTermRef = useRef<string | null>(null);
   const [scrollProgress, setScrollProgress] = useState(1);
   const [activeTermPhrase, setActiveTermPhrase] = useState<string | null>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
+
+  useEffect(() => {
+    if (!activeTermPhrase) return;
+    const onOutsidePointer = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("[data-ink-wrapper]")) return;
+      setActiveTermPhrase(null);
+      interceptedTermRef.current = null;
+    };
+    const onEsc = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setActiveTermPhrase(null);
+        interceptedTermRef.current = null;
+      }
+    };
+    document.addEventListener("pointerdown", onOutsidePointer);
+    window.addEventListener("keydown", onEsc);
+    return () => {
+      document.removeEventListener("pointerdown", onOutsidePointer);
+      window.removeEventListener("keydown", onEsc);
+    };
+  }, [activeTermPhrase]);
 
   const segments = useMemo(() => tokenizeNarrative(text, NARRATIVE_TERMS), [text]);
 
@@ -224,13 +283,17 @@ export function ScrollFocusNarrative({ text, className = "" }: ScrollFocusNarrat
             return (
               <React.Fragment key={`${idx}-${term.phrase}`}>
                 <span
+                  data-ink-wrapper
                   className="relative inline-block omnis-focus-token"
                   style={{
                     opacity,
                     transform: `translate3d(0, ${translateY}px, 0)`,
                     filter: blurPx > 0.05 ? `blur(${blurPx}px)` : "none",
                   }}
-                  onMouseEnter={() => setActiveTermPhrase(term.phrase)}
+                  onMouseEnter={() => {
+                    pointerTypeRef.current = "mouse";
+                    setActiveTermPhrase(term.phrase);
+                  }}
                   onMouseLeave={() =>
                     setActiveTermPhrase((prev) => (prev === term.phrase ? null : prev))
                   }
@@ -238,10 +301,32 @@ export function ScrollFocusNarrative({ text, className = "" }: ScrollFocusNarrat
                   <Link
                     href={term.href}
                     data-ink="term"
+                    onPointerDown={(e) => {
+                      pointerTypeRef.current = e.pointerType;
+                      if (e.pointerType !== "mouse" && !isOpen) {
+                        interceptedTermRef.current = term.phrase;
+                        setActiveTermPhrase(term.phrase);
+                      }
+                    }}
+                    onClick={(e) => {
+                      const isCoarse =
+                        pointerTypeRef.current !== "mouse" &&
+                        (pointerTypeRef.current !== "" ||
+                          window.matchMedia?.("(pointer: coarse)").matches);
+                      if (isCoarse && (interceptedTermRef.current === term.phrase || !isOpen)) {
+                        e.preventDefault();
+                        interceptedTermRef.current = null;
+                        setActiveTermPhrase(term.phrase);
+                      }
+                    }}
                     onFocus={() => setActiveTermPhrase(term.phrase)}
-                    onBlur={() =>
-                      setActiveTermPhrase((prev) => (prev === term.phrase ? null : prev))
-                    }
+                    onBlur={(e) => {
+                      const nextTarget = e.relatedTarget as HTMLElement | null;
+                      if (nextTarget?.closest("[data-ink-wrapper]") === e.currentTarget.closest("[data-ink-wrapper]")) {
+                        return;
+                      }
+                      setActiveTermPhrase((prev) => (prev === term.phrase ? null : prev));
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === "Escape") {
                         setActiveTermPhrase(null);
@@ -265,15 +350,36 @@ export function ScrollFocusNarrative({ text, className = "" }: ScrollFocusNarrat
 
                   {isOpen && (
                     <span
-                      role="tooltip"
-                      className="hidden sm:block absolute left-1/2 -translate-x-1/2 bottom-full mb-2.5 z-40 w-72 omnis-card p-3 shadow-xl pointer-events-none text-left"
+                      role="dialog"
+                      aria-label={term.moduleName}
+                      className="fixed sm:absolute left-4 right-4 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 bottom-4 sm:bottom-full sm:pb-2 z-50 sm:w-80 text-left"
                     >
-                      <span className="flex items-center justify-between gap-2 text-xs font-bold uppercase tracking-wider tone-blue omnis-mono">
-                        <span>{term.moduleName}</span>
-                        <ArrowUpRight className="w-3.5 h-3.5 shrink-0" />
-                      </span>
-                      <span className="block mt-1 text-[13px] leading-relaxed text-[var(--text-secondary)] font-normal not-italic">
-                        {term.summary}
+                      <span className="block omnis-card p-3.5 shadow-xl space-y-2 border border-[var(--border-strong)]">
+                        <span className="flex items-center justify-between gap-2 text-xs font-semibold tone-blue">
+                          <span>{term.moduleName}</span>
+                          <button
+                            type="button"
+                            aria-label={`Close ${term.phrase} preview`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveTermPhrase(null);
+                              interceptedTermRef.current = null;
+                            }}
+                            className="sm:hidden min-h-[44px] min-w-[44px] -mr-2 -my-2 inline-flex items-center justify-center rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </span>
+                        <span className="block text-[13px] leading-relaxed text-[var(--text-secondary)] font-normal not-italic">
+                          {term.summary}
+                        </span>
+                        <Link
+                          href={term.href}
+                          className="min-h-[44px] sm:min-h-[30px] w-full sm:w-auto inline-flex items-center justify-between sm:justify-start gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--accent-blue-solid)] text-white text-xs font-semibold hover:brightness-110 transition-all"
+                        >
+                          <span>Open {term.phrase}</span>
+                          <ArrowUpRight className="w-3.5 h-3.5 shrink-0" />
+                        </Link>
                       </span>
                     </span>
                   )}

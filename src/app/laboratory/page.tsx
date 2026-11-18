@@ -918,16 +918,16 @@ function LaboratoryContent() {
     14.0 + 5.35 * Math.log(p1 / 280) * 0.8 - (p2 - 0.3) * 85 + (p3 - 1361) * 0.07;
   const observationText =
     activeId === "physics"
-      ? `1 full swing takes ${(2 * Math.PI * Math.sqrt(p2 / p1)).toFixed(2)}s (natural frequency ${(Math.sqrt(p1 / p2)).toFixed(2)} rad/s)`
+      ? `1 swing takes ${(2 * Math.PI * Math.sqrt(p2 / p1)).toFixed(2)}s (freq ${(Math.sqrt(p1 / p2)).toFixed(2)} rad/s)`
       : activeId === "space"
-      ? `1 orbit takes ${Math.sqrt(Math.pow(p3, 3) / p1).toFixed(2)} years • Closest ${(p3 * (1 - p2)).toFixed(2)} AU, farthest ${(p3 * (1 + p2)).toFixed(2)} AU`
+      ? `Orbit completes in ${Math.sqrt(Math.pow(p3, 3) / p1).toFixed(2)} yrs (${(p3 * (1 - p2)).toFixed(2)}–${(p3 * (1 + p2)).toFixed(2)} AU)`
       : activeId === "chemistry"
-      ? `Bond angle ${p1}° • Polarity strength ${(p3 * Math.cos(((p1 / 2) * Math.PI) / 180) * 2.4).toFixed(2)} Debye`
+      ? `Bond angle ${p1}° • Polarity ${(p3 * Math.cos(((p1 / 2) * Math.PI) / 180) * 2.4).toFixed(2)} Debye`
       : activeId === "biology"
-      ? `Stable ecosystem holds about ${(p3 / (0.02 * p2)).toFixed(0)} prey & ${(p1 / (0.05 * p2)).toFixed(0)} predators`
+      ? `Ecosystem balances at ${(p3 / (0.02 * p2)).toFixed(0)} prey & ${(p1 / (0.05 * p2)).toFixed(0)} predators`
       : activeId === "climate"
-      ? `Earth warms to ${eqClimateTemp.toFixed(1)}°C (${formatSignedValue(eqClimateTemp - 14.0, "°C", 1)} above pre-industrial • +${(5.35 * Math.log(p1 / 280)).toFixed(2)} W/m² forcing)`
-      : `Center bridge dip ${((p1 * Math.pow(p2, 2)) / (45000 * Math.pow(p3, 2))).toFixed(2)} cm • Safety margin ${Math.max(0.8, (350 * p3) / (p1 * 1.4)).toFixed(2)}×`;
+      ? `Earth warms to ${eqClimateTemp.toFixed(1)}°C (${formatSignedValue(eqClimateTemp - 14.0, "°C", 1)} vs 1850 • +${(5.35 * Math.log(p1 / 280)).toFixed(2)} W/m²)`
+      : `Center dip ${((p1 * Math.pow(p2, 2)) / (45000 * Math.pow(p3, 2))).toFixed(2)} cm • Safety margin ${Math.max(0.8, (350 * p3) / (p1 * 1.4)).toFixed(2)}×`;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
@@ -1079,14 +1079,14 @@ function LaboratoryContent() {
             ) : null}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div className="omnis-card p-5 space-y-2.5">
+          <div className="pt-4 border-t border-[var(--border-subtle)] grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2 border-b md:border-b-0 md:border-r border-[var(--border-subtle)] pb-4 md:pb-0 md:pr-6">
               <div className="text-[13px] font-semibold tone-blue">
                 What This Experiment Shows
               </div>
               <p className="text-sm sm:text-[15px] text-[var(--text-secondary)] leading-relaxed">{exp.objective}</p>
             </div>
-            <div className="omnis-card p-5 space-y-2.5">
+            <div className="space-y-2">
               <div className="text-[13px] font-semibold tone-verified">
                 Why It Works (The Science Behind It)
               </div>

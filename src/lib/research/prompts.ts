@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { ResearchMode } from "@/types/omnis";
 
 export const BANNED_AI_PHRASES = [
@@ -27,6 +28,35 @@ export const RESEARCH_MODE_GUIDANCE: Record<ResearchMode, string> = {
   economic:
     "Focus on real growth drivers, household prices (inflation), public debt, borrowing costs, R&D intensity, and productivity per worker.",
 };
+
+export const EditorialBriefPayloadSchema = z.object({
+  bottomLine: z.string().min(20),
+  keyNumbers: z
+    .array(
+      z.object({
+        label: z.string().min(1),
+        value: z.string().min(1),
+        benchmarkContext: z.string().min(1),
+        source: z.string().min(1),
+      })
+    )
+    .min(1),
+  mechanisms: z
+    .array(
+      z.object({
+        title: z.string().min(1),
+        explanation: z.string().min(10),
+        glossaryNotes: z.array(z.string()).optional(),
+      })
+    )
+    .min(1),
+  whereExpertsDisagree: z.object({
+    topic: z.string().min(1),
+    viewA: z.string().min(10),
+    viewB: z.string().min(10),
+    evidenceBalance: z.string().min(10),
+  }),
+});
 
 export interface EditorialBriefPayload {
   bottomLine: string;
@@ -74,17 +104,42 @@ export function buildEditorialSystemPrompt(
 ): string {
   const modeRule = RESEARCH_MODE_GUIDANCE[mode] ?? RESEARCH_MODE_GUIDANCE.deep;
   return [
-    "You are an editorial data journalist writing in the clear, accurate style of Our World in Data and The Economist.",
+    "You are an editorial data journalist writing in the warm, clear, rigorous style of Our World in Data and The Economist.",
     `Mode objective (${mode}): ${modeRule}`,
-    "Writing rules:",
-    "1. Lead directly with the answer in active voice. Keep every paragraph to 3 sentences or fewer.",
-    "2. Never start with filler clichés: " + BANNED_AI_PHRASES.join(", ") + ".",
-    "3. Define financial or macro terms in plain parentheses on first use—such as CPI (everyday cost of living), basis points (100 bps = 1 percentage point), or PPP.",
-    "4. Always scale big dollar or headcount figures naturally ($4.1T, 1.44 billion) and pair statistics with 'Compared to what?' global or historical context.",
-    "5. Ground every number strictly in VERIFIED_CONTEXT below. Never invent statistics, citations, or URLs. Separate unconfirmed scenarios cleanly from measured data.",
+    "Mandatory writing rules:",
+    "1. Answer the EXACT question asked word-for-word in sentence one. Do NOT open with a generic country GDP overview when the user asks why inflation spiked, how public debt affects budgets, or how supply chains connect.",
+    "2. Keep every paragraph concise: 3 sentences or fewer and <= 65 words, in direct active voice.",
+    "3. Never start with or include AI filler clichés: " + BANNED_AI_PHRASES.join(", ") + ".",
+    "4. Define technical acronyms in parentheses on first use—such as CPI (everyday cost of living), PPP (purchasing power parity adjusted for local prices), TFP (total factor productivity), bps (100 bps = 1 percentage point), GDP per capita (average economic output per person), and fiscal deficit (annual government shortfall).",
+    "5. Use concrete everyday household or worker examples (grocery bills, electricity rates, mortgage borrowing, factory components).",
+    "6. Scale large numbers naturally ($4.1T, 1.44 billion) and never confuse per-person living standards with national total size.",
+    "7. Pair every quantitative statistic with clear 'Compared to what?' global or historical context and ground every claim strictly in VERIFIED_CONTEXT below.",
     "",
     "Respond as valid JSON matching EditorialBriefPayload:",
     "{ bottomLine, keyNumbers: [{ label, value, benchmarkContext, source }], mechanisms: [{ title, explanation, glossaryNotes }], whereExpertsDisagree: { topic, viewA, viewB, evidenceBalance } }",
+    "",
+    "VERIFIED_CONTEXT:",
+    verifiedContext.trim(),
+  ].join("\n");
+}
+
+/**
+ * Builds a concise editorial system prompt for the conversational floating AI Assistant.
+ */
+export function buildAssistantSystemPrompt(
+  contextLabel: string,
+  contextTopic: string,
+  verifiedContext: string
+): string {
+  return [
+    "You are OMNIS's helpful data guide answering questions in warm, everyday prose.",
+    `Current screen context: ${contextLabel} (${contextTopic}).`,
+    "Rules:",
+    "1. Reply in 95 words or fewer using clear, natural sentences—not raw telemetry dumps or robotic bullets.",
+    "2. Answer the exact question asked in the very first sentence; never force a generic country profile summary if the user asked a specific topic question.",
+    "3. Define financial terms cleanly in parentheses on first use (such as CPI or basis points) and scale dollars/populations naturally ($4.1T, 1.44 billion).",
+    "4. Never use banned filler phrases: " + BANNED_AI_PHRASES.join(", ") + ".",
+    "5. Cite the named data source concisely at the end, using ONLY figures present in VERIFIED_CONTEXT.",
     "",
     "VERIFIED_CONTEXT:",
     verifiedContext.trim(),

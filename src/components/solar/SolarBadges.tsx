@@ -70,7 +70,7 @@ export const SolarSyncHudControl = React.memo(function SolarSyncHudControl({
           }`}
         />
         <Sun className="w-3.5 h-3.5 tone-warning shrink-0" />
-        <span className="hidden @[780px]:inline text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono whitespace-nowrap">
+        <span className="hidden @[780px]:inline text-xs font-medium text-[var(--text-muted)] whitespace-nowrap">
           {isScrubbing ? "24h Solar Scrub" : "Live Solar Sync"} ·
         </span>
         <span className="text-xs omnis-mono omnis-tabular font-semibold text-[var(--text-primary)] whitespace-nowrap">
@@ -102,7 +102,7 @@ export const SolarSyncHudControl = React.memo(function SolarSyncHudControl({
           onClick={onResetToLive}
           aria-label="Reset solar terminator to live UTC"
           title="Reset to Live UTC"
-          className="min-h-[44px] min-w-[44px] sm:min-h-[26px] sm:min-w-0 inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md badge-tone-warning hover:opacity-90 text-[11px] font-bold cursor-pointer transition-opacity whitespace-nowrap"
+          className="min-h-[44px] min-w-[44px] sm:min-h-[26px] sm:min-w-0 inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-md badge-tone-warning hover:opacity-90 text-xs font-semibold cursor-pointer transition-opacity whitespace-nowrap"
         >
           <RotateCcw className="w-3 h-3" />
           <span>Live UTC</span>
@@ -135,10 +135,10 @@ export const CountrySolarClockBadge = React.memo(function CountrySolarClockBadge
   if (!effectiveDate) {
     return (
       <span
-        className={`inline-flex items-center gap-1.5 omnis-mono omnis-tabular text-[var(--text-secondary)] ${
+        className={`inline-flex items-center gap-1.5 omnis-tabular text-[var(--text-secondary)] text-xs ${
           variant === "pill"
-            ? "px-2.5 py-0.5 rounded-md bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-xs"
-            : "text-[11px]"
+            ? "px-2.5 py-0.5 rounded-md bg-[var(--bg-slate)] border border-[var(--border-subtle)]"
+            : ""
         } ${className}`}
       >
         <span aria-hidden="true">☀</span>
@@ -158,13 +158,13 @@ export const CountrySolarClockBadge = React.memo(function CountrySolarClockBadge
   if (variant === "compact") {
     return (
       <div
-        className={`inline-flex flex-wrap items-center gap-1.5 text-[11px] omnis-mono omnis-tabular text-[var(--text-secondary)] ${className}`}
+        className={`inline-flex flex-wrap items-center gap-1.5 text-xs omnis-tabular text-[var(--text-secondary)] ${className}`}
       >
         <span aria-hidden="true" className={`font-bold ${symbolTone}`}>
           {solar.symbol}
         </span>
-        <span className="font-semibold text-[var(--text-primary)]">{solar.formattedTime}</span>
-        <span className="text-[var(--text-muted)]">{solar.utcOffsetLabel}</span>
+        <span className="font-semibold omnis-mono text-[var(--text-primary)]">{solar.formattedTime}</span>
+        <span className="text-[var(--text-muted)] omnis-mono">{solar.utcOffsetLabel}</span>
         <span className="text-[var(--text-muted)]">•</span>
         <span className="font-medium">{solar.phase}</span>
       </div>

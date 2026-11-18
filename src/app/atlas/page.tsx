@@ -25,7 +25,8 @@ import {
   WORLD_COUNTRIES_CATALOG,
   buildPlaceholderCountryProfile,
 } from "@/lib/data/world-catalog";
-import { describeVsBenchmark } from "@/lib/data/world-benchmarks";
+import { describeGlobalScaleTier, describeVsBenchmark } from "@/lib/data/world-benchmarks";
+import { computeHistoricalMultiple } from "@/lib/research/compare";
 import {
   formatCountryMetricOrNa,
   formatPopulationHuman,
@@ -249,20 +250,20 @@ function GlobalAtlasContent() {
   const compareEffectiveGdpUsdBn = getEffectiveGdpUsdBn(compareCountry);
 
   const handleSaveCountry = () => {
+    const cleanGrowthLabel =
+      country.provenance.missingData && country.gdpGrowthPct === 0 && effectiveGdpUsdBn === 0
+        ? "N/A"
+        : formatSignedPct(country.gdpGrowthPct);
+    const cleanRenewLabel =
+      !country.provenance.missingData || country.energyProfile.renewableSharePct > 0
+        ? `${country.energyProfile.renewableSharePct}%`
+        : "N/A";
     addWorkspaceItem({
       type: "country",
-      title: `${country.name} (${country.iso3}) — Country Intelligence Dossier`,
-      subtitle: `GDP ${
-        effectiveGdpUsdBn > 0 ? `$${effectiveGdpUsdBn.toLocaleString()}B` : "N/A"
-      } • Growth ${
-        country.provenance.missingData && country.gdpGrowthPct === 0 && effectiveGdpUsdBn === 0
-          ? "N/A"
-          : formatSignedPct(country.gdpGrowthPct)
-      } • Clean Grid ${
-        !country.provenance.missingData || country.energyProfile.renewableSharePct > 0
-          ? `${country.energyProfile.renewableSharePct}%`
-          : "N/A"
-      }`,
+      title: `${country.name} (${country.iso3}) — Country Profile`,
+      subtitle: `Economy ${
+        effectiveGdpUsdBn > 0 ? formatUsdBnCompact(effectiveGdpUsdBn) : "N/A"
+      } • ${cleanGrowthLabel} growth • ${cleanRenewLabel} renewable power`,
       folder: "Geopolitics & Macro",
       tags: [country.name, country.iso3, country.region, "World Bank"],
       href: `/atlas?country=${country.iso3}`,
@@ -368,7 +369,7 @@ function GlobalAtlasContent() {
         </div>
       )}
 
-      {/* Dedicated Country Intelligence Dossier */}
+      {/* Dedicated Country Profile */}
       <div className="omnis-card p-6 space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-[var(--border-subtle)]">
           <div className="space-y-1">
@@ -405,25 +406,226 @@ function GlobalAtlasContent() {
         </div>
 
         {/* Plain-English 1-Sentence Snapshot */}
-        <div
-          className="border-l-2 border-[var(--accent-blue)] pl-4 py-1 text-[15px] sm:text-base text-[var(--text-primary)] leading-relaxed"
-          style={{ fontFamily: "var(--font-editorial), Georgia, serif" }}
-        >
-          {effectiveGdpUsdBn > 0
-            ? `${country.name} is a ${formatUsdBnCompact(effectiveGdpUsdBn)} economy${
-                country.population > 0
-                  ? ` of ${formatPopulationHuman(country.population, "long")} people`
-                  : ""
-              }${
-                hasSectorMetricValue(country, country.gdpPerCapitaUsd) && country.gdpPerCapitaUsd > 0
-                  ? `, averaging $${country.gdpPerCapitaUsd.toLocaleString()} per person`
-                  : ""
-              }, growing at ${formatSignedPct(country.gdpGrowthPct)} a year.`
-            : `${country.name} (${country.iso3}) currently has partial World Bank data returned; verified geographic identifiers and available indicators are listed below.`}
-        </div>
+        {(() => {
+          const scaleTier = describeGlobalScaleTier(effectiveGdpUsdBn);
+          const histMult = computeHistoricalMultiple(country);
+          return (
+            <div
+              className="border-l-2 border-[var(--accent-blue)] pl-4 py-1 text-[15px] sm:text-base text-[var(--text-primary)] leading-relaxed"
+              style={{ fontFamily: "var(--font-editorial), Georgia, serif" }}
+            >
+              {effectiveGdpUsdBn > 0
+                ? `${country.name} is a ${formatUsdBnCompact(effectiveGdpUsdBn)} economy${
+                    scaleTier ? ` (${scaleTier})` : ""
+                  }${
+                    histMult ? ` that ${histMult.multipleText}` : ""
+                  }${
+                    country.population > 0
+                      ? `, home to ${formatPopulationHuman(country.population, "long")} people`
+                      : ""
+                  }${
+                    hasSectorMetricValue(country, country.gdpPerCapitaUsd) && country.gdpPerCapitaUsd > 0
+                      ? ` averaging $${country.gdpPerCapitaUsd.toLocaleString()} per person`
+                      : ""
+                  } and growing at ${formatSignedPct(country.gdpGrowthPct)} a year.`
+                : `${country.name} (${country.iso3}) currently has partial World Bank data returned; verified geographic identifiers and available indicators are listed below.`}
+            </div>
+          );
+        })()}
 
         {/* Provenance & Methodology Banner */}
         <ProvenancePanel provenance={country.provenance} compact />
+
+        {/* Promoted Historical Chart & Peer Comparison Matrix (Visual-First Above Detailed Sector Grid) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-2 pb-6 border-b border-[var(--border-subtle)]">
+          <div className="lg:col-span-6 min-w-0 space-y-4">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-base font-bold text-[var(--text-primary)]">
+                {country.name} vs {compareCountry.name} Historical Trajectory (1991–2026)
+              </h3>
+              <span className="text-xs text-[var(--text-muted)] font-medium">
+                Dual-country interactive chart
+              </span>
+            </div>
+            <HistoricalTrajectoryChart country={country} compareCountry={compareCountry} />
+          </div>
+
+          <div className="lg:col-span-6 min-w-0 space-y-4 lg:border-l lg:border-[var(--border-subtle)] lg:pl-8">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-base font-bold flex items-center gap-2 text-[var(--text-primary)]">
+                <ArrowLeftRight className="w-4 h-4 tone-blue" />
+                Compare {country.name} vs {compareCountry.name}
+              </h3>
+              <div className="flex flex-wrap items-center gap-2">
+                <Link
+                  href={`/intelligence?left=${country.iso3}&right=${compareCountry.iso3}`}
+                  className="min-h-[44px] sm:min-h-0 inline-flex items-center gap-1.5 rounded-lg border border-[var(--badge-cyan-border)] bg-[var(--badge-cyan-bg)] px-3 py-1.5 text-xs font-semibold tone-cyan transition-colors hover:brightness-105"
+                >
+                  <span>Full Comparison</span>
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </Link>
+                <OmnisSelect
+                  value={compareIso3}
+                  onChange={handleCompareChange}
+                  ariaLabel="Select Comparison Country"
+                  menuAlign="right"
+                  options={WORLD_COUNTRIES_CATALOG.filter((c) => c.iso3 !== country.iso3).map(
+                    (c) => ({
+                      value: c.iso3,
+                      label: `${c.flagEmoji} ${c.name} (${c.iso3})`,
+                      hint: c.curated ? `${c.region} • Curated` : `${c.region} • Live WDI`,
+                    })
+                  )}
+                />
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-[13.5px] sm:text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--border-subtle)] text-[var(--text-muted)]">
+                    <th className="py-2">Indicator</th>
+                    <th className="py-2 omnis-mono">
+                      {country.flagEmoji} {country.iso3}
+                    </th>
+                    <th className="py-2 omnis-mono">
+                      {compareCountry.flagEmoji} {compareCountry.iso3}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border-subtle)] omnis-mono omnis-tabular text-[var(--text-primary)]">
+                  <tr>
+                    <td className="py-2.5 font-sans text-[var(--text-secondary)]">Total Economy</td>
+                    <td
+                      className="py-2.5 font-bold"
+                      title={effectiveGdpUsdBn > 0 ? `$${effectiveGdpUsdBn.toLocaleString()}B` : "N/A"}
+                    >
+                      {effectiveGdpUsdBn > 0 ? formatUsdBnCompact(effectiveGdpUsdBn) : "N/A"}
+                    </td>
+                    <td
+                      className="py-2.5 font-bold"
+                      title={compareEffectiveGdpUsdBn > 0 ? `$${compareEffectiveGdpUsdBn.toLocaleString()}B` : "N/A"}
+                    >
+                      {compareEffectiveGdpUsdBn > 0
+                        ? formatUsdBnCompact(compareEffectiveGdpUsdBn)
+                        : "N/A"}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-2.5 font-sans text-[var(--text-secondary)]">GDP Per Capita</td>
+                    <td className="py-2.5">
+                      {hasSectorMetricValue(country, country.gdpPerCapitaUsd) && country.gdpPerCapitaUsd > 0
+                        ? `$${country.gdpPerCapitaUsd.toLocaleString()}`
+                        : "N/A"}
+                    </td>
+                    <td className="py-2.5">
+                      {hasSectorMetricValue(compareCountry, compareCountry.gdpPerCapitaUsd) &&
+                      compareCountry.gdpPerCapitaUsd > 0
+                        ? `$${compareCountry.gdpPerCapitaUsd.toLocaleString()}`
+                        : "N/A"}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-2.5 font-sans text-[var(--text-secondary)]">Real GDP Growth</td>
+                    <td
+                      className={`py-2.5 font-semibold ${
+                        country.provenance.missingData &&
+                        country.gdpGrowthPct === 0 &&
+                        effectiveGdpUsdBn === 0
+                          ? "text-[var(--text-muted)]"
+                          : country.gdpGrowthPct >= 0
+                            ? "tone-verified"
+                            : "tone-warning"
+                      }`}
+                    >
+                      {country.provenance.missingData &&
+                      country.gdpGrowthPct === 0 &&
+                      effectiveGdpUsdBn === 0
+                        ? "N/A"
+                        : formatSignedPct(country.gdpGrowthPct)}
+                    </td>
+                    <td
+                      className={`py-2.5 font-semibold ${
+                        compareCountry.provenance.missingData &&
+                        compareCountry.gdpGrowthPct === 0 &&
+                        compareEffectiveGdpUsdBn === 0
+                          ? "text-[var(--text-muted)]"
+                          : compareCountry.gdpGrowthPct >= 0
+                            ? "tone-verified"
+                            : "tone-warning"
+                      }`}
+                    >
+                      {compareCountry.provenance.missingData &&
+                      compareCountry.gdpGrowthPct === 0 &&
+                      compareEffectiveGdpUsdBn === 0
+                        ? "N/A"
+                        : formatSignedPct(compareCountry.gdpGrowthPct)}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-2.5 font-sans text-[var(--text-secondary)]">Renewable Grid Share</td>
+                    <td className="py-2.5">
+                      {!country.provenance.missingData || country.energyProfile.renewableSharePct > 0
+                        ? `${country.energyProfile.renewableSharePct}%`
+                        : "N/A"}
+                    </td>
+                    <td className="py-2.5">
+                      {!compareCountry.provenance.missingData ||
+                      compareCountry.energyProfile.renewableSharePct > 0
+                        ? `${compareCountry.energyProfile.renewableSharePct}%`
+                        : "N/A"}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-2.5 font-sans text-[var(--text-secondary)]">R&D Spend (% GDP)</td>
+                    <td className="py-2.5">
+                      {formatCountryMetricOrNa(
+                        country,
+                        country.technologyProfile.rdSpendPctGdp,
+                        (v) => `${v}%`
+                      )}
+                    </td>
+                    <td className="py-2.5">
+                      {formatCountryMetricOrNa(
+                        compareCountry,
+                        compareCountry.technologyProfile.rdSpendPctGdp,
+                        (v) => `${v}%`
+                      )}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-2.5 font-sans text-[var(--text-secondary)]">Median Age / Life Exp</td>
+                    <td className="py-2.5">
+                      {formatCountryMetricOrNa(country, country.medianAgeYears, (v) => `${v}y`)} /{" "}
+                      {formatCountryMetricOrNa(country, country.lifeExpectancyYears, (v) => `${v}y`)}
+                    </td>
+                    <td className="py-2.5">
+                      {formatCountryMetricOrNa(
+                        compareCountry,
+                        compareCountry.medianAgeYears,
+                        (v) => `${v}y`
+                      )}{" "}
+                      /{" "}
+                      {formatCountryMetricOrNa(
+                        compareCountry,
+                        compareCountry.lifeExpectancyYears,
+                        (v) => `${v}y`
+                      )}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <Link
+              href={`/intelligence?left=${country.iso3}&right=${compareCountry.iso3}`}
+              className="omnis-magnetic-arrow inline-flex items-center gap-1.5 text-[13.5px] font-semibold tone-blue hover:underline"
+            >
+              <span>Open Full Comparison &amp; Charts</span>
+              <ArrowRight className="omnis-arrow-glyph w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </div>
 
         {/* Seamless Architectural 2x3 Country Discipline Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 border border-[var(--border-subtle)] rounded-2xl overflow-hidden bg-[var(--bg-graphite)]">
@@ -916,197 +1118,6 @@ function GlobalAtlasContent() {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Open Interactive Historical Chart & Peer Comparison Matrix (De-boxed with Horizontal Rule) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-6 border-t border-[var(--border-subtle)]">
-          <div className="lg:col-span-6 min-w-0 space-y-4">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="text-base font-bold text-[var(--text-primary)]">
-                {country.name} vs {compareCountry.name} Historical Trajectory (1991–2026)
-              </h3>
-              <span className="text-xs text-[var(--text-muted)] omnis-mono">
-                Dual-Country Interactive Overlay
-              </span>
-            </div>
-            <HistoricalTrajectoryChart country={country} compareCountry={compareCountry} />
-          </div>
-
-          <div className="lg:col-span-6 min-w-0 space-y-4 lg:border-l lg:border-[var(--border-subtle)] lg:pl-8">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-base font-bold flex items-center gap-2 text-[var(--text-primary)]">
-                <ArrowLeftRight className="w-4 h-4 tone-blue" />
-                Compare {country.name} vs {compareCountry.name}
-              </h3>
-              <div className="flex flex-wrap items-center gap-2">
-                <Link
-                  href={`/intelligence?left=${country.iso3}&right=${compareCountry.iso3}`}
-                  className="min-h-[44px] sm:min-h-0 inline-flex items-center gap-1.5 rounded-lg border border-[var(--badge-cyan-border)] bg-[var(--badge-cyan-bg)] px-3 py-1.5 text-xs font-semibold tone-cyan transition-colors hover:brightness-105"
-                >
-                  <span>Full Comparison</span>
-                  <ArrowUpRight className="h-3.5 w-3.5" />
-                </Link>
-                <OmnisSelect
-                  value={compareIso3}
-                  onChange={handleCompareChange}
-                  ariaLabel="Select Comparison Country"
-                  menuAlign="right"
-                  options={WORLD_COUNTRIES_CATALOG.filter((c) => c.iso3 !== country.iso3).map(
-                    (c) => ({
-                      value: c.iso3,
-                      label: `${c.flagEmoji} ${c.name} (${c.iso3})`,
-                      hint: c.curated ? `${c.region} • Curated` : `${c.region} • Live WDI`,
-                    })
-                  )}
-                />
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-[13.5px] sm:text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--border-subtle)] text-[var(--text-muted)]">
-                    <th className="py-2">Indicator</th>
-                    <th className="py-2 omnis-mono">
-                      {country.flagEmoji} {country.iso3}
-                    </th>
-                    <th className="py-2 omnis-mono">
-                      {compareCountry.flagEmoji} {compareCountry.iso3}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border-subtle)] omnis-mono omnis-tabular text-[var(--text-primary)]">
-                  <tr>
-                    <td className="py-2.5 font-sans text-[var(--text-secondary)]">Total Economy</td>
-                    <td
-                      className="py-2.5 font-bold"
-                      title={effectiveGdpUsdBn > 0 ? `$${effectiveGdpUsdBn.toLocaleString()}B` : "N/A"}
-                    >
-                      {effectiveGdpUsdBn > 0 ? formatUsdBnCompact(effectiveGdpUsdBn) : "N/A"}
-                    </td>
-                    <td
-                      className="py-2.5 font-bold"
-                      title={compareEffectiveGdpUsdBn > 0 ? `$${compareEffectiveGdpUsdBn.toLocaleString()}B` : "N/A"}
-                    >
-                      {compareEffectiveGdpUsdBn > 0
-                        ? formatUsdBnCompact(compareEffectiveGdpUsdBn)
-                        : "N/A"}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="py-2.5 font-sans text-[var(--text-secondary)]">GDP Per Capita</td>
-                    <td className="py-2.5">
-                      {hasSectorMetricValue(country, country.gdpPerCapitaUsd) && country.gdpPerCapitaUsd > 0
-                        ? `$${country.gdpPerCapitaUsd.toLocaleString()}`
-                        : "N/A"}
-                    </td>
-                    <td className="py-2.5">
-                      {hasSectorMetricValue(compareCountry, compareCountry.gdpPerCapitaUsd) &&
-                      compareCountry.gdpPerCapitaUsd > 0
-                        ? `$${compareCountry.gdpPerCapitaUsd.toLocaleString()}`
-                        : "N/A"}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="py-2.5 font-sans text-[var(--text-secondary)]">Real GDP Growth</td>
-                    <td
-                      className={`py-2.5 font-semibold ${
-                        country.provenance.missingData &&
-                        country.gdpGrowthPct === 0 &&
-                        effectiveGdpUsdBn === 0
-                          ? "text-[var(--text-muted)]"
-                          : country.gdpGrowthPct >= 0
-                            ? "tone-verified"
-                            : "tone-warning"
-                      }`}
-                    >
-                      {country.provenance.missingData &&
-                      country.gdpGrowthPct === 0 &&
-                      effectiveGdpUsdBn === 0
-                        ? "N/A"
-                        : formatSignedPct(country.gdpGrowthPct)}
-                    </td>
-                    <td
-                      className={`py-2.5 font-semibold ${
-                        compareCountry.provenance.missingData &&
-                        compareCountry.gdpGrowthPct === 0 &&
-                        compareEffectiveGdpUsdBn === 0
-                          ? "text-[var(--text-muted)]"
-                          : compareCountry.gdpGrowthPct >= 0
-                            ? "tone-verified"
-                            : "tone-warning"
-                      }`}
-                    >
-                      {compareCountry.provenance.missingData &&
-                      compareCountry.gdpGrowthPct === 0 &&
-                      compareEffectiveGdpUsdBn === 0
-                        ? "N/A"
-                        : formatSignedPct(compareCountry.gdpGrowthPct)}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="py-2.5 font-sans text-[var(--text-secondary)]">Renewable Grid Share</td>
-                    <td className="py-2.5">
-                      {!country.provenance.missingData || country.energyProfile.renewableSharePct > 0
-                        ? `${country.energyProfile.renewableSharePct}%`
-                        : "N/A"}
-                    </td>
-                    <td className="py-2.5">
-                      {!compareCountry.provenance.missingData ||
-                      compareCountry.energyProfile.renewableSharePct > 0
-                        ? `${compareCountry.energyProfile.renewableSharePct}%`
-                        : "N/A"}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="py-2.5 font-sans text-[var(--text-secondary)]">R&D Spend (% GDP)</td>
-                    <td className="py-2.5">
-                      {formatCountryMetricOrNa(
-                        country,
-                        country.technologyProfile.rdSpendPctGdp,
-                        (v) => `${v}%`
-                      )}
-                    </td>
-                    <td className="py-2.5">
-                      {formatCountryMetricOrNa(
-                        compareCountry,
-                        compareCountry.technologyProfile.rdSpendPctGdp,
-                        (v) => `${v}%`
-                      )}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="py-2.5 font-sans text-[var(--text-secondary)]">Median Age / Life Exp</td>
-                    <td className="py-2.5">
-                      {formatCountryMetricOrNa(country, country.medianAgeYears, (v) => `${v}y`)} /{" "}
-                      {formatCountryMetricOrNa(country, country.lifeExpectancyYears, (v) => `${v}y`)}
-                    </td>
-                    <td className="py-2.5">
-                      {formatCountryMetricOrNa(
-                        compareCountry,
-                        compareCountry.medianAgeYears,
-                        (v) => `${v}y`
-                      )}{" "}
-                      /{" "}
-                      {formatCountryMetricOrNa(
-                        compareCountry,
-                        compareCountry.lifeExpectancyYears,
-                        (v) => `${v}y`
-                      )}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <Link
-              href={`/intelligence?left=${country.iso3}&right=${compareCountry.iso3}`}
-              className="omnis-magnetic-arrow inline-flex items-center gap-1.5 text-[13.5px] font-semibold tone-blue hover:underline"
-            >
-              <span>Open Full Comparison &amp; Charts</span>
-              <ArrowRight className="omnis-arrow-glyph w-3.5 h-3.5" />
-            </Link>
           </div>
         </div>
       </div>

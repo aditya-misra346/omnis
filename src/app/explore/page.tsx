@@ -314,11 +314,11 @@ function ExploreContent() {
                   )}
                 </div>
                 <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
-                  OMNIS enforces strict provenance honesty and never substitutes unrelated fallback countries or events when a query yields zero matches. Try broadening keywords, checking spelling, or switching directly into the Deep Research synthesiser for OpenAlex literature discovery.
+                  OMNIS never makes up results when nothing matches your search. Try simpler words, check spelling, or run Deep Research to find academic studies.
                 </p>
                 <div className="flex flex-wrap items-center gap-2 pt-1">
-                  <span className="text-xs font-semibold text-[var(--text-muted)] omnis-mono">
-                    Quick Try:
+                  <span className="text-xs font-semibold text-[var(--text-muted)]">
+                    Quick try:
                   </span>
                   {[
                     "India economy since 1991",
@@ -345,7 +345,7 @@ function ExploreContent() {
               <div className="flex items-center justify-between gap-2">
                 <h2 className="text-[15px] sm:text-base font-bold flex items-center gap-2 text-[var(--text-primary)]">
                   <Globe2 className="w-4 h-4 tone-blue shrink-0" />
-                  Sovereign Country Intelligence Matches ({searchResults.countries.length})
+                  Matching Countries ({searchResults.countries.length})
                 </h2>
                 <Link
                   href="/atlas"
@@ -573,10 +573,10 @@ function ExploreContent() {
           )}
         </div>
 
-        {/* Right Column: Search History, Saved Searches & Related Concept Graph Bridges */}
-        <div className="lg:col-span-4 min-w-0 space-y-6">
-          <div className="omnis-card p-5 space-y-3">
-            <h3 className="text-[15px] sm:text-base font-bold text-[var(--text-primary)]">Related Exploration Paths</h3>
+        {/* Right Column: De-carded Search History, Saved Searches & Related Paths */}
+        <div className="lg:col-span-4 min-w-0 pt-4 lg:pt-0 border-t lg:border-t-0 lg:border-l border-[var(--border-subtle)] lg:pl-6 divide-y divide-[var(--border-subtle)]">
+          <div className="pb-5 space-y-3">
+            <h3 className="text-[15px] sm:text-base font-bold text-[var(--text-primary)]">Related Topics</h3>
             <div className="divide-y divide-[var(--border-subtle)] border-t border-[var(--border-subtle)]">
               {searchResults.relatedConcepts.map((concept) => (
                 <button
@@ -592,7 +592,7 @@ function ExploreContent() {
             </div>
           </div>
 
-          <div className="omnis-card p-5 space-y-3">
+          <div className="py-5 space-y-3">
             <h3 className="text-[15px] sm:text-base font-bold text-[var(--text-primary)]">
               Saved Searches ({savedSearches.length})
             </h3>
@@ -610,9 +610,9 @@ function ExploreContent() {
             </div>
           </div>
 
-          <div className="omnis-card p-5 space-y-3">
+          <div className="pt-5 space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-[15px] sm:text-base font-bold text-[var(--text-primary)]">Recent Search History</h3>
+              <h3 className="text-[15px] sm:text-base font-bold text-[var(--text-primary)]">Recent Searches</h3>
               <button
                 type="button"
                 onClick={clearSearchHistory}
@@ -645,7 +645,7 @@ export default function ExplorePage() {
     <Suspense
       fallback={
         <div className="p-8 max-w-7xl mx-auto">
-          <OmnisLoader label="Initialising Universal Knowledge Explorer..." />
+          <OmnisLoader label="Loading search…" />
         </div>
       }
     >

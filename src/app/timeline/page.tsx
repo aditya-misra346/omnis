@@ -494,15 +494,18 @@ function TimelineContent() {
               </div>
             </div>
 
-            <div className="relative h-5 mx-3 text-[10px] tracking-tight sm:text-xs sm:tracking-normal omnis-mono omnis-tabular text-[var(--text-muted)]">
-              <span className="absolute left-0 -ml-3 sm:ml-0">3000 BCE</span>
-              <span style={{ left: "22%" }} className="absolute -translate-x-1/2">
+            <div className="relative h-5 mx-1 sm:mx-3 text-xs font-medium omnis-tabular text-[var(--text-muted)]">
+              <span className="absolute left-0 whitespace-nowrap">3000 BCE</span>
+              <span
+                style={{ left: "22%" }}
+                className="hidden min-[440px]:inline absolute -translate-x-1/2 whitespace-nowrap"
+              >
                 500 CE
               </span>
-              <span style={{ left: "45%" }} className="absolute -translate-x-1/2">
+              <span style={{ left: "45%" }} className="absolute -translate-x-1/2 whitespace-nowrap">
                 1800 CE
               </span>
-              <span className="absolute right-0 -mr-3 sm:mr-0">2026 CE</span>
+              <span className="absolute right-0 whitespace-nowrap">2026 CE</span>
             </div>
           </div>
         );
@@ -512,8 +515,8 @@ function TimelineContent() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pb-16 lg:pb-0">
         {/* Left Chronological Timeline List */}
         <div className="lg:col-span-5 omnis-card p-5 space-y-3 max-h-[680px] overflow-y-auto">
-          <div className="text-[13px] font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono">
-            Chronological Sequence ({filteredEvents.length} Verified Events)
+          <div className="text-xs font-semibold text-[var(--text-muted)]">
+            Timeline Events ({filteredEvents.length} historical milestones)
           </div>
           <div className="relative pl-4 border-l-2 border-[var(--accent-blue)]/40 space-y-3">
             {filteredEvents.map((evt) => {
@@ -553,9 +556,9 @@ function TimelineContent() {
         {/* Right Detailed Historical Event Dossier (De-boxed Editorial Callouts & Hairlines) */}
         <div className="lg:col-span-7 omnis-card p-6 sm:p-7 space-y-6">
           <div className="space-y-2 pb-4 border-b border-[var(--border-subtle)]">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-[13px]">
-              <span className="px-2.5 py-0.5 rounded-full badge-tone-blue font-bold omnis-mono">
-                {activeEvent.dateDisplay} • {activeEvent.era.toUpperCase()} ERA
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+              <span className="px-2.5 py-0.5 rounded-full badge-tone-blue font-semibold omnis-tabular">
+                {activeEvent.dateDisplay} • {activeEvent.era.charAt(0).toUpperCase() + activeEvent.era.slice(1)} Era
               </span>
               <span className="text-[var(--text-muted)] font-medium">{activeEvent.location}</span>
             </div>
@@ -617,15 +620,15 @@ function TimelineContent() {
             </div>
           </div>
 
-          {/* Connected History -> Transition into Infinite Knowledge Graph */}
+          {/* Related Concept Maps */}
           <div className="border-t border-[var(--border-subtle)] pt-4 space-y-2.5">
             <div className="flex flex-wrap items-center justify-between gap-2 text-[13.5px]">
               <span className="font-bold tone-violet flex items-center gap-1.5">
                 <Network className="w-4 h-4" />
-                Connected History → Knowledge Graph Bridges
+                Related Concept Maps
               </span>
               <span className="text-xs text-[var(--text-muted)]">
-                Click any bridge to transition into Module 02
+                Tap any topic to see causes &amp; effects
               </span>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -648,8 +651,8 @@ function TimelineContent() {
 
           {/* Primary & Academic Sources */}
           <div className="space-y-2 text-[13.5px] border-t border-[var(--border-subtle)] pt-4">
-            <div className="font-bold uppercase tracking-wider text-[var(--text-muted)] omnis-mono text-xs">
-              Verified Primary &amp; Academic Sources
+            <div className="font-semibold text-[var(--text-primary)] text-sm">
+              Primary &amp; Academic Sources
             </div>
             <div className="divide-y divide-[var(--border-subtle)] border-t border-[var(--border-subtle)]">
               {activeEvent.sources.map((src) => (
@@ -691,7 +694,7 @@ function TimelineContent() {
             </div>
           </div>
           <span className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--accent-blue-solid)] text-white font-semibold">
-            <span>Open Dossier</span>
+            <span>Read Event</span>
             <ChevronUp className="w-3.5 h-3.5" />
           </span>
         </button>

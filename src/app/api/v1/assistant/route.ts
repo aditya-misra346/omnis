@@ -23,6 +23,7 @@ import {
   fetchWikimediaSummary,
 } from "@/lib/providers/live-data";
 import { classifyQueryIntent } from "@/lib/research/engine";
+import { synthesizeAssistantReplyWithOptionalLlm } from "@/lib/research/llm";
 import { sanitizeEditorialProse } from "@/lib/research/prompts";
 import { enforceRequestRateLimit, validateAndSanitizeInput } from "@/lib/security/guardrails";
 
@@ -219,6 +220,26 @@ export async function POST(request: Request) {
         `Live academic and World Bank feeds didn't return direct matches for **"${msg}"** just now, so here is what OMNIS holds in its built-in history, sector benchmarks, and topic map:\n\n` +
         `${localHighlights.join("\n")}\n\n` +
         `Try opening the interactive **Topic Map**, running a **What-If Scenario**, or viewing a **Full Research Report** below.`;
+    }
+
+    const verifiedContext = [
+      `Deterministic Draft:\n${reply}`,
+      openAlexWorks.length > 0
+        ? `OpenAlex Papers:\n${openAlexWorks.map((w) => `- ${w.title} (${w.publisher}, ${w.publishedDate})`).join("\n")}`
+        : "",
+      wikiSummary ? `Wikimedia Summary (${wikiSummary.title}): ${wikiSummary.extract.slice(0, 260)}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+
+    const optionalLlmReply = await synthesizeAssistantReplyWithOptionalLlm({
+      message: msg,
+      contextLabel: body.contextLabel ?? "Global Overview",
+      contextTopic,
+      verifiedContext,
+    });
+    if (optionalLlmReply) {
+      reply = optionalLlmReply;
     }
 
     const citations = [

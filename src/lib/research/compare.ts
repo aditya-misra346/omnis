@@ -260,3 +260,49 @@ export function buildComparisonTakeaways(
 
   return [sizeLine, growthLine, energyTechLine];
 }
+
+export interface HistoricalMultipleResult {
+  multiple: number;
+  multipleText: string;
+  startYear: number;
+  endYear: number;
+  startGdpUsdBn: number;
+  endGdpUsdBn: number;
+}
+
+/**
+ * Computes multi-year economic expansion directly from a country's historical GDP series.
+ */
+export function computeHistoricalMultiple(
+  country: CountryIntelligenceProfile
+): HistoricalMultipleResult | null {
+  const validPoints = country.historicalSeries
+    .filter((pt) => Number.isFinite(pt.gdpUsdBn) && pt.gdpUsdBn > 0)
+    .sort((a, b) => a.year - b.year);
+  if (validPoints.length < 2) return null;
+
+  const first = validPoints[0];
+  const last = validPoints[validPoints.length - 1];
+  if (last.year <= first.year || first.gdpUsdBn <= 0) return null;
+
+  const multiple = last.gdpUsdBn / first.gdpUsdBn;
+  let multipleText = "";
+  if (multiple >= 1.15) {
+    multipleText = `grew ${multiple.toFixed(1)}× since ${first.year}`;
+  } else if (multiple <= 0.88) {
+    const declinePct = Math.round((1 - multiple) * 100);
+    multipleText = `shrank ${declinePct}% since ${first.year}`;
+  } else {
+    const pct = Math.round((multiple - 1) * 100);
+    multipleText = `changed ${pct >= 0 ? "+" : ""}${pct}% since ${first.year}`;
+  }
+
+  return {
+    multiple,
+    multipleText,
+    startYear: first.year,
+    endYear: last.year,
+    startGdpUsdBn: first.gdpUsdBn,
+    endGdpUsdBn: last.gdpUsdBn,
+  };
+}

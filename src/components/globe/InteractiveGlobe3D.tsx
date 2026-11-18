@@ -1695,20 +1695,33 @@ totalEmissiveRadiance *= omnisNightMask * omnisEmissiveGain * uCityLightsEnabled
       {/* Top HUD Bar */}
       <div className="@container absolute top-2.5 sm:top-3.5 inset-x-2.5 sm:inset-x-3.5 flex items-start justify-between gap-2 pointer-events-none">
         <div className="shrink-0 min-w-[144px] sm:min-w-[186px] max-w-[46%] sm:max-w-[235px] @[820px]:max-w-[290px] omnis-hud-pill px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl space-y-1">
-          <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold uppercase tracking-wider tone-blue omnis-mono truncate">
+          <div className="flex items-center gap-1.5 text-xs font-semibold tone-blue truncate">
             <Layers className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Layer: {activeLayer}</span>
+            <span className="truncate">
+              Layer:{" "}
+              {(
+                {
+                  geography: "Geography",
+                  economics: "Economy",
+                  demographics: "Population",
+                  energy: "Energy",
+                  environment: "Climate",
+                  technology: "Technology",
+                  international: "Diplomacy",
+                } as Record<IntelligenceLayerId, string>
+              )[activeLayer] ?? activeLayer}
+            </span>
           </div>
           {selectedCountry && activeLayerMeta ? (
             <div className="text-[13px] space-y-0.5 min-w-0">
               <div className="font-bold text-[var(--text-primary)] flex items-center gap-1 truncate">
                 <span className="shrink-0">{selectedCountry.flagEmoji}</span>
                 <span className="truncate">{selectedCountry.name}</span>
-                <span className="text-[11px] omnis-mono text-[var(--text-muted)] shrink-0">
+                <span className="text-xs omnis-mono text-[var(--text-muted)] shrink-0">
                   ({selectedCountry.iso3})
                 </span>
               </div>
-              <div className="text-[11.5px] sm:text-xs text-[var(--text-secondary)] omnis-mono omnis-tabular truncate">
+              <div className="text-xs text-[var(--text-secondary)] omnis-mono omnis-tabular truncate">
                 {activeLayerMeta.value}
               </div>
               <CountrySolarClockBadge
@@ -1735,12 +1748,12 @@ totalEmissiveRadiance *= omnisNightMask * omnisEmissiveGain * uCityLightsEnabled
               <div className="font-bold text-[var(--text-primary)] flex items-center gap-1 truncate">
                 <span className="shrink-0">🌐</span>
                 <span className="truncate">{geoCentroids[selectedIso3].name}</span>
-                <span className="text-[11px] omnis-mono text-[var(--text-muted)] shrink-0">
+                <span className="text-xs omnis-mono text-[var(--text-muted)] shrink-0">
                   ({selectedIso3})
                 </span>
               </div>
-              <div className="text-[11.5px] sm:text-xs text-[var(--text-secondary)] omnis-mono truncate">
-                Hydrating World Bank telemetry…
+              <div className="text-xs text-[var(--text-secondary)] truncate">
+                Updating World Bank data…
               </div>
               <CountrySolarClockBadge
                 iso3={selectedIso3}

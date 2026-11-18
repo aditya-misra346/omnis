@@ -30,6 +30,7 @@ function resolveSvgPlotIndex(
 }
 import type {
   CountryIntelligenceProfile,
+  ResearchReportData,
   SimulationSensitivityItem,
   SimulationTrajectoryPoint,
 } from "@/types/omnis";
@@ -102,11 +103,11 @@ export function HistoricalTrajectoryChart({
   const maxVal = rawMax === minVal ? minVal + 1 : rawMax * 1.12;
 
   const w = 640;
-  const h = 256;
-  const padL = 70;
-  const padR = 24;
+  const h = 264;
+  const padL = 62;
+  const padR = 22;
   const padT = 32;
-  const padB = 44;
+  const padB = 42;
 
   const toX = (i: number) =>
     padL + (i / Math.max(1, series.length - 1)) * (w - padL - padR);
@@ -163,7 +164,7 @@ export function HistoricalTrajectoryChart({
   })();
   const inflectionMarkers = [
     { year: 1991, label: "1991 Shift" },
-    { year: 2008, label: "2008 GFC" },
+    { year: 2008, label: "2008 Crisis" },
     { year: 2020, label: "2020 COVID" },
   ]
     .filter((m) => m.year >= firstYear && m.year <= lastYear && lastYear > firstYear)
@@ -299,7 +300,7 @@ export function HistoricalTrajectoryChart({
                 y={padT - 9}
                 textAnchor="middle"
                 fill="var(--status-warning)"
-                className="text-[18px] sm:text-[10.5px] font-medium"
+                className="text-[15px] sm:text-[10.5px] font-medium"
               >
                 {m.label}
               </text>
@@ -735,8 +736,10 @@ export function MonteCarloFanChart({
 
 export function TornadoSensitivityChart({
   sensitivity,
+  units = "",
 }: {
   sensitivity: SimulationSensitivityItem[];
+  units?: string;
 }) {
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const maxAbs = Math.max(
@@ -744,6 +747,13 @@ export function TornadoSensitivityChart({
     ...sensitivity.flatMap((s) => [Math.abs(s.lowOutcomeDelta), Math.abs(s.highOutcomeDelta)])
   );
 
+  const shortUnit = units.toLowerCase().includes("index")
+    ? "pts"
+    : units.includes("°C")
+      ? "°C"
+      : units.includes("%")
+        ? "pp"
+        : "impact";
   const fmtSigned = (n: number) => `${n > 0 ? "+" : ""}${n}`;
 
   return (
@@ -765,7 +775,7 @@ export function TornadoSensitivityChart({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="font-semibold text-[var(--text-primary)]">{item.label}</span>
               <span className="omnis-tabular text-xs sm:text-[13px] text-[var(--text-muted)] shrink-0">
-                {fmtSigned(item.lowOutcomeDelta)} to {fmtSigned(item.highOutcomeDelta)} impact
+                {fmtSigned(item.lowOutcomeDelta)} to {fmtSigned(item.highOutcomeDelta)} {shortUnit}
               </span>
             </div>
             <div className="relative h-3 rounded-full bg-[var(--bg-slate)] border border-[var(--border-subtle)] overflow-hidden">
@@ -799,8 +809,14 @@ export function TornadoSensitivityChart({
             {isActive ? (
               <div className="text-xs text-[var(--text-secondary)] pt-0.5">
                 Setting this slider near its low end shifts the outcome by{" "}
-                <strong className="text-[var(--text-primary)]">{fmtSigned(item.lowOutcomeDelta)}</strong>; testing its high end shifts it by{" "}
-                <strong className="text-[var(--text-primary)]">{fmtSigned(item.highOutcomeDelta)}</strong>.
+                <strong className="text-[var(--text-primary)]">
+                  {fmtSigned(item.lowOutcomeDelta)} {shortUnit}
+                </strong>
+                ; testing its high end shifts it by{" "}
+                <strong className="text-[var(--text-primary)]">
+                  {fmtSigned(item.highOutcomeDelta)} {shortUnit}
+                </strong>
+                .
               </div>
             ) : null}
           </button>
@@ -1044,14 +1060,20 @@ export function ComparisonRadarChart({
             const rightPct = Math.round(row.r * 100);
             const bridgeLeft = Math.min(leftPct, rightPct);
             const bridgeWidth = Math.max(0, Math.abs(rightPct - leftPct));
+            const leftLeads = row.availL && row.availR && row.l > row.r + 0.02;
+            const rightLeads = row.availL && row.availR && row.r > row.l + 0.02;
             return (
               <div key={row.label} className="py-2.5 space-y-1.5 text-[13px]">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-semibold text-[var(--text-primary)]">{row.label}</span>
                   <div className="flex items-center gap-1.5 omnis-mono omnis-tabular text-xs">
-                    <span className="tone-blue font-semibold">{row.rawL}</span>
+                    <span className={`tone-blue ${leftLeads ? "font-bold underline decoration-dotted underline-offset-2" : "font-semibold"}`}>
+                      {row.rawL}
+                    </span>
                     <span className="text-[var(--text-muted)]">vs</span>
-                    <span className="tone-violet font-semibold">{row.rawR}</span>
+                    <span className={`tone-violet ${rightLeads ? "font-bold underline decoration-dotted underline-offset-2" : "font-semibold"}`}>
+                      {row.rawR}
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2.5">
@@ -1110,9 +1132,8 @@ export function ComparisonRadarChart({
               x={cx + zeroRingRadius * Math.cos(-Math.PI / 2 + Math.PI / radarAxes.length)}
               y={cy + zeroRingRadius * Math.sin(-Math.PI / 2 + Math.PI / radarAxes.length) + 3}
               textAnchor="middle"
-              fontSize="10"
               fill="var(--text-muted)"
-              className="omnis-mono"
+              className="omnis-mono text-[12px] sm:text-[11px]"
             >
               min
             </text>
@@ -1133,9 +1154,8 @@ export function ComparisonRadarChart({
                     x={cx + r * Math.cos(labelAngle)}
                     y={cy + r * Math.sin(labelAngle) + 3}
                     textAnchor="middle"
-                    fontSize="10"
                     fill="var(--text-muted)"
-                    className="omnis-mono"
+                    className="omnis-mono text-[12px] sm:text-[11px]"
                   >
                     {Math.round(ring * 100)}%
                   </text>
@@ -1169,10 +1189,10 @@ export function ComparisonRadarChart({
                   </text>
                   <text
                     x={lx}
-                    y={ly + 13}
+                    y={ly + 14}
                     textAnchor="middle"
                     fill="var(--text-muted)"
-                    className="omnis-mono text-[11.5px] sm:text-[10px]"
+                    className="omnis-mono text-[13px] sm:text-[11.5px]"
                   >
                     {axis.maxLabel}
                   </text>
@@ -1256,6 +1276,225 @@ export function ComparisonRadarChart({
           </span>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Interactive SVG trend chart for Research Visual Proof (Layer 3), calibrated for
+ * dark/light contrast, mobile tap inspection, and dual-series country/study series.
+ */
+export function ResearchSeriesChart({
+  series,
+}: {
+  series: ResearchReportData["visualisationSeries"];
+}) {
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const points = series.data;
+  if (points.length === 0) {
+    return (
+      <div className="p-3 rounded-lg bg-[var(--bg-slate)] border border-dashed border-[var(--border-subtle)] text-[13px] text-[var(--text-secondary)]">
+        {series.source}. See Sources Used below for direct records.
+      </div>
+    );
+  }
+
+  const hasComparison = points.some((p) => p.comparisonValue !== undefined);
+  const isMonetary = /\$|gdp/i.test(series.unit);
+  const vals = points.flatMap((p) =>
+    p.comparisonValue !== undefined ? [p.primaryValue, p.comparisonValue] : [p.primaryValue]
+  );
+  const minVal = Math.min(...vals, 0);
+  const rawMax = Math.max(...vals, 1);
+  const maxVal = rawMax === minVal ? minVal + 1 : rawMax * 1.1;
+
+  const w = 540;
+  const h = 230;
+  const padL = 62;
+  const padR = 20;
+  const padT = 20;
+  const padB = 38;
+
+  const toX = (i: number) =>
+    padL + (i / Math.max(1, points.length - 1)) * (w - padL - padR);
+  const toY = (v: number) =>
+    padT + (1 - (v - minVal) / Math.max(0.0001, maxVal - minVal)) * (h - padT - padB);
+
+  const primaryLine = points
+    .map((pt, i) => `${i === 0 ? "M" : "L"} ${toX(i).toFixed(1)} ${toY(pt.primaryValue).toFixed(1)}`)
+    .join(" ");
+  const comparisonLine = hasComparison
+    ? points
+        .filter((pt) => pt.comparisonValue !== undefined)
+        .map((pt, idx) => {
+          const origIdx = points.indexOf(pt);
+          return `${idx === 0 ? "M" : "L"} ${toX(origIdx).toFixed(1)} ${toY(pt.comparisonValue!).toFixed(1)}`;
+        })
+        .join(" ")
+    : "";
+  const primaryArea =
+    points.length >= 2
+      ? `${primaryLine} L ${toX(points.length - 1).toFixed(1)} ${(h - padB).toFixed(1)} L ${toX(0).toFixed(1)} ${(h - padB).toFixed(1)} Z`
+      : "";
+
+  const activeIdx = hoverIdx !== null && points[hoverIdx] ? hoverIdx : points.length - 1;
+  const activePt = points[activeIdx];
+  const tickStep = (maxVal - minVal) / 3;
+  const formatVal = (val: number) =>
+    isMonetary
+      ? formatMonetaryAxisTick(val, "gdpUsdBn", tickStep)
+      : val >= 1000
+        ? `${(val / 1000).toFixed(1)}k`
+        : val.toLocaleString();
+
+  return (
+    <div className="space-y-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--text-secondary)]">
+        <div className="flex items-center gap-3">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="w-2.5 h-2 rounded-xs inline-block bg-[var(--chart-blue)]" />
+            Primary
+          </span>
+          {hasComparison ? (
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-2.5 h-2 rounded-xs inline-block bg-[var(--chart-violet)]" />
+              Peer
+            </span>
+          ) : null}
+        </div>
+        {activePt ? (
+          <span className="omnis-mono omnis-tabular text-[var(--text-primary)] font-semibold">
+            {activePt.label}: {formatVal(activePt.primaryValue)}
+            {activePt.comparisonValue !== undefined
+              ? ` vs ${formatVal(activePt.comparisonValue)}`
+              : ""}
+          </span>
+        ) : null}
+      </div>
+
+      <div className="rounded-xl bg-[var(--bg-slate)]/45 border border-[var(--border-subtle)] p-2">
+        <svg
+          viewBox={`0 0 ${w} ${h}`}
+          className="w-full h-52 sm:h-48 overflow-visible touch-pan-y select-none"
+          onPointerDown={(e) => {
+            const idx = resolveSvgPlotIndex(e.clientX, e.currentTarget, w, padL, padR, points.length);
+            if (idx !== null) setHoverIdx(idx);
+          }}
+          onPointerMove={(e) => {
+            const idx = resolveSvgPlotIndex(e.clientX, e.currentTarget, w, padL, padR, points.length);
+            if (idx !== null) setHoverIdx(idx);
+          }}
+          onPointerLeave={() => setHoverIdx(null)}
+          onPointerCancel={() => setHoverIdx(null)}
+        >
+          {[0, 0.33, 0.67, 1].map((frac) => {
+            const v = minVal + frac * (maxVal - minVal);
+            const y = toY(v);
+            return (
+              <g key={frac}>
+                <line
+                  x1={padL}
+                  y1={y}
+                  x2={w - padR}
+                  y2={y}
+                  stroke="var(--chart-grid)"
+                  strokeDasharray="3,3"
+                />
+                <text
+                  x={padL - 8}
+                  y={y + 4}
+                  textAnchor="end"
+                  fill="var(--chart-axis)"
+                  className="omnis-mono text-[18px] sm:text-[11.5px]"
+                >
+                  {formatVal(v)}
+                </text>
+              </g>
+            );
+          })}
+
+          {primaryArea ? <path d={primaryArea} fill="var(--chart-blue-area)" /> : null}
+          {points.length >= 2 ? (
+            <path
+              d={primaryLine}
+              fill="none"
+              stroke="var(--chart-blue)"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          ) : null}
+          {comparisonLine ? (
+            <path
+              d={comparisonLine}
+              fill="none"
+              stroke="var(--chart-violet)"
+              strokeWidth="2"
+              strokeDasharray="5,4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          ) : null}
+
+          {activePt ? (
+            <line
+              x1={toX(activeIdx)}
+              y1={padT}
+              x2={toX(activeIdx)}
+              y2={h - padB}
+              stroke="var(--border-strong)"
+              strokeDasharray="3,3"
+            />
+          ) : null}
+
+          {points.map((pt, idx) => {
+            const x = toX(idx);
+            const isSel = activeIdx === idx;
+            const labelStride = Math.max(1, Math.ceil(points.length / 4));
+            const showX =
+              points.length <= 5 ||
+              idx === 0 ||
+              idx === points.length - 1 ||
+              (idx % labelStride === 0 && points.length - 1 - idx >= Math.ceil(labelStride * 0.6));
+            return (
+              <g key={pt.label}>
+                {pt.comparisonValue !== undefined ? (
+                  <circle
+                    cx={x}
+                    cy={toY(pt.comparisonValue)}
+                    r={isSel ? 4.5 : 3}
+                    fill="var(--bg-graphite)"
+                    stroke="var(--chart-violet)"
+                    strokeWidth="2"
+                  />
+                ) : null}
+                <circle
+                  cx={x}
+                  cy={toY(pt.primaryValue)}
+                  r={isSel ? 5.5 : 3.5}
+                  fill="var(--bg-graphite)"
+                  stroke="var(--chart-blue)"
+                  strokeWidth={isSel ? 2.6 : 2}
+                />
+                {showX ? (
+                  <text
+                    x={x}
+                    y={h - 10}
+                    textAnchor="middle"
+                    fill="var(--chart-axis)"
+                    className="omnis-mono text-[18px] sm:text-[11.5px]"
+                  >
+                    {pt.label}
+                  </text>
+                ) : null}
+              </g>
+            );
+          })}
+        </svg>
+        <div className="sm:hidden text-xs text-[var(--text-muted)] text-center pt-0.5">
+          Tap or drag chart to inspect values
+        </div>
+      </div>
     </div>
   );
 }

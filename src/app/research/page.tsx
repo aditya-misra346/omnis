@@ -17,6 +17,7 @@ import {
   Printer,
   Edit3,
 } from "lucide-react";
+import { ResearchSeriesChart } from "@/components/charts/OmnisCharts";
 import { VerificationBadge } from "@/components/ui/ProvenancePanel";
 import { OmnisLoader } from "@/components/brand/OmnisLogo";
 import {
@@ -178,6 +179,13 @@ function ResearchContent() {
 
   const { addWorkspaceItem, addSearchQuery, setActiveContext } = useOmnisStore();
   const lastFetchedKeyRef = useRef<string | null>(null);
+  const howWorksRef = useRef<HTMLDetailsElement | null>(null);
+
+  useEffect(() => {
+    if (howWorksRef.current && window.matchMedia?.("(min-width: 640px)").matches) {
+      howWorksRef.current.open = true;
+    }
+  }, [report?.id]);
 
   const runResearch = useCallback(
     async (q: string, m: ResearchMode, syncUrl = false) => {
@@ -292,16 +300,6 @@ ${report.sources
     setCopiedToast(true);
     setTimeout(() => setCopiedToast(false), 2000);
   };
-
-  const maxChartVal = report
-    ? Math.max(
-        10,
-        ...report.visualisationSeries.data.flatMap((d) => [
-          Math.abs(d.primaryValue),
-          Math.abs(d.comparisonValue ?? 0),
-        ])
-      )
-    : 100;
 
   const chartHeadlineTakeaway = (() => {
     const pts = report?.visualisationSeries.data ?? [];
@@ -633,9 +631,9 @@ ${report.sources
                 </ol>
               </div>
 
-              {/* Layer 4: Expandable Deep Dive Accordions */}
+              {/* Layer 4: Expandable Deep Dive Accordions (collapsed by default on mobile < 640px) */}
               <div className="divide-y divide-[var(--border-subtle)] border-y border-[var(--border-subtle)]">
-                <details className="py-2 group" open>
+                <details ref={howWorksRef} className="py-2 group">
                   <summary className="min-h-[44px] flex items-center justify-between gap-3 cursor-pointer select-none font-bold text-base text-[var(--text-primary)] hover:text-[var(--accent-blue)] transition-colors">
                     <span>How this works in everyday terms</span>
                     <span className="text-xs font-medium text-[var(--text-muted)]">
@@ -857,80 +855,7 @@ ${report.sources
                   <div className="flex items-center justify-between text-[13px] sm:text-sm font-semibold text-[var(--text-secondary)]">
                     <span>{report.visualisationSeries.title}</span>
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
-                    <span className="inline-flex items-center gap-1">
-                      <span
-                        className="w-2.5 h-2 rounded-xs inline-block"
-                        style={{ backgroundColor: "var(--chart-blue)" }}
-                      />
-                      Primary
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <span
-                        className="w-2.5 h-2 rounded-xs inline-block"
-                        style={{ backgroundColor: "var(--chart-violet)" }}
-                      />
-                      Peer
-                    </span>
-                  </div>
-                  <div className="space-y-2.5">
-                    {report.visualisationSeries.data.length === 0 ? (
-                      <div className="p-3 rounded-lg bg-[var(--bg-slate)] border border-dashed border-[var(--border-subtle)] text-[13px] text-[var(--text-secondary)]">
-                        {report.visualisationSeries.source}. See Sources Used below for direct records.
-                      </div>
-                    ) : (
-                      report.visualisationSeries.data.map((d) => {
-                        const pPct = Math.min(
-                          100,
-                          Math.max(4, (Math.abs(d.primaryValue) / maxChartVal) * 100)
-                        );
-                        const hasComp = d.comparisonValue !== undefined;
-                        const cPct = hasComp
-                          ? Math.min(
-                              100,
-                              Math.max(4, (Math.abs(d.comparisonValue ?? 0) / maxChartVal) * 100)
-                            )
-                          : 0;
-                        return (
-                          <div key={d.label} className="space-y-1 text-[13px] omnis-mono omnis-tabular">
-                            <div className="flex justify-between text-[var(--text-secondary)]">
-                              <span className="font-semibold text-[var(--text-primary)]">{d.label}</span>
-                              <span>
-                                {d.primaryValue.toLocaleString()}
-                                {hasComp ? ` vs ${d.comparisonValue?.toLocaleString()}` : ""}
-                              </span>
-                            </div>
-                            <div className="space-y-1">
-                              <div className="w-full h-2 rounded-full bg-[var(--bg-slate)] overflow-hidden">
-                                <div
-                                  className="h-full rounded-full"
-                                  style={{
-                                    width: `${pPct}%`,
-                                    backgroundColor:
-                                      d.primaryValue < 0 ? "var(--status-warning)" : "var(--chart-blue)",
-                                  }}
-                                />
-                              </div>
-                              {hasComp ? (
-                                <div className="w-full h-1.5 rounded-full bg-[var(--bg-slate)] overflow-hidden">
-                                  <div
-                                    className="h-full rounded-full"
-                                    style={{
-                                      width: `${cPct}%`,
-                                      backgroundColor:
-                                        (d.comparisonValue ?? 0) < 0
-                                          ? "var(--status-danger)"
-                                          : "var(--chart-violet)",
-                                    }}
-                                  />
-                                </div>
-                              ) : null}
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
+                  <ResearchSeriesChart series={report.visualisationSeries} />
                 </div>
               </div>
 

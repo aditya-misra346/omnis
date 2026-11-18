@@ -307,6 +307,7 @@ export function KnowledgeGraphCanvas({
   );
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
   const [panningCanvas, setPanningCanvas] = useState(false);
+  const [showAllEdgeVerbs, setShowAllEdgeVerbs] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [packetPhase, setPacketPhase] = useState(0);
   const packetPhaseRef = useRef(0);
@@ -625,7 +626,20 @@ export function KnowledgeGraphCanvas({
           </span>
         </div>
 
-        <div className="flex items-center gap-1 omnis-hud-pill px-1.5 py-1 rounded-xl">
+        <div className="flex flex-wrap items-center gap-1 omnis-hud-pill px-1.5 py-1 rounded-xl">
+          <button
+            type="button"
+            onClick={() => setShowAllEdgeVerbs((v) => !v)}
+            aria-pressed={showAllEdgeVerbs}
+            title="Show relationship action labels across all visible links"
+            className={`hidden sm:inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium cursor-pointer transition-colors sm:min-h-[32px] ${
+              showAllEdgeVerbs
+                ? "badge-tone-blue"
+                : "hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            }`}
+          >
+            Show link verbs
+          </button>
           <button
             type="button"
             onClick={() => setZoom((z) => Math.min(2.2, Number((z + 0.15).toFixed(2))))}
@@ -901,7 +915,7 @@ export function KnowledgeGraphCanvas({
                       strokeWidth={1.25}
                     />
                   ) : null}
-                  {isRelated || isPathEdge ? (
+                  {showAllEdgeVerbs || isRelated || isPathEdge ? (
                     <g>
                       <rect
                         x={mx - pillWidth / 2}

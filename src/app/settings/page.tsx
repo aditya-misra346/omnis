@@ -130,11 +130,11 @@ export default function SettingsPage() {
             </button>
           </div>
 
-          <div className="pt-3 border-t border-[var(--border-subtle)] space-y-2">
-            <div className="text-[11.5px] font-mono uppercase tracking-[0.14em] text-[var(--text-muted)]">
-              Live Design Token Swatch Chips ({theme.toUpperCase()})
-            </div>
-            <div className="flex flex-wrap gap-2">
+          <details className="pt-3 border-t border-[var(--border-subtle)]">
+            <summary className="min-h-[44px] sm:min-h-0 inline-flex items-center text-xs font-medium text-[var(--text-muted)] cursor-pointer select-none">
+              Developer palette tokens ({theme}) • Version 2.0
+            </summary>
+            <div className="flex flex-wrap gap-2 pt-2.5">
               {[
                 { token: "--bg-obsidian", label: "Obsidian" },
                 { token: "--bg-graphite", label: "Graphite" },
@@ -156,7 +156,7 @@ export default function SettingsPage() {
                 </div>
               ))}
             </div>
-          </div>
+          </details>
         </div>
 
         {/* Authentication & Session Management */}

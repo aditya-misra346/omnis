@@ -28,6 +28,7 @@ import {
 import {
   escapeCsvCell,
   formatIndexContext,
+  formatIndexVsStart,
   formatSignedPct,
   formatSignedValue,
 } from "@/lib/formatters";
@@ -690,13 +691,21 @@ function SimulationsContent() {
             <OmnisStatTile
               label={`Expected Trend (${2026 + horizonYears})`}
               value={String(simulationOutput.summaryMetrics.baselineTerminal)}
-              subValue={simulationOutput.units}
+              subValue={
+                simulationOutput.units.includes("= 100")
+                  ? `${simulationOutput.units} (${formatIndexVsStart(simulationOutput.summaryMetrics.baselineTerminal)})`
+                  : simulationOutput.units
+              }
               tone="default"
             />
             <OmnisStatTile
               label={`Your Scenario (${2026 + horizonYears})`}
               value={String(simulationOutput.summaryMetrics.modifiedMedianTerminal)}
-              subValue="Most likely path"
+              subValue={
+                simulationOutput.units.includes("= 100")
+                  ? `Most likely (${formatIndexVsStart(simulationOutput.summaryMetrics.modifiedMedianTerminal)})`
+                  : "Most likely path"
+              }
               tone="blue"
             />
             <OmnisStatTile
@@ -826,7 +835,10 @@ function SimulationsContent() {
                   Longer bars show sliders that create the widest swing between their minimum and maximum settings.
                 </p>
               </div>
-              <TornadoSensitivityChart sensitivity={simulationOutput.sensitivity} />
+              <TornadoSensitivityChart
+                sensitivity={simulationOutput.sensitivity}
+                units={simulationOutput.units}
+              />
             </div>
 
             <div className="omnis-card p-5 space-y-3 text-[13.5px] sm:text-sm">

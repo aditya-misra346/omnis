@@ -344,3 +344,15 @@ export function resolveGlossaryTerm(keyOrAlias: string): GlossaryEntry | null {
   const mapped = GLOSSARY_ALIASES[normalized];
   return mapped ? GLOSSARY_DEFINITIONS[mapped] : null;
 }
+
+/**
+ * Translates raw nominal GDP ($B) into a calm plain-English global size tier.
+ */
+export function describeGlobalScaleTier(gdpUsdBn: number): string | null {
+  if (!Number.isFinite(gdpUsdBn) || gdpUsdBn <= 0) return null;
+  if (gdpUsdBn >= 12_000) return "one of the world's two largest economies";
+  if (gdpUsdBn >= 3_200) return "among the world's 10 largest economies";
+  if (gdpUsdBn >= 1_000) return "among the top 20 global economies";
+  if (gdpUsdBn >= 300) return "among the top 50 economies worldwide";
+  return "a growing regional economy";
+}

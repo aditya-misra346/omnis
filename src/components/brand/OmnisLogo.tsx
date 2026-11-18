@@ -221,7 +221,7 @@ export function OmnisLogo({
   variant = "full",
   size,
   simplified,
-  showVersionBadge = true,
+  showVersionBadge = false,
   className = "",
 }: OmnisLogoProps) {
   if (variant === "mark") {
@@ -273,7 +273,7 @@ export function OmnisLogo({
 
 export function OmnisWordmark({
   compact = false,
-  showVersionBadge = true,
+  showVersionBadge = false,
   className = "",
 }: {
   compact?: boolean;

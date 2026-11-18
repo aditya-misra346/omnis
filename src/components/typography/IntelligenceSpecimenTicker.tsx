@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, Radio } from "lucide-react";
 
@@ -24,44 +24,44 @@ const SPECIMEN_ROWS: SpecimenRow[] = [
     items: [
       {
         label: "World Bank v2",
-        summary: "Official WDI macroeconomic & energy series mapped across sovereign country dossiers.",
-        moduleLabel: "Explore in Global Atlas",
+        summary: "Official country economy and clean power data updated from the World Bank.",
+        moduleLabel: "Open World Atlas",
         href: "/atlas",
       },
       {
         label: "OpenAlex",
-        summary: "Peer-reviewed scholarly works graph backing Deep Research citations and evidence grading.",
-        moduleLabel: "Explore in Deep Research",
+        summary: "Peer-reviewed university studies and citation counts behind every research report.",
+        moduleLabel: "Open Deep Research",
         href: "/research",
       },
       {
         label: "REST Countries",
-        summary: "Verified sovereign taxonomy, capitals, flags, languages, and ISO codes.",
-        moduleLabel: "Explore in Global Atlas",
+        summary: "Official country flags, capitals, languages, and ISO codes.",
+        moduleLabel: "Open World Atlas",
         href: "/atlas",
       },
       {
         label: "UN DESA",
-        summary: "Cohort population projections and longevity baselines powering demographic simulations.",
-        moduleLabel: "Explore in Simulations",
+        summary: "Global population trends, age structure, and life expectancy estimates.",
+        moduleLabel: "Test Population Scenarios",
         href: "/simulations?category=demographics",
       },
       {
         label: "IMF WEO",
-        summary: "Real GDP growth trajectories and sovereign inflation benchmarks across G20 & emerging markets.",
-        moduleLabel: "Compare Entities",
+        summary: "Economic growth forecasts and inflation benchmarks across major nations.",
+        moduleLabel: "Compare Countries",
         href: "/intelligence",
       },
       {
         label: "Crossref",
-        summary: "DOI resolution & metadata provenance preventing unverified bibliography synthesis.",
-        moduleLabel: "Explore in Deep Research",
+        summary: "Verifies paper DOIs so study citations always link to real publications.",
+        moduleLabel: "Open Deep Research",
         href: "/research",
       },
       {
         label: "Wikimedia REST",
-        summary: "Structured encyclopedic event summaries linked into historical knowledge graphs.",
-        moduleLabel: "Explore in Reality Timeline",
+        summary: "Concise background summaries linked directly to historical timelines.",
+        moduleLabel: "Open World Timeline",
         href: "/timeline",
       },
     ],
@@ -155,6 +155,8 @@ const SPECIMEN_ROWS: SpecimenRow[] = [
 export function IntelligenceSpecimenTicker() {
   const defaultItem = SPECIMEN_ROWS[0].items[0];
   const [activeItem, setActiveItem] = useState<SpecimenItem>(defaultItem);
+  const interceptedTapRef = useRef<string | null>(null);
+  const pointerTypeRef = useRef<string>("");
 
   return (
     <div className="bg-[var(--bg-obsidian)] px-4 sm:px-6 py-5 border-y border-[var(--border-subtle)] space-y-4 overflow-hidden">
@@ -204,6 +206,24 @@ export function IntelligenceSpecimenTicker() {
                               tabIndex={isClone ? -1 : 0}
                               onMouseEnter={() => setActiveItem(item)}
                               onFocus={() => setActiveItem(item)}
+                              onPointerDown={(e) => {
+                                pointerTypeRef.current = e.pointerType;
+                                if (e.pointerType !== "mouse" && activeItem.label !== item.label) {
+                                  interceptedTapRef.current = item.label;
+                                  setActiveItem(item);
+                                }
+                              }}
+                              onClick={(e) => {
+                                const isCoarse =
+                                  pointerTypeRef.current !== "mouse" &&
+                                  (pointerTypeRef.current !== "" ||
+                                    window.matchMedia?.("(pointer: coarse)").matches);
+                                if (isCoarse && (interceptedTapRef.current === item.label || activeItem.label !== item.label)) {
+                                  e.preventDefault();
+                                  interceptedTapRef.current = null;
+                                  setActiveItem(item);
+                                }
+                              }}
                               className={`min-h-[44px] md:min-h-0 inline-flex items-center px-3 py-2 md:py-1 rounded-full text-sm transition-all whitespace-nowrap border focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-blue)] ${
                                 isEditorial
                                   ? "omnis-editorial text-[18px] leading-none"
@@ -253,7 +273,7 @@ export function IntelligenceSpecimenTicker() {
         </div>
         <Link
           href={activeItem.href}
-          className="shrink-0 inline-flex items-center gap-1 font-semibold tone-blue hover:underline omnis-mono text-xs"
+          className="shrink-0 min-h-[44px] sm:min-h-0 inline-flex items-center gap-1 font-sans font-semibold tone-blue hover:underline text-xs"
         >
           <span>{activeItem.moduleLabel}</span>
           <ArrowUpRight className="w-3.5 h-3.5" />

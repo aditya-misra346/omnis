@@ -228,6 +228,20 @@ export function formatIndexContext(
     : `${absPct}% larger output than staying on baseline`;
 }
 
+/**
+ * Formats an index value (where baseLevel=100) into a signed percent change vs baseYear.
+ */
+export function formatIndexVsStart(
+  indexVal: number,
+  baseYear = 2026,
+  baseLevel = 100
+): string {
+  if (!Number.isFinite(indexVal) || baseLevel <= 0) return "";
+  const pct = Math.round(((indexVal - baseLevel) / baseLevel) * 100);
+  const sign = pct > 0 ? "+" : "";
+  return `${sign}${pct}% vs ${baseYear}`;
+}
+
 /** Formats basis-point rate shifts into both percentage points and bps (`"+1.25% (+125 bps)"`). */
 export function formatBasisPointsHuman(bps: number): string {
   if (!Number.isFinite(bps)) return "0.00% (0 bps)";

@@ -66,22 +66,22 @@ def run_numerical_simulation(req: SimulationRequest) -> SimulationResponse:
         volatility = 0.005
         initial_val = 100.0
         assumptions = [
-            f"Fertility TFR shift: {fertility_delta:+.2f} children/woman relative to UN WPP medium variant.",
-            f"Net migration rate: {net_migration_rate * 1000:+.2f} per 1,000 population.",
-            f"Annual urbanisation pace: {urbanisation_speed * 100:.2f}%.",
+            f"Fertility shift: {fertility_delta:+.2f} births/woman relative to UN baseline.",
+            f"Net migration rate: {net_migration_rate * 1000:+.2f} newcomers per 1,000 residents.",
+            f"Workforce participation pace: {urbanisation_speed * 100:.2f}%/yr.",
         ]
         limitations = [
-            "Fertility changes require 15–20 years to fully enter the active labour force cohort.",
-            "Does not model acute geopolitical displacement shocks.",
+            "Shifts in birth rates take 15–20 years to change the adult working population.",
+            "Does not model sudden refugee crises or conflict shocks.",
         ]
         sens_defs = [
-            ("fertilityDelta", "Total Fertility Rate Shift", -2.8, 3.1),
-            ("netMigrationPer1000", "Net Migration (/1,000)", -2.2, 2.5),
-            ("urbanisationRatePct", "Urbanisation Speed (%/yr)", -1.1, 1.3),
+            ("fertilityDelta", "Average Births per Woman Shift", -2.8, 3.1),
+            ("netMigrationPer1000", "Net Annual Migration Rate", -2.2, 2.5),
+            ("urbanisationRatePct", "More Working-Age Adults (%)", -1.1, 1.3),
         ]
 
     elif req.category == "energy":
-        model_name = "Levelized Grid Transition & Dispatchable Capacity Model"
+        model_name = "OMNIS Power Grid & Clean Fuel Mix Simulator"
         units = "Clean Electricity Share (%)"
         renewable_capex_drop = params.get("renewableCapexDeclinePct", 6.0) / 100.0
         nuclear_expansion = params.get("nuclearAdditionGw", 15.0) / 1000.0
@@ -91,23 +91,23 @@ def run_numerical_simulation(req: SimulationRequest) -> SimulationResponse:
         volatility = 0.009
         initial_val = 41.2
         assumptions = [
-            "Initial global low-carbon electricity generation share: 41.2% (IEA / Ember baseline).",
-            f"Solar/Wind LCOE annual learning rate: {renewable_capex_drop * 100:.1f}%.",
-            f"Baseload nuclear capacity additions: {nuclear_expansion * 1000:.1f} GW/yr.",
+            "Initial global low-carbon electricity share: 41.2% (IEA / Ember baseline).",
+            f"Annual solar & wind cost drop: {renewable_capex_drop * 100:.1f}%/yr.",
+            f"New nuclear plants built: {nuclear_expansion * 1000:.1f} GW/yr.",
         ]
         limitations = [
-            "Transmission grid interconnection queue bottlenecks can delay physical curtailment reduction.",
-            "Critical mineral price spikes may dampen battery learning curves.",
+            "Slow high-voltage power line approvals can hold back renewable hookups.",
+            "Battery material shortages can slow storage cost drops.",
         ]
         sens_defs = [
-            ("renewableCapexDeclinePct", "Renewable LCOE Learning Rate", -2.9, 3.4),
-            ("nuclearAdditionGw", "Nuclear Capacity Additions", -1.8, 2.2),
-            ("storageExpansionPct", "Grid Storage Deployment", -2.1, 2.6),
+            ("renewableCapexDeclinePct", "Annual Solar & Wind Cost Drop", -2.9, 3.4),
+            ("nuclearAdditionGw", "New Nuclear Plants Built", -1.8, 2.2),
+            ("storageExpansionPct", "Grid Battery Storage Expansion", -2.1, 2.6),
         ]
 
     elif req.category == "technology":
-        model_name = "Logistic S-Curve AI Diffusion & Semiconductor Compute Productivity Model"
-        units = "Total Factor Productivity Index (2026 = 100)"
+        model_name = "OMNIS AI & Chip Productivity Diffusion Simulator"
+        units = "Productivity Index (2026 = 100)"
         ai_adoption = params.get("aiEnterpriseAdoptionPct", 35.0) / 100.0
         fab_capacity = params.get("semiconductorCapexGrowthPct", 14.0) / 100.0
         datacenter_power = params.get("datacenterPowerConstraintPct", 10.0) / 100.0
@@ -116,18 +116,18 @@ def run_numerical_simulation(req: SimulationRequest) -> SimulationResponse:
         volatility = 0.012
         initial_val = 100.0
         assumptions = [
-            f"Enterprise AI workflow integration: {ai_adoption * 100:.1f}% across knowledge & industrial sectors.",
-            f"Leading-node (<3nm) wafer capacity expansion: {fab_capacity * 100:.1f}%/yr.",
-            f"Grid power delivery constraint on AI clusters: {datacenter_power * 100:.1f}%.",
+            f"Companies adopting AI workflows: {ai_adoption * 100:.1f}% across business sectors.",
+            f"Advanced chip factory growth: {fab_capacity * 100:.1f}%/yr.",
+            f"Power grid delays for data centers: {datacenter_power * 100:.1f}%.",
         ]
         limitations = [
-            "Solow productivity paradox lags (organisational restructuring takes 3–5 years).",
-            "Export controls or EUV lithography supply interruptions can cap compute scaling.",
+            "Economy-wide productivity gains usually lag workplace AI rollout by 3–5 years.",
+            "Export bans or lithography supply disruptions can cap factory expansion.",
         ]
         sens_defs = [
-            ("aiEnterpriseAdoptionPct", "Enterprise AI Adoption (%)", -3.5, 4.1),
-            ("semiconductorCapexGrowthPct", "Leading-Node Fab Expansion (%)", -2.4, 2.9),
-            ("datacenterPowerConstraintPct", "Grid Power Bottleneck (%)", -2.7, 1.5),
+            ("aiEnterpriseAdoptionPct", "Companies Adopting AI Workflows", -3.5, 4.1),
+            ("semiconductorCapexGrowthPct", "Advanced Chip Factory Growth", -2.4, 2.9),
+            ("datacenterPowerConstraintPct", "Power Grid Delays for Data Centers", -2.7, 1.5),
         ]
 
     else:  # environment

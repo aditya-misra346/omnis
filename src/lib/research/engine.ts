@@ -18,6 +18,11 @@ import {
   getEffectiveGdpYear,
   hasSectorMetricValue,
 } from "@/lib/formatters";
+import {
+  buildComparisonTakeaways,
+  computeHistoricalMultiple,
+} from "@/lib/research/compare";
+import { synthesizeEditorialWithOptionalLlm } from "@/lib/research/llm";
 import { sanitizeEditorialProse } from "@/lib/research/prompts";
 import {
   fetchLiveCountryIntelligence,
@@ -388,8 +393,6 @@ export async function orchestrateDeepResearch(
               : /\b(tariff|trade|export|import|corridor|sanction)\b/i.test(cleanQuery)
                 ? "trade"
                 : null;
-  const isIndiaBroadQuery =
-    subTopic === null && /\b(india|1991|upi|rupee|liberalisation|liberalization)\b/i.test(cleanQuery);
   const isSemiQuery = /semiconductor|chip|euv|tsmc|geopolit/i.test(cleanQuery);
   const isClimateQuery = /climate|carbon|warming|energy|nuclear/i.test(cleanQuery);
 
@@ -412,6 +415,10 @@ export async function orchestrateDeepResearch(
 
   const leadCountry = hydratedMatchedCountries[0];
   const compareCountry = hydratedMatchedCountries[1];
+  const isIndiaBroadQuery =
+    subTopic === null &&
+    (!leadCountry || leadCountry.iso3 === "IND") &&
+    /\b(india|1991|upi|rupee|liberalisation|liberalization)\b/i.test(cleanQuery);
 
   const matchedComparable = COMPARABLE_ENTITIES.find((ent) => {
     const hay = `${ent.name} ${ent.subtitle} ${ent.category}`.toLowerCase();
@@ -545,29 +552,66 @@ export async function orchestrateDeepResearch(
 
   const subTopicLead = buildSubTopicLead();
 
+  const buildDynamicCountryNarrative = (): string | null => {
+    if (subTopicLead || !leadCountry) return null;
+    const hist = computeHistoricalMultiple(leadCountry);
+    const yearTag = leadGdpYear ? `${leadGdpYear} World Bank data` : "latest World Bank data";
+    const perCapText =
+      hasSectorMetricValue(leadCountry, leadCountry.gdpPerCapitaUsd) &&
+      leadCountry.gdpPerCapitaUsd > 0
+        ? `, averaging $${leadCountry.gdpPerCapitaUsd.toLocaleString()} per person`
+        : "";
+    const growthClause =
+      leadGrowthDisplay === "N/A"
+        ? "with partial live growth reporting"
+        : `and growing ${leadGrowthDisplay} a year`;
+
+    if (compareCountry) {
+      const peerTakeaways = buildComparisonTakeaways(leadCountry, compareCountry);
+      const histLine = hist
+        ? `${leadCountry.name} ${hist.multipleText} (${formatUsdBnCompact(hist.startGdpUsdBn)} in ${hist.startYear} to ${formatUsdBnCompact(hist.endGdpUsdBn)} recently). `
+        : "";
+      return `${histLine}${peerTakeaways.slice(0, 2).join(" ")}`;
+    }
+
+    if (isIndiaBroadQuery) {
+      return `Since opening its economy in July 1991, India grew from a $270.1 billion economy into a ${indiaGdpHuman} market (${indiaLiveYear} World Bank data, averaging ${indiaPerCapita} per person and growing ${indiaGrowthStr} a year). Lowering trade barriers, flexible exchange rates, and digital infrastructure like UPI and Aadhaar helped lift productivity, though job creation and income levels per person still lag peers.`;
+    }
+
+    if (hist) {
+      return `Between ${hist.startYear} and ${hist.endYear}, ${leadCountry.name} (${leadCountry.iso3}) ${hist.multipleText} from ${formatUsdBnCompact(
+        hist.startGdpUsdBn
+      )} to a ${leadGdpHuman} economy (${yearTag}${perCapText} ${growthClause})${
+        leadPerCapBenchmark ? ` (${leadPerCapBenchmark})` : ""
+      }. Clean sources supply ${leadRenewableDisplay} of electricity while R&D spending stands at ${leadRd}.`;
+    }
+
+    return `${leadCountry.name} (${leadCountry.iso3}) operates a ${leadGdpHuman} economy${
+      leadCountry.population > 0
+        ? ` of ${formatPopulationHuman(leadCountry.population, "long")} people`
+        : ""
+    }, ${
+      leadGrowthDisplay === "N/A"
+        ? "with partial live macro coverage returned"
+        : `growing at ${leadGrowthDisplay} annually`
+    }${leadPerCapBenchmark ? ` (${leadPerCapBenchmark})` : ""} and generating ${leadRenewableDisplay} of its electricity from renewables.${
+      wikiSummary ? ` ${wikiSummary.extract.slice(0, 180)}${wikiSummary.extract.length > 180 ? "..." : ""}` : ""
+    }`;
+  };
+
+  const dynamicCountryLead = buildDynamicCountryNarrative();
+
   const topicLeadBaseline = subTopicLead
     ? subTopicLead
-    : isIndiaBroadQuery
-      ? `Since opening its economy in July 1991, India grew from a $270.1 billion economy into a ${indiaGdpHuman} market (${indiaLiveYear} World Bank data, averaging ${indiaPerCapita} per person and growing ${indiaGrowthStr} a year). Lowering trade barriers, flexible exchange rates, and digital infrastructure like UPI and Aadhaar helped lift productivity, though job creation and income levels per person still lag peers.`
+    : dynamicCountryLead
+      ? dynamicCountryLead
       : isSemiQuery
         ? `Modern computing chips rely on one of the most tightly specialized global supply chains ever built: U.S. companies design over 65% of chip architectures, Europe (ASML and Carl Zeiss) builds every extreme-ultraviolet lithography machine, and East Asia manufactures over 90% of sub-3nm processors. Because no single country controls all stages, export controls and domestic foundry subsidies have reshaped trade across continents.`
         : isClimateQuery
           ? `Human greenhouse-gas emissions have lifted Earth's average temperature by +1.32°C above pre-industrial levels. Bringing emissions down requires switching grids to cheap solar, wind, battery storage, and nuclear power while cutting industrial heat and methane leaks—without triggering local power shortages.`
-          : leadCountry
-            ? `${leadCountry.name} (${leadCountry.iso3}) operates a ${leadGdpHuman} economy${
-                leadCountry.population > 0
-                  ? ` of ${formatPopulationHuman(leadCountry.population, "long")} people`
-                  : ""
-              }, ${
-                leadGrowthDisplay === "N/A"
-                  ? "with partial live macro coverage returned"
-                  : `growing at ${leadGrowthDisplay} annually`
-              }${leadPerCapBenchmark ? ` (${leadPerCapBenchmark})` : ""} and generating ${leadRenewableDisplay} of its electricity from renewables.${
-                wikiSummary ? ` ${wikiSummary.extract.slice(0, 180)}${wikiSummary.extract.length > 180 ? "..." : ""}` : ""
-              }`
-            : wikiSummary
-              ? `${wikiSummary.extract.slice(0, 320)}${wikiSummary.extract.length > 320 ? "..." : ""} Across ${allSources.length} checked institutional and scholarly records, evidence points to physical capacity, skilled workforces, and steady rules as the main engines of long-term change.`
-              : `Cross-checking "${cleanQuery}" across ${allSources.length} World Bank, IMF, and academic records shows how investment levels, energy reliability, and policy stability shape real-world outcomes over time.`;
+          : wikiSummary
+            ? `${wikiSummary.extract.slice(0, 320)}${wikiSummary.extract.length > 320 ? "..." : ""} Across ${allSources.length} checked institutional and scholarly records, evidence points to physical capacity, skilled workforces, and steady rules as the main engines of long-term change.`
+            : `Cross-checking "${cleanQuery}" across ${allSources.length} World Bank, IMF, and academic records shows how investment levels, energy reliability, and policy stability shape real-world outcomes over time.`;
 
   const compareBaselineCountry = compareCountry ?? (leadCountry?.iso3 === "IND" ? COUNTRIES_DATA.CHN : COUNTRIES_DATA.IND);
   const compGdpA = leadCountry ? getEffectiveGdpUsdBn(leadCountry) : indiaEffectiveGdp;
@@ -828,6 +872,67 @@ export async function orchestrateDeepResearch(
           data: [],
         };
 
+  const verifiedContext = [
+    `Query: ${cleanQuery}`,
+    `Mode: ${mode}`,
+    `Baseline Summary: ${executiveSummary}`,
+    ...relevantStatistics.map(
+      (s) => `Stat [${s.sourceId}]: ${s.metric} = ${s.value} (${s.unit}; ${s.period})`
+    ),
+    ...openAlexSources
+      .slice(0, 3)
+      .map((s) => `Study [${s.id}]: ${s.title} (${s.publisher}, ${s.publishedDate})`),
+    wikiSummary ? `Wikimedia (${wikiSummary.title}): ${wikiSummary.extract.slice(0, 260)}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const optionalLlmBrief = await synthesizeEditorialWithOptionalLlm({
+    query: cleanQuery,
+    mode,
+    verifiedContext,
+  });
+
+  const finalExecutiveSummary = sanitizeEditorialProse(
+    optionalLlmBrief?.bottomLine ?? executiveSummary
+  );
+  const baseDetailedAnalysis =
+    mode === "quick"
+      ? [
+          {
+            heading: "1. What the Numbers Show",
+            content: empiricalDriversSection,
+          },
+        ]
+      : [
+          {
+            heading: "1. What the Numbers Show",
+            content: empiricalDriversSection,
+          },
+          {
+            heading: "2. How Real-World Tradeoffs Play Out",
+            content: transmissionSection,
+          },
+          {
+            heading: "3. Source Check & Data Limits",
+            content: credibilitySection,
+          },
+        ];
+  const finalDetailedAnalysis = optionalLlmBrief?.mechanisms?.length
+    ? optionalLlmBrief.mechanisms.slice(0, 3).map((m, idx) => ({
+        heading: `${idx + 1}. ${m.title}`,
+        content: m.explanation,
+      }))
+    : baseDetailedAnalysis;
+  const finalContradiction = optionalLlmBrief?.whereExpertsDisagree
+    ? {
+        pointOfContention: optionalLlmBrief.whereExpertsDisagree.topic,
+        perspectiveA: optionalLlmBrief.whereExpertsDisagree.viewA,
+        perspectiveB: optionalLlmBrief.whereExpertsDisagree.viewB,
+        epistemicResolution: optionalLlmBrief.whereExpertsDisagree.evidenceBalance,
+      }
+    : contradictionByDomain;
+
   return {
     id: `rep-${Date.now()}`,
     query: cleanQuery,
@@ -860,7 +965,7 @@ export async function orchestrateDeepResearch(
         status: "completed",
       },
     ],
-    executiveSummary: sanitizeEditorialProse(executiveSummary),
+    executiveSummary: finalExecutiveSummary,
     keyFindings:
       mode === "quick"
         ? [
@@ -884,28 +989,7 @@ export async function orchestrateDeepResearch(
             "Changes in national economic productivity typically appear 3–5 years after major policy or R&D shifts.",
             "Uncertain projections and unconfirmed scenarios are separated from measured past series.",
           ],
-    detailedAnalysis:
-      mode === "quick"
-        ? [
-            {
-              heading: "1. What the Numbers Show",
-              content: empiricalDriversSection,
-            },
-          ]
-        : [
-            {
-              heading: "1. What the Numbers Show",
-              content: empiricalDriversSection,
-            },
-            {
-              heading: "2. How Real-World Tradeoffs Play Out",
-              content: transmissionSection,
-            },
-            {
-              heading: "3. Source Check & Data Limits",
-              content: credibilitySection,
-            },
-          ],
+    detailedAnalysis: finalDetailedAnalysis,
     supportingEvidence: [
       {
         id: "claim-1",
@@ -939,7 +1023,7 @@ export async function orchestrateDeepResearch(
     ],
     contradictoryEvidence: [
       {
-        ...contradictionByDomain,
+        ...finalContradiction,
         sourceIds: Array.from(new Set([primarySourceId, "src-imf-weo"])),
       },
     ],

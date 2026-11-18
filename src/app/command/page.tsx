@@ -149,7 +149,7 @@ export default function CommandCenterPage() {
             Try a question:
           </span>
           {[
-            { label: "🇮🇳 India Country Dossier", href: "/atlas?country=IND" },
+            { label: "🇮🇳 India Country Profile", href: "/atlas?country=IND" },
             { label: "⚖️ India vs China Compare", href: "/intelligence?left=IND&right=CHN" },
             { label: "🕸️ Semiconductors Graph", href: "/knowledge-graph?topic=Semiconductors" },
             { label: "📈 Oil Shock Simulation", href: "/simulations?category=economics" },
@@ -532,9 +532,9 @@ export default function CommandCenterPage() {
                   <div className="-mx-5 -mb-5 grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[var(--border-subtle)] border-t border-[var(--border-subtle)] rounded-b-2xl overflow-hidden">
                     <div className="bg-[var(--bg-graphite)] p-4 space-y-2.5">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-[13px] font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono flex items-center gap-1.5">
+                        <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
                           <Search className="w-3.5 h-3.5 tone-violet" />
-                          Query History
+                          Recent Searches
                         </h3>
                         <Link
                           href="/explore"
@@ -559,9 +559,9 @@ export default function CommandCenterPage() {
 
                     <div className="bg-[var(--bg-graphite)] p-4 space-y-2.5">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-[13px] font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono flex items-center gap-1.5">
+                        <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
                           <Bookmark className="w-3.5 h-3.5 tone-blue" />
-                          Pinned Briefs ({workspaceItems.length})
+                          Saved Items ({workspaceItems.length})
                         </h3>
                         <Link
                           href="/workspace"
@@ -579,7 +579,7 @@ export default function CommandCenterPage() {
                           >
                             <div className="flex items-center justify-between gap-2 text-[13.5px] font-semibold">
                               <span className="text-[var(--text-primary)] truncate">{item.title}</span>
-                              <span className="text-[11px] uppercase px-1.5 py-0.5 rounded badge-tone-blue omnis-mono shrink-0">
+                              <span className="text-xs font-medium capitalize px-2 py-0.5 rounded-md badge-tone-blue shrink-0">
                                 {item.type}
                               </span>
                             </div>
@@ -602,20 +602,20 @@ export default function CommandCenterPage() {
           })()}
         </div>
 
-        {/* Right Epistemic Provider Telemetry & Timeline Rail (4 Cols) */}
-        <aside className="lg:col-span-4 min-w-0 border border-[var(--border-subtle)] rounded-lg bg-[var(--bg-graphite)] divide-y divide-[var(--border-subtle)]">
-          {/* Live Epistemic Provider Telemetry */}
-          <div className="p-4 space-y-3">
+        {/* Right Data Source Health & Timeline Highlights Rail (4 Cols, De-boxed Hairline Layout) */}
+        <aside className="lg:col-span-4 min-w-0 pt-4 lg:pt-0 border-t lg:border-t-0 lg:border-l border-[var(--border-subtle)] lg:pl-6 divide-y divide-[var(--border-subtle)]">
+          {/* Live Data Source Health */}
+          <div className="pb-5 space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <h2 className="text-[13px] font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono flex items-center gap-1.5">
+              <h2 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
                 <Layers className="w-3.5 h-3.5 tone-cyan" />
-                Live Epistemic Telemetry
+                Data Source Health
               </h2>
               <Link
                 href="/settings"
-                className="text-xs tone-blue font-semibold hover:underline omnis-mono"
+                className="text-xs tone-blue font-semibold hover:underline"
               >
-                Status →
+                Check all →
               </Link>
             </div>
             <div className="divide-y divide-[var(--border-subtle)]">
@@ -629,6 +629,7 @@ export default function CommandCenterPage() {
                 const targetHref = routeMap[provider.id] ?? "/explore";
                 const isOp = provider.status === "operational";
                 const isChecking = provider.status === "checking";
+                const statusLabel = isOp ? "Online" : isChecking ? "Checking" : "Slow";
                 return (
                   <Link
                     key={provider.id}
@@ -639,13 +640,15 @@ export default function CommandCenterPage() {
                       <div className="text-[13.5px] font-semibold text-[var(--text-primary)] truncate">
                         {provider.name}
                       </div>
-                      <div className="text-xs text-[var(--text-muted)] omnis-mono">
+                      <div className="text-xs text-[var(--text-muted)]">
                         {provider.license}
-                        {typeof provider.latencyMs === "number" ? ` • ${provider.latencyMs}ms` : ""}
+                        {typeof provider.latencyMs === "number" ? (
+                          <span className="omnis-mono omnis-tabular"> • {provider.latencyMs}ms</span>
+                        ) : null}
                       </div>
                     </div>
                     <span
-                      className={`text-[11px] uppercase px-2 py-0.5 rounded omnis-mono shrink-0 ${
+                      className={`text-xs font-medium px-2 py-0.5 rounded-md shrink-0 ${
                         isOp
                           ? "badge-tone-verified"
                           : isChecking
@@ -653,7 +656,7 @@ export default function CommandCenterPage() {
                           : "badge-tone-warning"
                       }`}
                     >
-                      {provider.status}
+                      {statusLabel}
                     </span>
                   </Link>
                 );
@@ -661,15 +664,15 @@ export default function CommandCenterPage() {
             </div>
           </div>
 
-          {/* Timeline Digest */}
-          <div className="p-4 space-y-2.5">
+          {/* Timeline Highlights */}
+          <div className="pt-5 space-y-2.5">
             <div className="flex items-center justify-between">
-              <h2 className="text-[13px] font-bold uppercase tracking-wider text-[var(--text-primary)] omnis-mono flex items-center gap-1.5">
+              <h2 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 tone-warning" />
-                Timeline Inflection Digest
+                Recent Historical Highlights
               </h2>
               <Link href="/timeline" className="text-xs tone-blue font-semibold hover:underline">
-                Full Era View →
+                Full timeline →
               </Link>
             </div>
             <div className="divide-y divide-[var(--border-subtle)]">

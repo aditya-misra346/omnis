@@ -5,14 +5,26 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { COUNTRIES_DATA } from "@/lib/data/global-intelligence";
 import {
+  describeGlobalScaleTier,
   describeVsBenchmark,
   GLOSSARY_DEFINITIONS,
   resolveGlossaryTerm,
 } from "@/lib/data/world-benchmarks";
-import { buildComparisonTakeaways, buildSovereignComparisonMatrix } from "@/lib/research/compare";
+import {
+  buildComparisonTakeaways,
+  buildSovereignComparisonMatrix,
+  computeHistoricalMultiple,
+} from "@/lib/research/compare";
+import {
+  hasConfiguredLlmKey,
+  synthesizeAssistantReplyWithOptionalLlm,
+  synthesizeEditorialWithOptionalLlm,
+} from "@/lib/research/llm";
 import {
   BANNED_AI_PHRASES,
+  buildAssistantSystemPrompt,
   buildEditorialSystemPrompt,
+  EditorialBriefPayloadSchema,
   sanitizeEditorialProse,
 } from "@/lib/research/prompts";
 import { buildInfiniteKnowledgeGraph, findShortestCausalPath } from "@/lib/graph/engine";
@@ -1469,5 +1481,118 @@ describe("OMNIS Elevation & Credibility Regression Suite", () => {
     expect(infBody.reply).toContain("India (IND)");
     expect(infBody.reply).toContain("4.9%");
     expect(infBody.reply).not.toContain("• **Prices & Innovation**:");
+  });
+
+  it("validates LLM prompt helpers, zero-key safe fallback, dynamic country arcs, scale tiers, and UI regression guards", async () => {
+    // 1. Prompts & Zod schema validation + zero-key safe fallback
+    const assistantPrompt = buildAssistantSystemPrompt("Global Atlas", "IND", "India GDP $4.0T");
+    expect(assistantPrompt).toContain("95 words or fewer");
+    expect(assistantPrompt).toContain("VERIFIED_CONTEXT:");
+
+    const samplePayload = {
+      bottomLine: "China's economy grew rapidly as industrial exports and cities expanded.",
+      keyNumbers: [
+        {
+          label: "China GDP",
+          value: "$18.5T",
+          benchmarkContext: "World's second-largest economy",
+          source: "World Bank WDI",
+        },
+      ],
+      mechanisms: [
+        {
+          title: "Industrial Scale & Infrastructure",
+          explanation: "High domestic investment in factories, ports, and power grids raised output per worker.",
+        },
+      ],
+      whereExpertsDisagree: {
+        topic: "Consumption vs Investment Rebalancing",
+        viewA: "Household spending must rise to sustain balanced long-term growth.",
+        viewB: "Targeted advanced manufacturing keeps export competitiveness high.",
+        evidenceBalance: "Recent policy mixes modest consumer support with industrial upgrades.",
+      },
+    };
+    expect(EditorialBriefPayloadSchema.safeParse(samplePayload).success).toBe(true);
+    expect(EditorialBriefPayloadSchema.safeParse({ bottomLine: "short" }).success).toBe(false);
+
+    expect(hasConfiguredLlmKey({})).toBe(false);
+    expect(
+      await synthesizeEditorialWithOptionalLlm({
+        query: "Why is inflation sticky?",
+        mode: "deep",
+        verifiedContext: "CPI = 4.9%",
+        env: {},
+      })
+    ).toBeNull();
+    expect(
+      await synthesizeAssistantReplyWithOptionalLlm({
+        message: "Explain CPI",
+        contextLabel: "Research",
+        contextTopic: "CPI",
+        verifiedContext: "CPI is consumer inflation.",
+        env: {},
+      })
+    ).toBeNull();
+
+    const mockedFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  ...samplePayload,
+                  bottomLine: "Moreover, China's economy grew rapidly as industrial exports and cities expanded.",
+                }),
+              },
+            },
+          ],
+        }),
+        { status: 200 }
+      )
+    );
+    const llmResult = await synthesizeEditorialWithOptionalLlm({
+      query: "Explain China's economy",
+      mode: "deep",
+      verifiedContext: "China GDP = $18.5T",
+      fetchImpl: mockedFetch as unknown as typeof fetch,
+      env: { OPENAI_API_KEY: "test-key-redacted" },
+    });
+    expect(llmResult?.bottomLine.startsWith("Moreover")).toBe(false);
+    expect(llmResult?.bottomLine).toContain("China's economy");
+
+    // 2. Dynamic multi-country narrative & historical multiple
+    expect(describeGlobalScaleTier(18_532)).toContain("two largest economies");
+    expect(describeGlobalScaleTier(4_110)).toContain("10 largest economies");
+    const chinaMult = computeHistoricalMultiple(COUNTRIES_DATA.CHN);
+    expect(chinaMult?.multipleText).toContain("× since 1991");
+
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Offline timeout")));
+    const chinaReport = await orchestrateDeepResearch("Explain China's economic development since 1991", "deep");
+    expect(chinaReport.executiveSummary).toContain("China (CHN)");
+    expect(chinaReport.executiveSummary).toContain("since 1991");
+    for (const phrase of BANNED_AI_PHRASES) {
+      expect(chinaReport.executiveSummary).not.toContain(phrase);
+    }
+
+    const compareReport = await orchestrateDeepResearch("Compare Germany and Japan economically", "deep");
+    expect(compareReport.executiveSummary).toContain("Germany");
+    expect(compareReport.executiveSummary).toContain("Japan");
+
+    // 3. UI copy & chrome alignment checks
+    const intelSrc = fs.readFileSync(path.join(process.cwd(), "src/app/intelligence/page.tsx"), "utf8");
+    expect(intelSrc).toContain("Radar Overview");
+    expect(intelSrc).not.toContain("Shape View");
+
+    const atlasSrc = fs.readFileSync(path.join(process.cwd(), "src/app/atlas/page.tsx"), "utf8");
+    expect(atlasSrc).toContain("— Country Profile");
+    expect(atlasSrc).not.toContain("Country Intelligence Dossier");
+
+    const commandSrc = fs.readFileSync(path.join(process.cwd(), "src/app/command/page.tsx"), "utf8");
+    expect(commandSrc).not.toContain("LIVE EPISTEMIC TELEMETRY");
+    expect(commandSrc).not.toContain("Live Epistemic Telemetry");
+
+    const timelineSrc = fs.readFileSync(path.join(process.cwd(), "src/app/timeline/page.tsx"), "utf8");
+    expect(timelineSrc).not.toContain("Module 02");
   });
 });
