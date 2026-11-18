@@ -1595,4 +1595,37 @@ describe("OMNIS Elevation & Credibility Regression Suite", () => {
     const timelineSrc = fs.readFileSync(path.join(process.cwd(), "src/app/timeline/page.tsx"), "utf8");
     expect(timelineSrc).not.toContain("Module 02");
   });
+
+  it("permanently locks Obsidian Dark Mode in store, root layout, globals CSS, AppShell, and Settings", async () => {
+    const { useOmnisStore } = await import("@/lib/store/use-omnis-store");
+    expect(useOmnisStore.getState().theme).toBe("dark");
+    useOmnisStore.getState().setTheme("light");
+    expect(useOmnisStore.getState().theme).toBe("dark");
+    useOmnisStore.getState().toggleTheme();
+    expect(useOmnisStore.getState().theme).toBe("dark");
+
+    const layoutSrc = fs.readFileSync(path.join(process.cwd(), "src/app/layout.tsx"), "utf8");
+    expect(layoutSrc).toContain('themeColor: "#05070c"');
+    expect(layoutSrc).toContain('colorScheme: "dark"');
+    expect(layoutSrc).toContain('data-theme="dark"');
+    expect(layoutSrc).toContain('classList.add("dark")');
+
+    const globalsSrc = fs.readFileSync(path.join(process.cwd(), "src/app/globals.css"), "utf8");
+    expect(globalsSrc).not.toContain('[data-theme="light"]');
+    expect(globalsSrc).toContain("color-scheme: dark;");
+
+    const appShellSrc = fs.readFileSync(
+      path.join(process.cwd(), "src/components/layout/AppShell.tsx"),
+      "utf8"
+    );
+    expect(appShellSrc).not.toContain("Toggle Light/Dark Theme");
+    expect(appShellSrc).not.toContain("Switch Theme to");
+
+    const settingsSrc = fs.readFileSync(
+      path.join(process.cwd(), "src/app/settings/page.tsx"),
+      "utf8"
+    );
+    expect(settingsSrc).toContain("Appearance: Obsidian Dark (Default)");
+    expect(settingsSrc).not.toContain("Archival Pearl Light");
+  });
 });

@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react";
 import {
   Settings,
-  Sun,
   Moon,
   ShieldCheck,
   Database,
@@ -33,8 +32,6 @@ function getProviderToneClass(status: string): string {
 
 export default function SettingsPage() {
   const {
-    theme,
-    setTheme,
     user,
     login,
     logout,
@@ -72,8 +69,8 @@ export default function SettingsPage() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
       <OmnisModuleHeader
         moduleTag="Settings & Data Sources"
-        title="Account, Theme & Live Data Health"
-        subtitle="Switch between Obsidian Dark (#05070C) and Archival Pearl Light (#FAF8F5), manage your local session, and inspect upstream public data providers."
+        title="Account, Appearance & Live Data Health"
+        subtitle="Obsidian Dark (#05070C) is permanently active across OMNIS. Manage your local session and inspect upstream public data providers."
         icon={<Settings className="w-3.5 h-3.5" />}
       />
 
@@ -85,54 +82,33 @@ export default function SettingsPage() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Theme Calibration */}
+        {/* Obsidian Dark Appearance Profile (Read-Only Default) */}
         <div className="omnis-card p-6 space-y-4">
-          <h2 className="text-base sm:text-lg font-bold text-[var(--text-primary)]">Theme & Contrast</h2>
+          <h2 className="text-base sm:text-lg font-bold text-[var(--text-primary)]">
+            Appearance &amp; Contrast
+          </h2>
           <p className="text-[13.5px] sm:text-sm text-[var(--text-secondary)] leading-relaxed">
-            Switch between OMNIS Obsidian Dark (#05070C) and Archival Pearl Light (#FAF8F5).
-            Both palettes meet WCAG 2.2 AA contrast across charts, 3D overlays, and reading layouts.
+            OMNIS uses calibrated Obsidian Dark surfaces across maps, graphs, reading columns,
+            and interactive charts for consistent contrast in every lighting environment.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setTheme("dark")}
-              className={`p-4 rounded-xl border text-left space-y-1.5 transition-all cursor-pointer ${
-                theme === "dark"
-                  ? "bg-[var(--bg-elevated)] border-[var(--accent-blue)] ring-1 ring-[var(--accent-blue)]"
-                  : "bg-[var(--bg-slate)] border-[var(--border-subtle)] hover:border-[var(--border-strong)]"
-              }`}
-            >
+          <div className="p-4 rounded-xl border border-[var(--accent-blue)]/45 bg-[var(--bg-elevated)] space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-[13.5px] sm:text-sm font-bold text-[var(--text-primary)]">
                 <Moon className="w-4 h-4 tone-blue shrink-0" />
-                <span>Obsidian Dark (#05070C)</span>
+                <span>Appearance: Obsidian Dark (Default)</span>
               </div>
-              <div className="text-xs text-[var(--text-muted)]">
-                Deep obsidian (#05070C) & precision cobalt blue
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setTheme("light")}
-              className={`p-4 rounded-xl border text-left space-y-1.5 transition-all cursor-pointer ${
-                theme === "light"
-                  ? "bg-[var(--bg-elevated)] border-[var(--accent-blue)] ring-1 ring-[var(--accent-blue)]"
-                  : "bg-[var(--bg-slate)] border-[var(--border-subtle)] hover:border-[var(--border-strong)]"
-              }`}
-            >
-              <div className="flex items-center gap-2 text-[13.5px] sm:text-sm font-bold text-[var(--text-primary)]">
-                <Sun className="w-4 h-4 tone-warning shrink-0" />
-                <span>Archival Pearl Light (#FAF8F5)</span>
-              </div>
-              <div className="text-xs text-[var(--text-muted)]">
-                High-contrast daylight archival surfaces (#FAF8F5)
-              </div>
-            </button>
+              <span className="px-2 py-0.5 rounded-full text-xs font-semibold badge-tone-blue">
+                Locked
+              </span>
+            </div>
+            <div className="text-xs text-[var(--text-muted)]">
+              Primary canvas #05070C • Precision cobalt accents &amp; WCAG 2.2 AA calibration
+            </div>
           </div>
 
           <details className="pt-3 border-t border-[var(--border-subtle)]">
             <summary className="min-h-[44px] sm:min-h-0 inline-flex items-center text-xs font-medium text-[var(--text-muted)] cursor-pointer select-none">
-              Developer palette tokens ({theme}) • Version 2.0
+              Developer palette tokens (dark) • Version 2.0
             </summary>
             <div className="flex flex-wrap gap-2 pt-2.5">
               {[

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import {
   Inter,
   Plus_Jakarta_Sans,
@@ -91,7 +91,12 @@ export const metadata: Metadata = {
   },
 };
 
-const THEME_INIT_SCRIPT = `(function(){try{var raw=localStorage.getItem("omnis-intelligence-workspace-v1");if(!raw)return;var parsed=JSON.parse(raw);var t=parsed&&parsed.state&&parsed.state.theme;if(t==="light"||t==="dark"){document.documentElement.dataset.theme=t;}}catch(e){}})();`;
+export const viewport: Viewport = {
+  themeColor: "#05070c",
+  colorScheme: "dark",
+};
+
+const THEME_INIT_SCRIPT = `(function(){try{var root=document.documentElement;root.classList.add("dark");root.dataset.theme="dark";root.style.colorScheme="dark";["theme","omnis-theme","color-theme"].forEach(function(k){if(localStorage.getItem(k)==="light"){localStorage.setItem(k,"dark");}});var raw=localStorage.getItem("omnis-intelligence-workspace-v1");if(raw){var parsed=JSON.parse(raw);if(parsed&&parsed.state&&parsed.state.theme&&parsed.state.theme!=="dark"){parsed.state.theme="dark";localStorage.setItem("omnis-intelligence-workspace-v1",JSON.stringify(parsed));}}}catch(e){}})();`;
 
 export default function RootLayout({
   children,
@@ -102,7 +107,8 @@ export default function RootLayout({
     <html
       lang="en"
       data-theme="dark"
-      className={`${inter.variable} ${plusJakarta.variable} ${jetbrainsMono.variable} ${editorial.variable}`}
+      className={`dark ${inter.variable} ${plusJakarta.variable} ${jetbrainsMono.variable} ${editorial.variable}`}
+      style={{ colorScheme: "dark" }}
       suppressHydrationWarning
     >
       <head>

@@ -223,9 +223,8 @@ export const useOmnisStore = create<OmnisState>()(
   persist(
     (set) => ({
       theme: "dark",
-      setTheme: (theme) => set({ theme }),
-      toggleTheme: () =>
-        set((state) => ({ theme: state.theme === "dark" ? "light" : "dark" })),
+      setTheme: () => set({ theme: "dark" }),
+      toggleTheme: () => set({ theme: "dark" }),
 
       motionPaused: false,
       setMotionPaused: (motionPaused) => set({ motionPaused }),
@@ -420,8 +419,18 @@ export const useOmnisStore = create<OmnisState>()(
     {
       name: "omnis-intelligence-workspace-v1",
       storage: createJSONStorage(() => safeWebStorage),
+      merge: (persistedState, currentState) => ({
+        ...currentState,
+        ...((persistedState as Partial<OmnisState>) ?? {}),
+        theme: "dark",
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (state && state.theme !== "dark") {
+          state.setTheme("dark");
+        }
+      },
       partialize: (state) => ({
-        theme: state.theme,
+        theme: "dark" as const,
         motionPaused: state.motionPaused,
         sidebarCollapsed: state.sidebarCollapsed,
         activeContextLabel: state.activeContextLabel,

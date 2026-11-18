@@ -4,6 +4,7 @@ import React, { useId } from "react";
 
 const OMNIS_BRAND_STYLES = `
 :root,
+.dark,
 [data-theme="dark"] {
   --omnis-logo-tile-bg: #0D121D;
   --omnis-logo-tile-border: rgba(148, 163, 184, 0.22);
@@ -15,19 +16,6 @@ const OMNIS_BRAND_STYLES = `
   --omnis-logo-node: #38BDF8;
   --omnis-logo-node-core: #F8FAFC;
   --omnis-logo-node-halo: rgba(56, 189, 248, 0.26);
-}
-
-[data-theme="light"] {
-  --omnis-logo-tile-bg: #F8FAFC;
-  --omnis-logo-tile-border: #CBD5E1;
-  --omnis-logo-tile-highlight: #FFFFFF;
-  --omnis-logo-ink: #090D16;
-  --omnis-logo-wordmark: #090D16;
-  --omnis-logo-orbit-start: #2563EB;
-  --omnis-logo-orbit-end: #1D4ED8;
-  --omnis-logo-node: #2563EB;
-  --omnis-logo-node-core: #FFFFFF;
-  --omnis-logo-node-halo: rgba(37, 99, 235, 0.18);
 }
 
 .omnis-orbital-node {

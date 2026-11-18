@@ -17,8 +17,6 @@ import {
   Layers,
   Search,
   Sparkles,
-  Sun,
-  Moon,
   Menu,
   X,
   ChevronLeft,
@@ -117,8 +115,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const shortcutsModalRef = useRef<HTMLDivElement | null>(null);
 
   const {
-    theme,
-    toggleTheme,
     motionPaused,
     toggleMotionPaused,
     sidebarCollapsed,
@@ -179,10 +175,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Sync theme and motion preference attributes on <html>
+  // Lock permanent Obsidian Dark mode and motion preference attributes on <html>
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-  }, [theme]);
+    document.documentElement.classList.add("dark");
+    document.documentElement.setAttribute("data-theme", "dark");
+    document.documentElement.style.colorScheme = "dark";
+  }, []);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme-ready", "true");
@@ -344,16 +342,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
     const quickActions: CommandPaletteAction[] = [
       {
-        id: "act-theme",
-        label: `Switch Theme to ${theme === "dark" ? "Archival Light" : "Obsidian Dark"}`,
-        subtitle: "Toggle global visual mode",
-        category: "Action",
-        run: () => {
-          toggleTheme();
-          setCommandPaletteOpen(false);
-        },
-      },
-      {
         id: "act-motion",
         label: motionPaused ? "Resume Kinetic Typography & Motion" : "Pause Kinetic Typography & Motion",
         subtitle: "Global animation & shader motion toggle",
@@ -468,11 +456,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       });
   }, [
     paletteQuery,
-    theme,
     motionPaused,
     activeContextLabel,
     activeContextTopic,
-    toggleTheme,
     toggleMotionPaused,
     setCommandPaletteOpen,
     setAssistantOpen,
@@ -623,20 +609,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <span className="hidden 2xl:inline">
                   {motionPaused ? "Resume motion" : "Pause motion"}
                 </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={toggleTheme}
-                aria-label="Toggle Light/Dark Theme"
-                title={
-                  theme === "dark"
-                    ? "Switch to Archival Pearl Light Theme"
-                    : "Switch to Obsidian Dark Theme"
-                }
-                className="min-h-[44px] min-w-[44px] md:min-h-[36px] md:min-w-[36px] flex items-center justify-center p-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-slate)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-all cursor-pointer shrink-0"
-              >
-                {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </button>
 
               <Link
@@ -925,7 +897,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           );
                         }
                       }}
-                      placeholder="Jump to module, run action (theme/motion), or search..."
+                      placeholder="Jump to module, toggle motion, or search..."
                       className="w-full bg-transparent text-base md:text-[15px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
                     />
                     <button
@@ -1253,7 +1225,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       {
                         keys: "⌘K / Ctrl+K",
                         title: "Universal Command Palette",
-                        desc: "Jump directly to nations, modules, theme toggle, or natural search.",
+                        desc: "Jump directly to nations, modules, motion toggle, or natural search.",
                       },
                       {
                         keys: "⌘J / Ctrl+J",
