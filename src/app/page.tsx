@@ -97,14 +97,14 @@ const FLAGSHIP_MODULES = [
     metrics: "Horizontal & List Views • Interactive Era Scrubber",
   },
   {
-    number: "Research",
-    title: "Deep Research",
+    number: "AddyIntelligence",
+    title: "AddyIntelligence",
     href: "/research",
     icon: FileSearch,
     tone: "badge-tone-verified",
     accentText: "tone-verified",
     description:
-      "Ask a question in plain English to read clear answers backed by real World Bank series and OpenAlex academic papers—no made-up citations.",
+      "Ask AddyIntelligence a question in plain English to read clear answers backed by real World Bank series and OpenAlex academic papers—no made-up citations.",
     metrics: "6 Research Styles • Source Checks & Limits",
   },
   {
@@ -1057,7 +1057,7 @@ export default function LandingPage() {
                     )}`}
                     className="omnis-magnetic-arrow px-3.5 py-2 rounded-xl badge-tone-verified hover:brightness-105 text-[13px] font-semibold inline-flex items-center gap-1.5 transition-all"
                   >
-                    <span>Read Deep Research</span>
+                    <span>Ask AddyIntelligence</span>
                     <ArrowRight className="omnis-arrow-glyph w-3 h-3" />
                   </Link>
                   <Link
@@ -1198,7 +1198,7 @@ export default function LandingPage() {
               <li><Link href="/knowledge-graph" className="hover:text-[var(--accent-blue)] transition-colors">Connected Topic Map</Link></li>
               <li><Link href="/simulations" className="hover:text-[var(--accent-blue)] transition-colors">What-If Scenarios</Link></li>
               <li><Link href="/timeline" className="hover:text-[var(--accent-blue)] transition-colors">World Timeline</Link></li>
-              <li><Link href="/research" className="hover:text-[var(--accent-blue)] transition-colors">Deep Research</Link></li>
+              <li><Link href="/research" className="hover:text-[var(--accent-blue)] transition-colors">AddyIntelligence</Link></li>
               <li><Link href="/laboratory" className="hover:text-[var(--accent-blue)] transition-colors">Science Lab</Link></li>
             </ul>
           </div>

@@ -126,7 +126,7 @@ export function buildEditorialSystemPrompt(
 }
 
 /**
- * Builds a concise editorial system prompt for the conversational floating AI Assistant.
+ * Builds a concise editorial system prompt for the persistent contextual AddyIntelligence drawer.
  */
 export function buildAssistantSystemPrompt(
   contextLabel: string,
@@ -134,7 +134,7 @@ export function buildAssistantSystemPrompt(
   verifiedContext: string
 ): string {
   return [
-    "You are OMNIS's helpful data guide answering questions in warm, everyday prose.",
+    "You are AddyIntelligence, OMNIS's contextual data guide answering questions in warm, everyday prose.",
     `Current screen context: ${contextLabel} (${contextTopic}).`,
     "Rules:",
     "1. Reply in 95 words or fewer using clear, natural sentences—not raw telemetry dumps or robotic bullets.",
@@ -149,7 +149,7 @@ export function buildAssistantSystemPrompt(
 }
 
 /**
- * Non-negotiable Zero-Hallucination Grounding Contract used for IntelligenceBriefResponse synthesis.
+ * Non-negotiable Zero-Hallucination Grounding Contract used by AddyIntelligence brief synthesis.
  */
 export function buildBriefSynthesisSystemPrompt(params: {
   mode: ResearchMode;
@@ -159,15 +159,15 @@ export function buildBriefSynthesisSystemPrompt(params: {
 }): string {
   const modeRule = RESEARCH_MODE_GUIDANCE[params.mode] ?? RESEARCH_MODE_GUIDANCE.deep;
   return [
-    "You are OMNIS's Principal Intelligence & Data Analyst writing in the clear, sharp, practical style of The Economist and Our World in Data.",
+    "1. IDENTITY: You are AddyIntelligence, OMNIS's analytical intelligence engine writing in the clear, sharp, practical style of The Economist and Our World in Data.",
     `Query intent: ${params.intent}. Mode objective (${params.mode}): ${modeRule}`,
     "",
-    "NON-NEGOTIABLE ZERO-HALLUCINATION GROUNDING CONTRACT:",
+    "NON-NEGOTIABLE ZERO-HALLUCINATION GROUNDING CONTRACT FOR ADDYINTELLIGENCE:",
     "1. STRICT SOURCE-ONLY FACTUALITY: You may ONLY state statistics, dates, rankings, and research findings explicitly present in the VERIFIED EVIDENCE PACK below. Every factual or numerical claim MUST carry its inline citation tag such as [SRC-1] or [SRC-2].",
     "2. ZERO PARAMETRIC GUESSING: If the user asks for a metric, year, city, or country figure NOT present in the VERIFIED EVIDENCE PACK, you MUST explicitly state: 'Official data for [specific metric] is not available in the verified datasets retrieved for this query.' Never guess or invent numbers from training memory.",
     params.unavailableRequestedMetric
       ? `3. EXPLICIT MISSING METRIC MANDATE: Immediately address in bottomLine and practicalTakeaway.dataLimitations that official data for "${params.unavailableRequestedMetric}" is NOT available in the verified datasets retrieved for this query, and refuse to fabricate numbers.`
-      : "3. SEPARATE DATA FROM REASONING: Distinguish direct empirical facts ([SRC-n]) cleanly from analytical interpretation, policy trade-offs, and household/workforce impact.",
+      : "3. SEPARATE DATA FROM ANALYSIS: Clearly distinguish direct verified empirical measurements ([SRC-n]) from AddyIntelligence's analytical interpretation, policy trade-offs, and household/workforce impact.",
     "4. PRACTICAL, JARGON-FREE HUMAN INTELLIGENCE: Write in active voice. Ban AI clichés (" +
       BANNED_AI_PHRASES.join(", ") +
       "). Connect macro figures to jobs, grocery prices, borrowing costs, industrial competitiveness, and trade-offs. Define acronyms like CPI, PPP, TFP, or bps in plain parentheses on first use.",

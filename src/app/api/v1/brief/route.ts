@@ -1,4 +1,4 @@
-import { orchestrateIntelligenceBrief } from "@/lib/ai/orchestrator";
+import { orchestrateAddyIntelligence } from "@/lib/ai/addyIntelligence";
 import { enforceRequestRateLimit, validateAndSanitizeInput } from "@/lib/security/guardrails";
 import { ResearchMode, ResearchRequestSchema } from "@/types/omnis";
 
@@ -23,13 +23,13 @@ function streamBrief(query: string, mode: ResearchMode): Response {
         }
       };
       try {
-        const { brief } = await orchestrateIntelligenceBrief(query, mode, {
+        const { brief } = await orchestrateAddyIntelligence(query, mode, {
           onProgress: (stage) => write({ type: "stage", ...stage }),
         });
         write({ type: "result", data: brief });
       } catch (err) {
-        console.error("[OMNIS Brief Stream] Error:", err);
-        write({ type: "error", error: "Intelligence brief orchestration failed." });
+        console.error("[AddyIntelligence Brief Stream] Error:", err);
+        write({ type: "error", error: "AddyIntelligence brief orchestration failed." });
       } finally {
         try {
           controller.close();
@@ -73,7 +73,7 @@ export async function GET(request: Request) {
   if (wantsStream) {
     return streamBrief(check.sanitizedText, mode);
   }
-  const { brief } = await orchestrateIntelligenceBrief(check.sanitizedText, mode);
+  const { brief } = await orchestrateAddyIntelligence(check.sanitizedText, mode);
   return Response.json(brief);
 }
 
@@ -108,10 +108,10 @@ export async function POST(request: Request) {
       return streamBrief(check.sanitizedText, parsed.data.mode);
     }
 
-    const { brief } = await orchestrateIntelligenceBrief(check.sanitizedText, parsed.data.mode);
+    const { brief } = await orchestrateAddyIntelligence(check.sanitizedText, parsed.data.mode);
     return Response.json(brief);
   } catch (err) {
-    console.error("[OMNIS Brief API] Error:", err);
-    return Response.json({ error: "Intelligence brief orchestration failed." }, { status: 500 });
+    console.error("[AddyIntelligence Brief API] Error:", err);
+    return Response.json({ error: "AddyIntelligence brief orchestration failed." }, { status: 500 });
   }
 }

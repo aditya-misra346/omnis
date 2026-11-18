@@ -16,8 +16,8 @@ import {
   RotateCcw,
   X,
 } from "lucide-react";
-import { IntelligenceBriefView } from "@/components/intelligence/IntelligenceBriefView";
-import { RetrievalProgressStepper } from "@/components/intelligence/RetrievalProgressStepper";
+import { AddyIntelligenceView } from "@/components/ai/AddyIntelligenceView";
+import { AddyRetrievalStepper } from "@/components/ai/AddyRetrievalStepper";
 import { streamResearchWithProgress, type RetrievalStageState } from "@/lib/ai/stream-client";
 import { ResearchSeriesChart } from "@/components/charts/OmnisCharts";
 import { VerificationBadge } from "@/components/ui/ProvenancePanel";
@@ -112,7 +112,7 @@ function ResearchContent() {
           },
         });
         setReport(data);
-        setActiveContext("Deep Research Intelligence", clean);
+        setActiveContext("AddyIntelligence", clean);
       } catch (err) {
         setErrorMsg(
           err instanceof Error && err.message
@@ -164,7 +164,7 @@ function ResearchContent() {
   const handleExportMarkdown = () => {
     if (!report) return;
     const summaryText = report.brief?.bottomLine ?? report.executiveSummary;
-    const md = `# OMNIS Deep Research Report: ${report.query}
+    const md = `# AddyIntelligence Research Report: ${report.query}
 **Mode:** ${report.mode.toUpperCase()} | **Generated:** ${report.generatedAt}
 
 ## Executive Summary
@@ -202,9 +202,9 @@ ${report.sources
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* Research Header */}
       <OmnisModuleHeader
-        moduleTag="Deep Research"
+        moduleTag="AddyIntelligence"
         title="Source-Checked Answers & Evidence Breakdown"
-        subtitle="Start with the plain-English answer and key statistics, then explore peer-reviewed studies, conflicting viewpoints, and primary data."
+        subtitle="Start with AddyIntelligence’s plain-English answer and verified World Bank statistics, then explore peer-reviewed studies and primary datasets."
         icon={<FileSearch className="w-3.5 h-3.5" />}
         actions={
           report ? (
@@ -229,7 +229,7 @@ ${report.sources
         <div className="pt-1 overflow-x-auto max-w-full">
           <OmnisSegmentedControl
             groupId="research-mode-tabs"
-            ariaLabel="Deep Research Synthesis Mode"
+            ariaLabel="AddyIntelligence Synthesis Mode"
             size="sm"
             value={mode}
             onChange={(val) => {
@@ -319,7 +319,7 @@ ${report.sources
       )}
 
       {loading && (
-        <RetrievalProgressStepper
+        <AddyRetrievalStepper
           stages={stages}
           elapsedMs={elapsedMs}
           query={activeLoadingQuery}
@@ -350,7 +350,7 @@ ${report.sources
           </div>
 
           {report.brief ? (
-            <IntelligenceBriefView
+            <AddyIntelligenceView
               brief={report.brief}
               typographyStyle={typographyStyle}
               onSelectFollowUp={(fq) => {
@@ -470,7 +470,7 @@ export default function ResearchPage() {
     <Suspense
       fallback={
         <div className="p-8 max-w-7xl mx-auto">
-          <OmnisLoader label="Initialising Deep Research Intelligence Engine..." />
+          <OmnisLoader label="Initialising AddyIntelligence..." />
         </div>
       }
     >

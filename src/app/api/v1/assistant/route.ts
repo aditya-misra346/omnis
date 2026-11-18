@@ -64,7 +64,7 @@ export async function POST(request: Request) {
         provenanceMeta: null,
         brief,
         suggestedActions: [
-          { label: "Inspect Full Evidence in Deep Research", href: `/research?q=${encodeURIComponent(msg)}` },
+          { label: "Inspect Full Evidence in AddyIntelligence", href: `/research?q=${encodeURIComponent(msg)}` },
           { label: "Check Sovereign Data Coverage", href: "/settings" },
         ],
       });
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
         provenanceMeta: null,
         brief,
         suggestedActions: [
-          { label: "Read Full Intelligence Brief", href: `/research?q=${encodeURIComponent(msg)}&mode=comparative` },
+          { label: "Read Full AddyIntelligence Brief", href: `/research?q=${encodeURIComponent(msg)}&mode=comparative` },
           { label: "Compare Side by Side", href: `/intelligence` },
           { label: `Explore Topic Map`, href: `/knowledge-graph?topic=${encodeURIComponent(msg.slice(0, 40))}` },
         ],

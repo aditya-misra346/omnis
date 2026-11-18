@@ -21,7 +21,6 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  Send,
   ArrowUpRight,
   ShieldCheck,
   Terminal,
@@ -35,7 +34,8 @@ import { CreatorSignature } from "@/components/CreatorSignature";
 import { COUNTRIES_DATA } from "@/lib/data/global-intelligence";
 import { WORLD_COUNTRIES_CATALOG } from "@/lib/data/world-catalog";
 import { classifyQueryIntent } from "@/lib/research/engine";
-import { OmnisLoader, OmnisWordmark } from "@/components/brand/OmnisLogo";
+import { OmnisWordmark } from "@/components/brand/OmnisLogo";
+import { AddyAssistantDrawer } from "@/components/ai/AddyAssistantDrawer";
 
 const NAV_ITEMS = [
   { label: "Home", href: "/command", icon: Home, badge: "Start", group: "core" },
@@ -262,9 +262,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     router.push(`/explore?q=${encodeURIComponent(clean)}`);
   };
 
-  const handleAssistantSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const text = assistantInput.trim();
+  const handleAssistantSend = async (e?: React.FormEvent, overrideText?: string) => {
+    e?.preventDefault();
+    const text = (overrideText ?? assistantInput).trim();
     if (!text || assistantLoading) return;
 
     setAssistantInput("");
@@ -353,8 +353,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       },
       {
         id: "act-assistant",
-        label: "Open Contextual AI Assistant Drawer (⌘J)",
-        subtitle: "Grounded multi-provider synthesis sidebar",
+        label: "Open AddyIntelligence (⌘J)",
+        subtitle: "Grounded multi-source synthesis & live datasets drawer",
         category: "Action",
         run: () => {
           setCommandPaletteOpen(false);
@@ -430,7 +430,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       return [
         {
           id: "act-ctx-research",
-          label: `Deep Research: ${activeContextTopic}`,
+          label: `Ask AddyIntelligence: ${activeContextTopic}`,
           subtitle: `Context (${activeContextLabel}) • Launch /research`,
           category: "Action" as const,
           run: () => {
@@ -578,13 +578,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 onClick={() => setAssistantOpen(!assistantOpen)}
-                aria-label="Toggle OMNIS AI Assistant"
-                title="AI Assistant (⌘J)"
+                aria-label="Toggle AddyIntelligence"
+                title="AddyIntelligence (⌘J)"
                 className="min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 inline-flex items-center justify-center gap-1.5 px-2.5 py-2 md:py-1.5 rounded-lg badge-tone-blue hover:brightness-105 text-[13px] font-semibold transition-all cursor-pointer shrink-0"
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline lg:hidden xl:inline">
-                  AI Assistant
+                  AddyIntelligence
                 </span>
                 <kbd className="hidden xl:inline text-[11px] opacity-80 omnis-mono">⌘J</kbd>
               </button>
@@ -1016,170 +1016,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             )}
           </AnimatePresence>
 
-          {/* Docked Right-Side Context-Aware Universal AI Assistant Drawer (Cmd+J) */}
-          <AnimatePresence>
-            {assistantOpen && (
-              <div key="assistant-drawer-root" className="fixed inset-0 top-14 z-[60]">
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.16 }}
-                  onClick={() => setAssistantOpen(false)}
-                  className="absolute inset-0 omnis-modal-scrim backdrop-blur-md"
-                />
-                <motion.div
-                  ref={assistantDrawerRef}
-                  initial={{ x: "100%" }}
-                  animate={{ x: 0 }}
-                  exit={{ x: "100%", transition: { duration: 0.18, ease: "easeIn" } }}
-                  transition={{ type: "spring", damping: 30, stiffness: 320 }}
-                  role="dialog"
-                  aria-modal="true"
-                  aria-label="OMNIS Contextual AI Assistant Drawer"
-                  className="absolute top-0 bottom-0 right-0 w-full sm:w-[400px] bg-[var(--bg-graphite)] border-l border-[var(--border-subtle)] flex flex-col shadow-2xl"
-                >
-                <div className="px-4 py-3 bg-[var(--bg-slate)] border-b border-[var(--border-subtle)] flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg badge-tone-blue flex items-center justify-center shrink-0">
-                      <Sparkles className="w-3.5 h-3.5" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-bold text-[var(--text-primary)]">
-                        OMNIS Assistant
-                      </div>
-                      <div className="text-xs text-[var(--text-secondary)] truncate max-w-[230px]">
-                        Looking at: {activeContextLabel} ({activeContextTopic})
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={clearAssistantMessages}
-                      className="min-h-[44px] md:min-h-0 text-xs px-3 md:px-2 py-1.5 md:py-1 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-graphite)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium"
-                    >
-                      Reset
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAssistantOpen(false)}
-                      aria-label="Close AI Assistant"
-                      className="min-h-[44px] min-w-[44px] md:min-h-[34px] md:min-w-[34px] flex items-center justify-center p-1.5 rounded-lg hover:bg-[var(--bg-elevated)] text-[var(--text-secondary)]"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex-1 p-3.5 overflow-y-auto space-y-3 text-[13px] sm:text-sm bg-[var(--bg-obsidian)]">
-                  {assistantMessages.map((m) => (
-                      <div
-                        key={m.id}
-                        className={`p-3 rounded-xl ${
-                          m.role === "user"
-                            ? "bg-[var(--accent-blue-solid)] text-white ml-6 shadow-xs"
-                            : "bg-[var(--bg-slate)] text-[var(--text-primary)] mr-4 border border-[var(--border-subtle)]"
-                        }`}
-                      >
-                        {m.role === "assistant" && m.provenanceMeta ? (
-                          <div className="mb-2 pb-1.5 border-b border-[var(--border-subtle)] flex flex-wrap items-center justify-between gap-1.5 text-[11px] omnis-mono">
-                            <span className="font-semibold text-[var(--text-secondary)] truncate">
-                              {m.provenanceMeta.countryName} ({m.provenanceMeta.iso3})
-                            </span>
-                            <span
-                              title={`${m.provenanceMeta.source} — ${m.provenanceMeta.methodology}`}
-                              className={`px-1.5 py-0.5 rounded font-bold shrink-0 ${
-                                m.provenanceMeta.verificationStatus === "verified"
-                                  ? "badge-tone-verified"
-                                  : m.provenanceMeta.verificationStatus === "single_source"
-                                    ? "badge-tone-warning"
-                                    : m.provenanceMeta.verificationStatus === "unverified"
-                                      ? "badge-tone-danger"
-                                      : "badge-tone-blue"
-                              }`}
-                            >
-                              {m.provenanceMeta.verificationStatus === "verified"
-                                ? "Verified Multi-Source"
-                                : m.provenanceMeta.verificationStatus === "single_source"
-                                  ? "Single Source"
-                                  : m.provenanceMeta.verificationStatus === "unverified"
-                                    ? "Unverified Claim"
-                                    : "Modeled Estimate"}
-                            </span>
-                          </div>
-                        ) : null}
-                        <div className="whitespace-pre-line leading-relaxed">{m.content}</div>
-                      {m.citations && m.citations.length > 0 && (
-                        <div className="mt-2 pt-2 border-t border-[var(--border-subtle)] space-y-1">
-                          <div className="text-xs font-medium text-[var(--text-muted)]">
-                            Sources
-                          </div>
-                          {m.citations.map((c) => (
-                            <a
-                              key={c.url}
-                              href={c.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="block text-xs sm:text-[13px] tone-blue hover:underline truncate font-medium"
-                            >
-                              • {c.label}
-                            </a>
-                          ))}
-                        </div>
-                      )}
-                      {m.suggestedActions && m.suggestedActions.length > 0 && (
-                        <div className="mt-2 pt-2 border-t border-[var(--border-subtle)] flex flex-wrap gap-1.5">
-                          {m.suggestedActions.map((act) => (
-                            <button
-                              key={act.href}
-                              type="button"
-                              onClick={() => {
-                                if (typeof window !== "undefined" && window.innerWidth < 640) {
-                                  setAssistantOpen(false);
-                                }
-                                router.push(act.href);
-                              }}
-                              className="min-h-[44px] md:min-h-0 inline-flex items-center px-3 md:px-2 py-1.5 md:py-1 rounded-md badge-tone-blue hover:brightness-105 text-xs font-semibold"
-                            >
-                              {act.label} →
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  {assistantLoading && (
-                    <div className="p-3 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)]">
-                      <OmnisLoader label="Checking World Bank & academic sources…" />
-                    </div>
-                  )}
-                </div>
-
-                <form
-                  onSubmit={handleAssistantSend}
-                  className="p-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] border-t border-[var(--border-subtle)] bg-[var(--bg-graphite)] flex items-center gap-2"
-                >
-                  <input
-                    type="text"
-                    value={assistantInput}
-                    onChange={(e) => setAssistantInput(e.target.value)}
-                    placeholder={`Ask about ${activeContextTopic}...`}
-                    className="flex-1 px-3 py-2 rounded-xl bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-base md:text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-blue)]"
-                  />
-                  <button
-                    type="submit"
-                    disabled={assistantLoading}
-                    aria-label="Send Assistant Message"
-                    className="min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px] flex items-center justify-center p-2 rounded-xl bg-[var(--accent-blue-solid)] hover:brightness-110 text-white disabled:opacity-50 transition-all cursor-pointer"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                  </button>
-                </form>
-              </motion.div>
-              </div>
-            )}
-          </AnimatePresence>
+          {/* Docked Right-Side Context-Aware AddyIntelligence Drawer (Cmd+J) */}
+          <AddyAssistantDrawer
+            open={assistantOpen}
+            onClose={() => setAssistantOpen(false)}
+            drawerRef={assistantDrawerRef}
+            activeContextLabel={activeContextLabel}
+            activeContextTopic={activeContextTopic}
+            assistantMessages={assistantMessages}
+            assistantInput={assistantInput}
+            assistantLoading={assistantLoading}
+            setAssistantInput={setAssistantInput}
+            onSend={(overridePrompt) => void handleAssistantSend(undefined, overridePrompt)}
+            onClear={clearAssistantMessages}
+          />
 
           {/* Keyboard Shortcuts Cheatsheet Modal (?) */}
           <AnimatePresence>
@@ -1229,8 +1079,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       },
                       {
                         keys: "⌘J / Ctrl+J",
-                        title: "Contextual AI Assistant",
-                        desc: "Open or close the grounded evidence synthesis drawer.",
+                        title: "AddyIntelligence",
+                        desc: "Open or close the AddyIntelligence multi-source assistant drawer.",
                       },
                       {
                         keys: "↑ / ↓ + ↵",

@@ -22,7 +22,7 @@ import {
   buildComparisonTakeaways,
   computeHistoricalMultiple,
 } from "@/lib/research/compare";
-import { orchestrateIntelligenceBrief } from "@/lib/ai/orchestrator";
+import { orchestrateAddyIntelligence } from "@/lib/ai/addyIntelligence";
 import type { RetrievalProgressCallback } from "@/lib/ai/contracts";
 import { synthesizeEditorialWithOptionalLlm } from "@/lib/research/llm";
 import { sanitizeEditorialProse } from "@/lib/research/prompts";
@@ -318,7 +318,7 @@ export async function orchestrateDeepResearch(
   const cleanQuery = query.trim();
   const nowIso = new Date().toISOString();
 
-  const { plan, evidencePack, brief } = await orchestrateIntelligenceBrief(cleanQuery, mode, {
+  const { plan, evidencePack, brief } = await orchestrateAddyIntelligence(cleanQuery, mode, {
     fetchFn: options?.fetchFn,
     onProgress: options?.onProgress,
   });

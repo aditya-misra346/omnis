@@ -1,5 +1,12 @@
 # OMNIS — Changelog (`CHANGELOG.md`)
 
+## [1.2.0] — 2026-11-18 — AddyIntelligence Launch
+
+### Added & Upgraded
+- **Rebranded & Upgraded Platform AI to `AddyIntelligence` (`src/lib/ai/addyIntelligence.ts`)**: Unified assistant copy, system prompts (`buildAssistantSystemPrompt`, `buildBriefSynthesisSystemPrompt`), API brief metadata (`engineName: "AddyIntelligence"`), command triggers, and UI drawers around **`AddyIntelligence`**.
+- **Batched Live World Bank WDI & Scholarly Retrieval (`src/lib/providers/live-data.ts`)**: Added `fetchWorldBankBatchedIndicators` (`source=2&date=2014:2026&mrnev=12&footnote=y&format=json` in chunks of 4 indicators) with timeout-aware non-duplicating fallback and OpenAlex `filter=has_abstract:true&select=...` optimization.
+- **Unified `src/components/ai/` Component Suite**: Replaced legacy intelligence components with `AddyIntelligenceView`, `AddyAssistantDrawer` (contextual starter chips, `16px` mobile-safe composer, `Verified Multi-Source` badges), `AddyBriefChart`, `AddyCitationDrawer`, and `AddyRetrievalStepper` wired across `/research`, `/command`, `/explore`, and `AppShell`.
+
 ## [1.1.0] — 2026-11-18
 
 ### Added & Upgraded

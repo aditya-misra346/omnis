@@ -100,6 +100,7 @@ export interface WorldBankSeriesSummary {
   latestYear: string;
   latestValue: number | null;
   countryName?: string;
+  footnote?: string;
   byYear: Map<number, number>;
   ok: boolean;
 }
@@ -176,6 +177,104 @@ export async function fetchWorldBankRangeSeries(
     setCached(cacheKey, result, result.byYear.size > 0 ? 300_000 : 15_000);
   }
   return result;
+}
+
+export async function fetchWorldBankBatchedIndicators(
+  iso3ListInput: string[],
+  indicatorsInput: string[],
+  dateRange = "2014:2026",
+  fetchFn: typeof fetch = fetch
+): Promise<{
+  seriesByKey: Map<string, WorldBankSeriesSummary>;
+  timedOut: boolean;
+  supportedBatch: boolean;
+}> {
+  const iso3List = Array.from(
+    new Set(iso3ListInput.map((c) => c.trim().toUpperCase()).filter((c) => /^[A-Z]{3}$/.test(c)))
+  );
+  const indicators = Array.from(new Set(indicatorsInput.map((i) => i.trim()).filter(Boolean)));
+  const seriesByKey = new Map<string, WorldBankSeriesSummary>();
+  if (iso3List.length === 0 || indicators.length === 0) {
+    return { seriesByKey, timedOut: false, supportedBatch: false };
+  }
+
+  // World Bank v2 semicolon multi-indicator batches cleanly up to 4 indicators per request
+  const chunks: string[][] = [];
+  for (let i = 0; i < indicators.length; i += 4) {
+    chunks.push(indicators.slice(i, i + 4));
+  }
+
+  let timedOut = false;
+  let supportedBatch = false;
+  const isoParam = iso3List.map((c) => encodeURIComponent(c)).join(";");
+
+  await Promise.allSettled(
+    chunks.map(async (chunk) => {
+      const indParam = chunk.map((c) => encodeURIComponent(c)).join(";");
+      const url = `https://api.worldbank.org/v2/country/${isoParam}/indicator/${indParam}?source=2&date=${encodeURIComponent(
+        dateRange
+      )}&mrnev=12&footnote=y&per_page=240&format=json`;
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
+      try {
+        const resp = await fetchFn(url, {
+          signal: controller.signal,
+          headers: { Accept: "application/json" },
+        });
+        if (!resp.ok) return;
+        const json = (await resp.json()) as unknown[];
+        if (!Array.isArray(json) || !Array.isArray(json[1])) return;
+
+        const rows = json[1] as Array<{
+          date?: string;
+          value?: number | null;
+          footnote?: string;
+          country?: { id?: string; value?: string };
+          countryiso3code?: string;
+          indicator?: { id?: string };
+        }>;
+
+        for (const row of rows) {
+          const rowIso3 = row.countryiso3code?.trim().toUpperCase();
+          const rowInd = row.indicator?.id?.trim();
+          if (!rowIso3 || !rowInd || typeof row.value !== "number" || !Number.isFinite(row.value) || !row.date) {
+            continue;
+          }
+          supportedBatch = true;
+          const key = `${rowIso3}:${rowInd}`;
+          let summary = seriesByKey.get(key);
+          if (!summary) {
+            summary = {
+              latestYear: "",
+              latestValue: null,
+              countryName: row.country?.value ? sanitizeExternalSnippet(row.country.value) : undefined,
+              footnote: row.footnote ? sanitizeExternalSnippet(row.footnote) : undefined,
+              byYear: new Map<number, number>(),
+              ok: true,
+            };
+            seriesByKey.set(key, summary);
+          }
+          const yr = Number.parseInt(row.date, 10);
+          if (Number.isFinite(yr)) {
+            summary.byYear.set(yr, row.value);
+          }
+          if (summary.latestValue === null || yr > Number.parseInt(summary.latestYear || "0", 10)) {
+            summary.latestYear = row.date;
+            summary.latestValue = row.value;
+            if (row.footnote) summary.footnote = sanitizeExternalSnippet(row.footnote);
+          }
+        }
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") {
+          timedOut = true;
+        }
+      } finally {
+        clearTimeout(timer);
+      }
+    })
+  );
+
+  return { seriesByKey, timedOut, supportedBatch };
 }
 
 interface RestCountriesAlphaRecord {
@@ -680,9 +779,11 @@ export async function fetchOpenAlexSources(
     const timer = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
     const encoded = encodeURIComponent(query);
     const focusTokens = extractQueryFocusTokens(query);
-    const fetchLimit = Math.min(12, Math.max(limit * 3, limit));
+    const fetchLimit = Math.min(12, Math.max(6, limit * 2));
     const sortParam = focusTokens.length >= 2 ? "relevance_score:desc" : "cited_by_count:desc";
-    const url = `https://api.openalex.org/works?search=${encoded}&per-page=${fetchLimit}&sort=${sortParam}&mailto=research@omnis-intelligence.org`;
+    const selectFields =
+      "id,doi,title,publication_year,cited_by_count,authorships,primary_location,abstract_inverted_index";
+    const url = `https://api.openalex.org/works?search=${encoded}&filter=has_abstract:true&sort=${sortParam}&per-page=${fetchLimit}&select=${selectFields}&mailto=research@omnis-intelligence.org`;
     const res = await fetchFn(url, {
       signal: controller.signal,
       headers: {

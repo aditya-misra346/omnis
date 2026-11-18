@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "OMNIS — The Intelligence of Everything",
     short_name: "OMNIS",
     description:
-      "Understand Anything. Connect Everything. Interactive 3D Global Atlas, Infinite Knowledge Graphs, Monte Carlo Simulations & Deep Research.",
+      "Understand Anything. Connect Everything. Interactive 3D Global Atlas, Infinite Knowledge Graphs, Monte Carlo Simulations & AddyIntelligence.",
     start_url: "/",
     display: "standalone",
     background_color: "#070A10",

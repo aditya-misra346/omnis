@@ -25,8 +25,8 @@ import {
   AlertTriangle,
   X,
 } from "lucide-react";
-import { IntelligenceBriefView } from "@/components/intelligence/IntelligenceBriefView";
-import { RetrievalProgressStepper } from "@/components/intelligence/RetrievalProgressStepper";
+import { AddyIntelligenceView } from "@/components/ai/AddyIntelligenceView";
+import { AddyRetrievalStepper } from "@/components/ai/AddyRetrievalStepper";
 import { streamResearchWithProgress, type RetrievalStageState } from "@/lib/ai/stream-client";
 import type { ResearchReportData } from "@/types/omnis";
 import { COUNTRIES_DATA, TIMELINE_EVENTS } from "@/lib/data/global-intelligence";
@@ -174,7 +174,7 @@ export default function CommandCenterPage() {
             </OmnisButton>
             <OmnisButton onClick={() => setAssistantOpen(true)}>
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Ask AI Assistant</span>
+              <span>Ask AddyIntelligence</span>
             </OmnisButton>
           </>
         }
@@ -201,7 +201,7 @@ export default function CommandCenterPage() {
               className="min-h-[44px] flex-1 sm:flex-none"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              <span>{briefLoading ? "Synthesizing..." : "Ask AI Brief"}</span>
+              <span>{briefLoading ? "Synthesizing..." : "Ask AddyIntelligence Brief"}</span>
             </OmnisButton>
             <OmnisButton type="submit" variant="secondary" size="md" className="omnis-magnetic-arrow min-h-[44px]">
               <span>Explore</span>
@@ -251,7 +251,7 @@ export default function CommandCenterPage() {
       ) : null}
 
       {briefLoading ? (
-        <RetrievalProgressStepper
+        <AddyRetrievalStepper
           stages={briefStages}
           elapsedMs={briefElapsedMs}
           query={briefQueryLabel}
@@ -260,7 +260,7 @@ export default function CommandCenterPage() {
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-semibold tone-blue">
-              Verified Inline Intelligence Brief
+              AddyIntelligence · Verified Brief
             </span>
             <button
               type="button"
@@ -271,7 +271,7 @@ export default function CommandCenterPage() {
               <span>Dismiss Brief</span>
             </button>
           </div>
-          <IntelligenceBriefView
+          <AddyIntelligenceView
             brief={briefReport.brief}
             onSelectFollowUp={(fq) => void runInlineBrief(fq)}
           />
@@ -471,7 +471,7 @@ export default function CommandCenterPage() {
                     icon: Clock,
                   },
                   {
-                    title: "Deep Research",
+                    title: "AddyIntelligence",
                     desc: "Plain-English answers backed by World Bank tables & OpenAlex studies.",
                     href: "/research",
                     icon: FileSearch,

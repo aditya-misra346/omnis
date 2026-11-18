@@ -9,5 +9,5 @@ export default function ResearchError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  return <OmnisModuleErrorFallback moduleName="Deep Research" error={error} reset={reset} />;
+  return <OmnisModuleErrorFallback moduleName="AddyIntelligence" error={error} reset={reset} />;
 }

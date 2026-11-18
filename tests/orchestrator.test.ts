@@ -1,13 +1,13 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { EvidencePack, IntelligenceBriefResponse } from "../src/lib/ai/contracts";
+import type { AddyIntelligenceBrief, EvidencePack } from "../src/lib/ai/contracts";
 import {
-  orchestrateIntelligenceBrief,
-  planResearchQuery,
+  orchestrateAddyIntelligence,
+  planAddyQuery,
   resolveCountryEntities,
   validateAndSanitizeBriefCitations,
-} from "../src/lib/ai/orchestrator";
+} from "../src/lib/ai/addyIntelligence";
 import {
   clearLiveCountryCacheForTests,
   fetchCrossrefSources,
@@ -15,8 +15,8 @@ import {
   reconstructOpenAlexAbstract,
 } from "../src/lib/providers/live-data";
 import { BANNED_AI_PHRASES } from "../src/lib/research/prompts";
-import { IntelligenceBriefView } from "../src/components/intelligence/IntelligenceBriefView";
-import { RetrievalProgressStepper } from "../src/components/intelligence/RetrievalProgressStepper";
+import { AddyIntelligenceView } from "../src/components/ai/AddyIntelligenceView";
+import { AddyRetrievalStepper } from "../src/components/ai/AddyRetrievalStepper";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -33,19 +33,19 @@ describe("OMNIS Principal AI Orchestrator & Grounding Integrity Suite", () => {
     const indUs = resolveCountryEntities("Compare Bharat and US clean energy and inflation");
     expect(indUs.map((e) => e.iso3)).toEqual(["IND", "USA"]);
 
-    const infPlan = planResearchQuery("Why is inflation affecting US households?");
+    const infPlan = planAddyQuery("Why is inflation affecting US households?");
     expect(infPlan.entities[0]?.iso3).toBe("USA");
     expect(infPlan.indicators).toContain("FP.CPI.TOTL.ZG");
     expect(infPlan.indicators).toContain("NY.GDP.PCAP.CD");
 
-    const cleanPlan = planResearchQuery("Compare India and China clean energy and economy size");
+    const cleanPlan = planAddyQuery("Compare India and China clean energy and economy size");
     expect(cleanPlan.intent).toBe("country_comparison");
     expect(cleanPlan.entities.map((e) => e.iso3)).toEqual(["IND", "CHN"]);
     expect(cleanPlan.indicators).toContain("EG.ELC.RNWX.ZS");
     expect(cleanPlan.indicators).toContain("EG.FEC.RNEW.ZS");
     expect(cleanPlan.indicators).toContain("NY.GDP.MKTP.CD");
 
-    const jaipurPlan = planResearchQuery(
+    const jaipurPlan = planAddyQuery(
       "What was the exact municipal property tax revenue of Jaipur in Q3 2025?"
     );
     expect(jaipurPlan.unavailableRequestedMetric).not.toBeNull();
@@ -151,7 +151,8 @@ describe("OMNIS Principal AI Orchestrator & Grounding Integrity Suite", () => {
       serializedForPrompt: "[SRC-1] India Nominal GDP reached $4.1T in 2025.",
     };
 
-    const taintedBrief: IntelligenceBriefResponse = {
+    const taintedBrief: AddyIntelligenceBrief = {
+      engineName: "AddyIntelligence",
       query: "Explain India's growth",
       intent: "development_trend",
       bottomLine:
@@ -291,7 +292,7 @@ describe("OMNIS Principal AI Orchestrator & Grounding Integrity Suite", () => {
 
     // Scenario 1: Single country multi-year macro development under partial outage
     const stagesSeen: number[] = [];
-    const s1 = await orchestrateIntelligenceBrief(
+    const s1 = await orchestrateAddyIntelligence(
       "Explain India's economic development since 2014 and what challenges remain.",
       "deep",
       {
@@ -299,6 +300,7 @@ describe("OMNIS Principal AI Orchestrator & Grounding Integrity Suite", () => {
         onProgress: (st) => stagesSeen.push(st.step),
       }
     );
+    expect(s1.brief.engineName).toBe("AddyIntelligence");
     expect(stagesSeen).toEqual(expect.arrayContaining([1, 2, 3, 4]));
     expect(s1.brief.bottomLine).toContain("2014");
     expect(s1.brief.bottomLine).toContain("$4.1T");
@@ -309,36 +311,39 @@ describe("OMNIS Principal AI Orchestrator & Grounding Integrity Suite", () => {
     }
 
     // Scenario 2: Country comparison bars
-    const s2 = await orchestrateIntelligenceBrief(
+    const s2 = await orchestrateAddyIntelligence(
       "Compare India and China across economy size, income per person, and clean energy.",
       "comparative",
       { fetchFn: partialOutageFetch }
     );
+    expect(s2.brief.engineName).toBe("AddyIntelligence");
     expect(s2.brief.visualData?.type).toBe("country_comparison_bars");
     expect(s2.brief.bottomLine).toContain("China");
     expect(s2.brief.bottomLine).toContain("India");
 
     // Scenario 4: Missing-data honesty test (sub-national quarterly property tax MUST refuse cleanly)
-    const s4 = await orchestrateIntelligenceBrief(
+    const s4 = await orchestrateAddyIntelligence(
       "What was the exact municipal property tax revenue of Jaipur in Q3 2025?",
       "deep",
       { fetchFn: partialOutageFetch }
     );
+    expect(s4.brief.engineName).toBe("AddyIntelligence");
     expect(s4.brief.bottomLine.toLowerCase()).toContain("not available in the verified datasets");
     expect(s4.brief.visualData).toBeUndefined();
     expect(s4.brief.diagnostics?.unavailableRequestedMetric).toContain("Jaipur");
 
     // Render UI components cleanly with SSR markup
     const briefHtml = renderToStaticMarkup(
-      React.createElement(IntelligenceBriefView, { brief: s1.brief })
+      React.createElement(AddyIntelligenceView, { brief: s1.brief })
     );
+    expect(briefHtml).toContain("AddyIntelligence");
     expect(briefHtml).toContain("The Bottom Line");
     expect(briefHtml).toContain("Practical Implications");
     expect(briefHtml).toContain("Explore Entities in Knowledge Graph");
     expect(briefHtml).toContain("Inspect");
 
     const stepperHtml = renderToStaticMarkup(
-      React.createElement(RetrievalProgressStepper, {
+      React.createElement(AddyRetrievalStepper, {
         stages: {
           1: { step: 1, label: "Resolving entities", status: "completed", elapsedMs: 12 },
           2: { step: 2, label: "Querying APIs", status: "active", elapsedMs: 420 },
@@ -347,6 +352,7 @@ describe("OMNIS Principal AI Orchestrator & Grounding Integrity Suite", () => {
         query: "Explain India economic growth",
       })
     );
+    expect(stepperHtml).toContain("AddyIntelligence");
     expect(stepperHtml).toContain("Step 1");
     expect(stepperHtml).toContain("Step 2");
   });

@@ -63,7 +63,7 @@ export default function NotFound() {
               <FileSearch className="w-4 h-4 tone-blue shrink-0" />
               <div>
                 <div className="text-sm font-semibold text-[var(--text-primary)]">
-                  Deep Research Engine
+                  AddyIntelligence Engine
                 </div>
                 <div className="text-xs text-[var(--text-muted)] omnis-mono">/research</div>
               </div>

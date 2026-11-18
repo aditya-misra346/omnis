@@ -57,7 +57,8 @@ export interface BriefSourceReference {
   excerptOrIndicator: string;
 }
 
-export interface IntelligenceBriefResponse {
+export interface AddyIntelligenceBrief {
+  engineName: "AddyIntelligence";
   query: string;
   intent: string;
   /** 2-3 plain-English sentences directly answering the user's question immediately */
@@ -84,6 +85,8 @@ export interface IntelligenceBriefResponse {
     elapsedMs: number;
   };
 }
+
+export type IntelligenceBriefResponse = AddyIntelligenceBrief;
 
 export const BriefKeyMetricSchema = z.object({
   label: z.string().min(1),
@@ -163,6 +166,7 @@ export interface WorldBankIndicatorReading {
   deltaPct?: number;
   deltaPp?: number;
   multiple?: number;
+  footnote?: string;
   series: WorldBankIndicatorPoint[];
   sourceUrl: string;
 }

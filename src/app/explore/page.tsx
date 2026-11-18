@@ -18,10 +18,10 @@ import {
   AlertTriangle,
   RotateCcw,
 } from "lucide-react";
-import { IntelligenceBriefView } from "@/components/intelligence/IntelligenceBriefView";
-import { RetrievalProgressStepper } from "@/components/intelligence/RetrievalProgressStepper";
+import { AddyIntelligenceView } from "@/components/ai/AddyIntelligenceView";
+import { AddyRetrievalStepper } from "@/components/ai/AddyRetrievalStepper";
 import { streamResearchWithProgress, type RetrievalStageState } from "@/lib/ai/stream-client";
-import type { IntelligenceBriefResponse } from "@/lib/ai/contracts";
+import type { AddyIntelligenceBrief } from "@/lib/ai/contracts";
 import {
   executeUniversalSearch,
   type UniversalSearchSourceFilter,
@@ -86,7 +86,7 @@ function ExploreContent() {
 
   const [briefResult, setBriefResult] = useState<{
     query: string;
-    brief: IntelligenceBriefResponse | null;
+    brief: AddyIntelligenceBrief | null;
     error: string | null;
   } | null>(null);
   const [briefStageState, setBriefStageState] = useState<{
@@ -375,13 +375,13 @@ function ExploreContent() {
               </OmnisButton>
             </div>
           ) : briefLoading ? (
-            <RetrievalProgressStepper
+            <AddyRetrievalStepper
               stages={briefStages}
               elapsedMs={briefElapsedMs}
               query={activeQuery}
             />
           ) : activeBrief ? (
-            <IntelligenceBriefView
+            <AddyIntelligenceView
               brief={activeBrief}
               onSelectFollowUp={(fq) => runSearchQuery(fq)}
             />
@@ -420,7 +420,7 @@ function ExploreContent() {
                   )}
                 </div>
                 <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
-                  OMNIS never makes up results when nothing matches your search. Try simpler words, check spelling, or run Deep Research to find academic studies.
+                  OMNIS never makes up results when nothing matches your search. Try simpler words, check spelling, or ask AddyIntelligence to find academic studies.
                 </p>
                 <div className="flex flex-wrap items-center gap-2 pt-1">
                   <span className="text-xs font-semibold text-[var(--text-muted)]">

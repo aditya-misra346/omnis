@@ -251,7 +251,7 @@ export const useOmnisStore = create<OmnisState>()(
           id: "msg-welcome",
           role: "assistant",
           content:
-            "Hi! I can answer questions using what is open on your screen right now—explaining any chart, comparing countries, tracing how topics connect, or digging up academic sources.",
+            "Hi! I’m AddyIntelligence. Ask me anything about what is open on your screen right now—explaining any chart, comparing countries with official World Bank & REST Countries data, tracing how topics connect, or synthesizing peer-reviewed research.",
           timestamp: "2026-11-15T08:00:00Z",
           citations: [
             { label: "World Bank Open Data API v2", url: "https://data.worldbank.org" },
@@ -272,7 +272,8 @@ export const useOmnisStore = create<OmnisState>()(
             {
               id: "msg-reset",
               role: "assistant",
-              content: "Chat cleared. Ask anything whenever you're ready.",
+              content:
+                "AddyIntelligence conversation reset. Ask about any country, macro trend, or academic topic whenever you’re ready.",
               timestamp: new Date().toISOString(),
             },
           ],
@@ -311,7 +312,7 @@ export const useOmnisStore = create<OmnisState>()(
               id: "msg-welcome",
               role: "assistant",
               content:
-                "Welcome to OMNIS Universal Intelligence Assistant. Local workspace storage was cleared and reset.",
+                "Welcome to AddyIntelligence. Local workspace storage was cleared and reset.",
               timestamp: new Date().toISOString(),
             },
           ],

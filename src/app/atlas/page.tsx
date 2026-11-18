@@ -303,7 +303,7 @@ function GlobalAtlasContent() {
               className="omnis-magnetic-arrow min-h-[44px] sm:min-h-0 px-3.5 py-2 rounded-lg bg-[var(--bg-slate)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[13px] font-semibold text-[var(--text-primary)] inline-flex items-center gap-1.5 transition-colors"
             >
               <FileSearch className="w-3.5 h-3.5 tone-blue" />
-              <span>Deep Research</span>
+              <span>AddyIntelligence</span>
               <ArrowRight className="omnis-arrow-glyph w-3 h-3 opacity-65" />
             </Link>
             <Link

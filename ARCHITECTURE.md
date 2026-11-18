@@ -70,24 +70,24 @@ omnis/
 │   │   ├── explore/page.tsx      # Universal Natural-Language Search & Knowledge Explorer
 │   │   ├── knowledge-graph/      # Module 02: Infinite Knowledge Graph
 │   │   ├── atlas/page.tsx        # Module 01: Global Intelligence Globe & Country Profiles
-│   │   ├── research/page.tsx     # Module 05: Deep Research Intelligence
+│   │   ├── research/page.tsx     # Module 05: AddyIntelligence Deep Research
 │   │   ├── simulations/page.tsx  # Module 03: What-If Simulation Engine
 │   │   ├── timeline/page.tsx     # Module 04: Reality Timeline
 │   │   ├── laboratory/page.tsx   # Module 06: Digital World Laboratory
 │   │   ├── workspace/page.tsx    # My Workspace & Report/Export Centre
 │   │   ├── settings/page.tsx     # Account, Theme, Followed Topics, Privacy & Data Provider Status
-│   │   └── api/v1/               # REST API routes (health, search, countries, graph, research, simulate, timeline, assistant, auth)
+│   │   └── api/v1/               # REST API routes (health, search, countries, graph, research, brief, simulate, timeline, assistant, auth)
 │   ├── components/
-│   │   ├── layout/               # AppShell, Collapsible Sidebar, Top Command Header, Mobile Drawer, AI Assistant
+│   │   ├── ai/                   # AddyIntelligence UI (AddyIntelligenceView, AddyAssistantDrawer, AddyBriefChart, AddyCitationDrawer, AddyRetrievalStepper)
+│   │   ├── layout/               # AppShell, Collapsible Sidebar, Top Command Header, Mobile Drawer
 │   │   ├── globe/                # Interactive 3D Three.js Earth Globe with shaders & markers
 │   │   ├── graph/                # Interactive D3 multi-layout Knowledge Graph canvas
-│   │   ├── intelligence/         # IntelligenceBriefView, BriefChartRenderer, CitationDrawer, RetrievalProgressStepper
 │   │   └── ui/                   # Provenance badges, charts, modals, skeletons
 │   ├── lib/
-│   │   ├── ai/                   # Verified Plan -> Retrieve -> Verify -> Synthesize AI orchestrator & contracts
+│   │   ├── ai/                   # AddyIntelligence multi-source RAG orchestrator (addyIntelligence.ts, contracts.ts, stream-client.ts)
 │   │   ├── data/                 # Baseline curated datasets, historical registry, scientific constants
-│   │   ├── providers/            # Centralised live API provider clients (World Bank, OpenAlex, Crossref, Wikimedia, REST Countries)
-│   │   ├── research/             # Deep Research orchestration & strict citation-grounded synthesis prompts
+│   │   ├── providers/            # Centralised live API provider clients (World Bank batched v2, OpenAlex, Crossref, Wikimedia, REST Countries)
+│   │   ├── research/             # AddyIntelligence synthesis prompts & research report builder
 │   │   ├── simulations/          # Reproducible mathematical simulation & sensitivity engines
 │   │   ├── security/             # Input sanitizers, rate limiters, prompt-injection filters
 │   │   └── store/                # Zustand persistent state store (workspace, preferences, auth)

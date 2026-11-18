@@ -42,13 +42,13 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: "OMNIS — The Intelligence of Everything",
   description:
-    "Understand Anything. Connect Everything. Interactive 3D Global Atlas, Infinite Knowledge Graphs, Monte Carlo Simulations & Deep Research.",
+    "Understand Anything. Connect Everything. Interactive 3D Global Atlas, Infinite Knowledge Graphs, Monte Carlo Simulations & AddyIntelligence.",
   applicationName: "OMNIS",
   manifest: "/manifest.webmanifest",
   openGraph: {
     title: "OMNIS — The Intelligence of Everything",
     description:
-      "Understand Anything. Connect Everything. Interactive 3D Global Atlas, Infinite Knowledge Graphs, Monte Carlo Simulations & Deep Research.",
+      "Understand Anything. Connect Everything. Interactive 3D Global Atlas, Infinite Knowledge Graphs, Monte Carlo Simulations & AddyIntelligence.",
     url: "https://omnis-one.vercel.app",
     siteName: "OMNIS",
     type: "website",
@@ -68,7 +68,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "OMNIS — The Intelligence of Everything",
     description:
-      "Understand Anything. Connect Everything. Interactive 3D Global Atlas, Infinite Knowledge Graphs, Monte Carlo Simulations & Deep Research.",
+      "Understand Anything. Connect Everything. Interactive 3D Global Atlas, Infinite Knowledge Graphs, Monte Carlo Simulations & AddyIntelligence.",
     images: [
       {
         url: "https://omnis-one.vercel.app/og-image.jpg",
