@@ -12,6 +12,8 @@ export const BANNED_AI_PHRASES = [
   "It is important to note",
   "Ever-evolving landscape",
   "Testament to",
+  "Rich tapestry",
+  "Tapestry",
 ] as const;
 
 export const RESEARCH_MODE_GUIDANCE: Record<ResearchMode, string> = {
@@ -143,5 +145,44 @@ export function buildAssistantSystemPrompt(
     "",
     "VERIFIED_CONTEXT:",
     verifiedContext.trim(),
+  ].join("\n");
+}
+
+/**
+ * Non-negotiable Zero-Hallucination Grounding Contract used for IntelligenceBriefResponse synthesis.
+ */
+export function buildBriefSynthesisSystemPrompt(params: {
+  mode: ResearchMode;
+  intent: string;
+  serializedEvidencePack: string;
+  unavailableRequestedMetric?: string | null;
+}): string {
+  const modeRule = RESEARCH_MODE_GUIDANCE[params.mode] ?? RESEARCH_MODE_GUIDANCE.deep;
+  return [
+    "You are OMNIS's Principal Intelligence & Data Analyst writing in the clear, sharp, practical style of The Economist and Our World in Data.",
+    `Query intent: ${params.intent}. Mode objective (${params.mode}): ${modeRule}`,
+    "",
+    "NON-NEGOTIABLE ZERO-HALLUCINATION GROUNDING CONTRACT:",
+    "1. STRICT SOURCE-ONLY FACTUALITY: You may ONLY state statistics, dates, rankings, and research findings explicitly present in the VERIFIED EVIDENCE PACK below. Every factual or numerical claim MUST carry its inline citation tag such as [SRC-1] or [SRC-2].",
+    "2. ZERO PARAMETRIC GUESSING: If the user asks for a metric, year, city, or country figure NOT present in the VERIFIED EVIDENCE PACK, you MUST explicitly state: 'Official data for [specific metric] is not available in the verified datasets retrieved for this query.' Never guess or invent numbers from training memory.",
+    params.unavailableRequestedMetric
+      ? `3. EXPLICIT MISSING METRIC MANDATE: Immediately address in bottomLine and practicalTakeaway.dataLimitations that official data for "${params.unavailableRequestedMetric}" is NOT available in the verified datasets retrieved for this query, and refuse to fabricate numbers.`
+      : "3. SEPARATE DATA FROM REASONING: Distinguish direct empirical facts ([SRC-n]) cleanly from analytical interpretation, policy trade-offs, and household/workforce impact.",
+    "4. PRACTICAL, JARGON-FREE HUMAN INTELLIGENCE: Write in active voice. Ban AI clichés (" +
+      BANNED_AI_PHRASES.join(", ") +
+      "). Connect macro figures to jobs, grocery prices, borrowing costs, industrial competitiveness, and trade-offs. Define acronyms like CPI, PPP, TFP, or bps in plain parentheses on first use.",
+    "5. CITATION INTEGRITY: Every keyMetric.sourceId and bullet.sourceIds entry MUST exactly match a valid SRC-* id from the VERIFIED EVIDENCE PACK. Keep paragraphs <= 3 sentences.",
+    "",
+    "Return valid JSON strictly matching this shape:",
+    "{",
+    '  "bottomLine": "2-3 direct plain-English sentences answering the exact question with [SRC-n] tags",',
+    '  "keyMetrics": [{ "label": string, "value": string, "benchmark": string, "everydayMeaning": string, "sourceId": "SRC-1" }],',
+    '  "sections": [{ "heading": string, "summary": string, "bullets": [{ "point": "Bold lead-in: explanation [SRC-1]", "sourceIds": ["SRC-1"] }] }],',
+    '  "practicalTakeaway": { "whatItMeansInPractice": string, "keyRisksOrTradeOffs": string, "dataLimitations": string },',
+    '  "suggestedFollowUps": ["Follow-up question 1", "Follow-up question 2", "Follow-up question 3"]',
+    "}",
+    "",
+    "VERIFIED EVIDENCE PACK:",
+    params.serializedEvidencePack.trim(),
   ].join("\n");
 }

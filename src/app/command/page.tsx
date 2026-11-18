@@ -22,7 +22,13 @@ import {
   TrendingUp,
   Layers,
   LayoutGrid,
+  AlertTriangle,
+  X,
 } from "lucide-react";
+import { IntelligenceBriefView } from "@/components/intelligence/IntelligenceBriefView";
+import { RetrievalProgressStepper } from "@/components/intelligence/RetrievalProgressStepper";
+import { streamResearchWithProgress, type RetrievalStageState } from "@/lib/ai/stream-client";
+import type { ResearchReportData } from "@/types/omnis";
 import { COUNTRIES_DATA, TIMELINE_EVENTS } from "@/lib/data/global-intelligence";
 import { formatSignedPct } from "@/lib/formatters";
 import { OmnisButton, OmnisModuleHeader } from "@/components/ui/OmnisPrimitives";
@@ -44,6 +50,12 @@ export default function CommandCenterPage() {
 
   const [commandInput, setCommandInput] = useState("");
   const [customizeOpen, setCustomizeOpen] = useState(false);
+  const [briefReport, setBriefReport] = useState<ResearchReportData | null>(null);
+  const [briefLoading, setBriefLoading] = useState(false);
+  const [briefStages, setBriefStages] = useState<Partial<Record<1 | 2 | 3 | 4, RetrievalStageState>>>({});
+  const [briefElapsedMs, setBriefElapsedMs] = useState(0);
+  const [briefError, setBriefError] = useState<string | null>(null);
+  const [briefQueryLabel, setBriefQueryLabel] = useState("");
   const [providerStatuses, setProviderStatuses] = useState<
     Array<{ id: string; name: string; status: string; latencyMs?: number; license: string }>
   >([
@@ -81,6 +93,47 @@ export default function CommandCenterPage() {
     };
   }, []);
 
+  const runInlineBrief = async (rawQuery: string) => {
+    const clean = rawQuery.trim();
+    if (clean.length < 3) return;
+    addSearchQuery(clean);
+    setCommandInput(clean);
+    setBriefQueryLabel(clean);
+    setBriefLoading(true);
+    setBriefError(null);
+    setBriefStages({
+      1: {
+        step: 1,
+        label: "Resolving countries, time horizons & economic indicators…",
+        status: "active",
+        elapsedMs: 0,
+      },
+    });
+    setBriefElapsedMs(0);
+
+    const startedAt = Date.now();
+    const ticker = window.setInterval(() => {
+      setBriefElapsedMs(Date.now() - startedAt);
+    }, 150);
+
+    try {
+      const data = await streamResearchWithProgress(clean, "deep", {
+        onStage: (stage) => {
+          setBriefElapsedMs(stage.elapsedMs);
+          setBriefStages((prev) => ({ ...prev, [stage.step]: stage }));
+        },
+      });
+      setBriefReport(data);
+    } catch (err) {
+      setBriefError(
+        err instanceof Error && err.message ? err.message : "Could not synthesize brief."
+      );
+    } finally {
+      window.clearInterval(ticker);
+      setBriefLoading(false);
+    }
+  };
+
   const handleCommandSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const q = commandInput.trim();
@@ -93,6 +146,8 @@ export default function CommandCenterPage() {
       router.push(`/simulations?q=${encodeURIComponent(q)}`);
     } else if (lower.startsWith("graph ")) {
       router.push(`/knowledge-graph?topic=${encodeURIComponent(q.replace(/^graph\s+/i, ""))}`);
+    } else if (q.split(/\s+/).length >= 4 || q.includes("?")) {
+      void runInlineBrief(q);
     } else {
       router.push(`/explore?q=${encodeURIComponent(q)}`);
     }
@@ -138,10 +193,21 @@ export default function CommandCenterPage() {
               className="w-full bg-transparent text-base md:text-[15px] focus:outline-none text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
             />
           </div>
-          <OmnisButton type="submit" size="md" className="omnis-magnetic-arrow">
-            <span>Search</span>
-            <ArrowRight className="omnis-arrow-glyph w-3.5 h-3.5" />
-          </OmnisButton>
+          <div className="flex flex-wrap sm:flex-nowrap gap-2">
+            <OmnisButton
+              type="button"
+              onClick={() => void runInlineBrief(commandInput || "Explain India's economic development since 2014 and what challenges remain.")}
+              disabled={briefLoading}
+              className="min-h-[44px] flex-1 sm:flex-none"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>{briefLoading ? "Synthesizing..." : "Ask AI Brief"}</span>
+            </OmnisButton>
+            <OmnisButton type="submit" variant="secondary" size="md" className="omnis-magnetic-arrow min-h-[44px]">
+              <span>Explore</span>
+              <ArrowRight className="omnis-arrow-glyph w-3.5 h-3.5" />
+            </OmnisButton>
+          </div>
         </form>
 
         <div className="flex flex-wrap items-center gap-2 text-[13px]">
@@ -165,6 +231,52 @@ export default function CommandCenterPage() {
           ))}
         </div>
       </OmnisModuleHeader>
+
+      {briefError ? (
+        <div className="omnis-card p-4 border-[var(--status-danger)] text-sm tone-danger flex flex-wrap items-center justify-between gap-2 font-medium">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>{briefError}</span>
+          </div>
+          <OmnisButton
+            variant="secondary"
+            size="sm"
+            onClick={() => void runInlineBrief(briefQueryLabel || commandInput)}
+            className="min-h-[44px]"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Retry</span>
+          </OmnisButton>
+        </div>
+      ) : null}
+
+      {briefLoading ? (
+        <RetrievalProgressStepper
+          stages={briefStages}
+          elapsedMs={briefElapsedMs}
+          query={briefQueryLabel}
+        />
+      ) : briefReport?.brief ? (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold tone-blue">
+              Verified Inline Intelligence Brief
+            </span>
+            <button
+              type="button"
+              onClick={() => setBriefReport(null)}
+              className="min-h-[36px] px-2.5 py-1 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] inline-flex items-center gap-1 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Dismiss Brief</span>
+            </button>
+          </div>
+          <IntelligenceBriefView
+            brief={briefReport.brief}
+            onSelectFollowUp={(fq) => void runInlineBrief(fq)}
+          />
+        </div>
+      ) : null}
 
       {customizeOpen ? (
         <div className="p-4 rounded-lg bg-[var(--bg-slate)] border border-[var(--border-strong)] space-y-3">

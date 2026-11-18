@@ -1,5 +1,12 @@
 # OMNIS — Changelog (`CHANGELOG.md`)
 
+## [1.1.0] — 2026-11-18
+
+### Added & Upgraded
+- **Verified Multi-Source AI Orchestrator (`src/lib/ai/orchestrator.ts`, `contracts.ts`, `stream-client.ts`)**: Replaced static/generic answer paths with a **Plan → Retrieve → Verify → Synthesize** pipeline combining structured query/entity/WDI-indicator planning (130+ sovereigns & 19 World Bank WDI series across `2014:2026`), REST Countries v3.1, OpenAlex (with inverted-index abstract reconstruction), Crossref DOI citations, and Wikimedia REST v1.
+- **Zero-Hallucination Grounding & Citation Validator**: Enforced `[SRC-n]` claim-level provenance, explicit refusal on unretrieved/sub-national metrics, and programmatic stripping of any fabricated `[SRC-*]` references (`validateAndSanitizeBriefCitations`).
+- **Editorial Intelligence Brief UI & Real-Time Streaming Progress**: Built `RetrievalProgressStepper`, `BriefChartRenderer` (trend line, side-by-side comparison bars, breakdown table with active readout strip), sticky desktop provenance rail, swipe-dismissible mobile `CitationDrawer`, and wired `/api/v1/brief` + `/api/v1/research` NDJSON streaming across `/research`, `/command`, and `/explore`.
+
 ## [1.0.0] — 2026-11-15
 
 ### Added

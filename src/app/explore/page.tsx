@@ -15,7 +15,13 @@ import {
   Network,
   ArrowRight,
   Trash2,
+  AlertTriangle,
+  RotateCcw,
 } from "lucide-react";
+import { IntelligenceBriefView } from "@/components/intelligence/IntelligenceBriefView";
+import { RetrievalProgressStepper } from "@/components/intelligence/RetrievalProgressStepper";
+import { streamResearchWithProgress, type RetrievalStageState } from "@/lib/ai/stream-client";
+import type { IntelligenceBriefResponse } from "@/lib/ai/contracts";
 import {
   executeUniversalSearch,
   type UniversalSearchSourceFilter,
@@ -77,6 +83,22 @@ function ExploreContent() {
   const openAlexWorks = openAlexFetch?.query === activeQuery ? openAlexFetch.works : [];
   const liveFetchState: "loading" | "verified" | "offline-fallback" =
     openAlexFetch?.query === activeQuery ? openAlexFetch.status : "loading";
+
+  const [briefResult, setBriefResult] = useState<{
+    query: string;
+    brief: IntelligenceBriefResponse | null;
+    error: string | null;
+  } | null>(null);
+  const [briefStageState, setBriefStageState] = useState<{
+    query: string;
+    stages: Partial<Record<1 | 2 | 3 | 4, RetrievalStageState>>;
+  }>({ query: "", stages: {} });
+  const briefStages = briefStageState.query === activeQuery ? briefStageState.stages : {};
+  const [briefElapsedMs, setBriefElapsedMs] = useState(0);
+  const [briefRetryTick, setBriefRetryTick] = useState(0);
+  const briefLoading = briefResult?.query !== activeQuery;
+  const activeBrief = briefResult?.query === activeQuery ? briefResult.brief : null;
+  const briefError = briefResult?.query === activeQuery ? briefResult.error : null;
 
   const {
     searchHistory,
@@ -152,6 +174,53 @@ function ExploreContent() {
     };
   }, [activeQuery]);
 
+  useEffect(() => {
+    const targetQuery = activeQuery.trim();
+    if (targetQuery.length < 3) return;
+    const controller = new AbortController();
+    let active = true;
+    const startedAt = Date.now();
+    const ticker = window.setInterval(() => {
+      if (active) setBriefElapsedMs(Date.now() - startedAt);
+    }, 150);
+
+    streamResearchWithProgress(targetQuery, "deep", {
+      signal: controller.signal,
+      onStage: (stage) => {
+        if (!active) return;
+        setBriefElapsedMs(stage.elapsedMs);
+        setBriefStageState((prev) => ({
+          query: activeQuery,
+          stages: {
+            ...(prev.query === activeQuery ? prev.stages : {}),
+            [stage.step]: stage,
+          },
+        }));
+      },
+    })
+      .then((report) => {
+        if (!active) return;
+        setBriefResult({ query: activeQuery, brief: report.brief ?? null, error: null });
+      })
+      .catch((err) => {
+        if (!active || (err instanceof Error && err.name === "AbortError")) return;
+        setBriefResult({
+          query: activeQuery,
+          brief: null,
+          error: err instanceof Error ? err.message : "Failed to synthesize grounded brief.",
+        });
+      })
+      .finally(() => {
+        window.clearInterval(ticker);
+      });
+
+    return () => {
+      active = false;
+      window.clearInterval(ticker);
+      controller.abort();
+    };
+  }, [activeQuery, briefRetryTick]);
+
   const searchResults = useMemo(
     () => executeUniversalSearch(activeQuery, activeTab, sourceFilter),
     [activeQuery, activeTab, sourceFilter]
@@ -202,14 +271,14 @@ function ExploreContent() {
           onSubmit={handleSearch}
           className="flex flex-col sm:flex-row gap-2 bg-[var(--bg-slate)] p-2 rounded-xl border border-[var(--border-subtle)] focus-within:border-[var(--accent-blue)] transition-colors"
         >
-          <div className="flex-1 flex items-center gap-2.5 px-3 py-1.5">
+          <div className="flex-1 flex items-center gap-2.5 px-3 py-1">
             <Search className="w-4 h-4 tone-blue shrink-0" />
             <input
               type="text"
               value={queryInput}
               onChange={(e) => setQueryInput(e.target.value)}
               placeholder="Search any country, topic, event, or question..."
-              className="w-full bg-transparent text-base md:text-[15px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
+              className="w-full min-h-[44px] sm:min-h-[36px] bg-transparent text-base md:text-[15px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
             />
           </div>
           <OmnisSelect
@@ -229,7 +298,7 @@ function ExploreContent() {
               { value: "curated", label: "Built-in Industry Guides" },
             ]}
           />
-          <OmnisButton type="submit">Search</OmnisButton>
+          <OmnisButton type="submit" className="min-h-[44px]">Search</OmnisButton>
         </form>
 
         {/* Quick Routing Helper */}
@@ -282,6 +351,43 @@ function ExploreContent() {
           />
         </div>
       </OmnisModuleHeader>
+
+      {/* Synthesized Grounded Intelligence Brief above Categorized Indices */}
+      {(activeTab === "overview" || activeTab === "research") && activeQuery.trim().length >= 3 ? (
+        <section className="space-y-4">
+          {briefError ? (
+            <div className="omnis-card p-4 border-[var(--status-danger)] text-sm tone-danger flex flex-wrap items-center justify-between gap-2 font-medium">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>{briefError}</span>
+              </div>
+              <OmnisButton
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setBriefResult(null);
+                  setBriefRetryTick((n) => n + 1);
+                }}
+                className="min-h-[44px]"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Retry Brief</span>
+              </OmnisButton>
+            </div>
+          ) : briefLoading ? (
+            <RetrievalProgressStepper
+              stages={briefStages}
+              elapsedMs={briefElapsedMs}
+              query={activeQuery}
+            />
+          ) : activeBrief ? (
+            <IntelligenceBriefView
+              brief={activeBrief}
+              onSelectFollowUp={(fq) => runSearchQuery(fq)}
+            />
+          ) : null}
+        </section>
+      ) : null}
 
       {/* Categorised Search Results + History Sidebar */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

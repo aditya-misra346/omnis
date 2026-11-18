@@ -1,4 +1,5 @@
 import {
+  fetchCrossrefSources,
   fetchOpenAlexPublicationTrend,
   fetchOpenAlexSources,
   fetchWikimediaSummary,
@@ -40,6 +41,14 @@ export async function GET(request: Request) {
     const summary = await fetchWikimediaSummary(clean);
     return Response.json(
       { ok: true, summary },
+      { headers: { "Cache-Control": "public, max-age=180, s-maxage=300" } }
+    );
+  }
+
+  if (provider === "crossref") {
+    const items = await fetchCrossrefSources(clean, limit);
+    return Response.json(
+      { ok: true, items },
       { headers: { "Cache-Control": "public, max-age=180, s-maxage=300" } }
     );
   }

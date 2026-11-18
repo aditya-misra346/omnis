@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { IntelligenceBriefResponse } from "@/lib/ai/contracts";
 
 export type VerificationStatus =
   | "verified"
@@ -347,6 +348,7 @@ export interface ResearchSourceItem {
   retrievedAt: string;
   url: string;
   doi?: string;
+  citedByCount?: number;
   sourceType:
     | "Primary Official Data"
     | "Peer-Reviewed Academic"
@@ -400,6 +402,7 @@ export interface ResearchReportData {
   conclusions: string;
   sources: ResearchSourceItem[];
   relatedGraphTopic: string;
+  brief?: IntelligenceBriefResponse;
 }
 
 export const SimulationRequestSchema = z.object({

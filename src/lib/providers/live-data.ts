@@ -9,6 +9,7 @@ interface CacheEntry<T> {
 
 const memoryCache = new Map<string, CacheEntry<unknown>>();
 const MAX_LIVE_CACHE_ENTRIES = 256;
+const PROVIDER_TIMEOUT_MS = 6000;
 let openAlexCooldownUntil = 0;
 
 function getCached<T>(key: string): T | null {
@@ -49,7 +50,7 @@ export function clearLiveCountryCacheForTests(): void {
 async function fetchJsonWithTimeout<T>(
   fetchFn: typeof fetch,
   url: string,
-  timeoutMs = 2800,
+  timeoutMs = PROVIDER_TIMEOUT_MS,
   headers: Record<string, string> = { Accept: "application/json" }
 ): Promise<T | null> {
   const controller = new AbortController();
@@ -65,28 +66,62 @@ async function fetchJsonWithTimeout<T>(
   }
 }
 
-interface WorldBankSeriesSummary {
+export function truncateAtWord(text: string, maxChars: number): string {
+  const clean = text.trim();
+  if (clean.length <= maxChars) return clean;
+  const slice = clean.slice(0, maxChars);
+  const lastSpace = slice.lastIndexOf(" ");
+  return `${(lastSpace > Math.floor(maxChars * 0.4) ? slice.slice(0, lastSpace) : slice).trim()}…`;
+}
+
+export function reconstructOpenAlexAbstract(
+  invertedIndex?: Record<string, number[]> | null,
+  maxChars = 480
+): string {
+  if (!invertedIndex || typeof invertedIndex !== "object") return "";
+  const wordsByPos: Array<{ pos: number; word: string }> = [];
+  for (const [word, positions] of Object.entries(invertedIndex)) {
+    if (!Array.isArray(positions)) continue;
+    for (const pos of positions) {
+      if (typeof pos === "number" && Number.isFinite(pos) && pos >= 0 && pos < 1200) {
+        wordsByPos.push({ pos, word });
+      }
+    }
+  }
+  if (wordsByPos.length === 0) return "";
+  wordsByPos.sort((a, b) => a.pos - b.pos);
+  const cleaned = sanitizeExternalSnippet(wordsByPos.map((w) => w.word).join(" "))
+    .replace(/\s+([,.;:!?])/g, "$1")
+    .trim();
+  return truncateAtWord(cleaned, maxChars);
+}
+
+export interface WorldBankSeriesSummary {
   latestYear: string;
   latestValue: number | null;
   countryName?: string;
   byYear: Map<number, number>;
+  ok: boolean;
 }
 
 async function fetchWorldBankIndicatorSeries(
   fetchFn: typeof fetch,
   iso3: string,
   indicator: string,
-  perPage = 10
+  perPage = 16,
+  dateRange?: string
 ): Promise<WorldBankSeriesSummary> {
   const empty: WorldBankSeriesSummary = {
     latestYear: "",
     latestValue: null,
     byYear: new Map<number, number>(),
+    ok: false,
   };
+  const dateParam = dateRange ? `&date=${encodeURIComponent(dateRange)}` : "";
   const wbUrl = `https://api.worldbank.org/v2/country/${encodeURIComponent(
     iso3
-  )}/indicator/${encodeURIComponent(indicator)}?format=json&per_page=${perPage}`;
-  const json = await fetchJsonWithTimeout<unknown[]>(fetchFn, wbUrl, 2800);
+  )}/indicator/${encodeURIComponent(indicator)}?format=json&per_page=${perPage}${dateParam}`;
+  const json = await fetchJsonWithTimeout<unknown[]>(fetchFn, wbUrl, PROVIDER_TIMEOUT_MS);
   if (!Array.isArray(json) || !Array.isArray(json[1])) return empty;
 
   const entries = json[1] as Array<{
@@ -110,14 +145,37 @@ async function fetchWorldBankIndicatorSeries(
       if (Number.isFinite(yearNum)) {
         byYear.set(yearNum, entry.value);
       }
-      if (latestValue === null) {
+      if (latestValue === null || yearNum > Number.parseInt(latestYear || "0", 10)) {
         latestYear = entry.date;
         latestValue = entry.value;
       }
     }
   }
 
-  return { latestYear, latestValue, countryName, byYear };
+  return { latestYear, latestValue, countryName, byYear, ok: true };
+}
+
+export async function fetchWorldBankRangeSeries(
+  iso3Input: string,
+  indicator: string,
+  dateRange = "2014:2026",
+  fetchFn: typeof fetch = fetch
+): Promise<WorldBankSeriesSummary> {
+  const iso3 = iso3Input.trim().toUpperCase();
+  if (!/^[A-Z]{3}$/.test(iso3)) {
+    return { latestYear: "", latestValue: null, byYear: new Map<number, number>(), ok: false };
+  }
+  const useCache = fetchFn === fetch;
+  const cacheKey = `wb-series:${iso3}:${indicator}:${dateRange}`;
+  if (useCache) {
+    const hit = getCached<WorldBankSeriesSummary>(cacheKey);
+    if (hit) return hit;
+  }
+  const result = await fetchWorldBankIndicatorSeries(fetchFn, iso3, indicator, 24, dateRange);
+  if (useCache) {
+    setCached(cacheKey, result, result.byYear.size > 0 ? 300_000 : 15_000);
+  }
+  return result;
 }
 
 interface RestCountriesAlphaRecord {
@@ -135,6 +193,91 @@ interface RestCountriesAlphaRecord {
   currencies?: Record<string, { name?: string; symbol?: string }>;
   landlocked?: boolean;
   borders?: string[];
+}
+
+function iso2ToFlagEmoji(iso2: string): string {
+  const clean = iso2.trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(clean)) return "🌐";
+  return String.fromCodePoint(...clean.split("").map((c) => 127397 + c.charCodeAt(0)));
+}
+
+export interface RawRestCountryBundle {
+  iso3: string;
+  iso2: string;
+  name: string;
+  officialName: string;
+  flagEmoji: string;
+  capital: string;
+  region: string;
+  subregion: string;
+  lat: number;
+  lng: number;
+  population: number;
+  areaSqKm: number;
+  languages: string[];
+  currency: string;
+  borders: string[];
+  url: string;
+  validRc: boolean;
+}
+
+export async function fetchRestCountriesProfile(
+  iso3Input: string,
+  fetchFn: typeof fetch = fetch
+): Promise<RawRestCountryBundle | null> {
+  const iso3 = iso3Input.trim().toUpperCase();
+  if (!/^[A-Z]{3}$/.test(iso3)) return null;
+  const useCache = fetchFn === fetch;
+  const cacheKey = `rc:${iso3}`;
+  if (useCache) {
+    const cached = getCached<RawRestCountryBundle>(cacheKey);
+    if (cached) return cached;
+  }
+
+  const rcRaw = await fetchJsonWithTimeout<RestCountriesAlphaRecord[] | RestCountriesAlphaRecord>(
+    fetchFn,
+    `https://restcountries.com/v3.1/alpha/${encodeURIComponent(iso3)}`,
+    PROVIDER_TIMEOUT_MS
+  );
+  const rcRecord = Array.isArray(rcRaw) ? rcRaw[0] : rcRaw;
+  const isValid = Boolean(
+    rcRecord && (!rcRecord.cca3 || rcRecord.cca3.toUpperCase() === iso3)
+  );
+  if (!isValid || !rcRecord) return null;
+
+  const iso2 = (rcRecord.cca2 || iso3.slice(0, 2)).toUpperCase();
+  const currencyEntry = rcRecord.currencies ? Object.values(rcRecord.currencies)[0] : undefined;
+  const currency = currencyEntry?.name
+    ? sanitizeExternalSnippet(
+        currencyEntry.symbol ? `${currencyEntry.name} (${currencyEntry.symbol})` : currencyEntry.name
+      )
+    : "Unavailable in live feed";
+
+  const bundle: RawRestCountryBundle = {
+    iso3,
+    iso2,
+    name: sanitizeExternalSnippet(rcRecord.name?.common || iso3),
+    officialName: sanitizeExternalSnippet(rcRecord.name?.official || rcRecord.name?.common || iso3),
+    flagEmoji: rcRecord.flag || iso2ToFlagEmoji(iso2),
+    capital: rcRecord.capital?.[0] ? sanitizeExternalSnippet(rcRecord.capital[0]) : "Unavailable",
+    region: rcRecord.region ? sanitizeExternalSnippet(rcRecord.region) : "Global",
+    subregion: rcRecord.subregion ? sanitizeExternalSnippet(rcRecord.subregion) : "Live Hydrated Profile",
+    lat: rcRecord.latlng?.[0] ?? 0,
+    lng: rcRecord.latlng?.[1] ?? 0,
+    population: typeof rcRecord.population === "number" && Number.isFinite(rcRecord.population) ? rcRecord.population : 0,
+    areaSqKm: typeof rcRecord.area === "number" && Number.isFinite(rcRecord.area) ? rcRecord.area : 0,
+    languages: rcRecord.languages
+      ? Object.values(rcRecord.languages).map((l) => sanitizeExternalSnippet(l)).slice(0, 6)
+      : [],
+    currency,
+    borders: Array.isArray(rcRecord.borders) ? rcRecord.borders.slice(0, 12) : [],
+    url: `https://restcountries.com/v3.1/alpha/${iso3}`,
+    validRc: true,
+  };
+  if (useCache) {
+    setCached(cacheKey, bundle, 300_000);
+  }
+  return bundle;
 }
 
 export async function fetchLiveCountryIntelligence(
@@ -177,12 +320,6 @@ export async function fetchLiveCountryIntelligence(
     return baseProfile;
   }
 
-function iso2ToFlagEmoji(iso2: string): string {
-  const clean = iso2.trim().toUpperCase();
-  if (!/^[A-Z]{2}$/.test(clean)) return "🌐";
-  return String.fromCodePoint(...clean.split("").map((c) => 127397 + c.charCodeAt(0)));
-}
-
 interface WorldBankCountryMetaRecord {
   id?: string;
   iso2Code?: string;
@@ -199,12 +336,12 @@ interface WorldBankCountryMetaRecord {
     fetchJsonWithTimeout<RestCountriesAlphaRecord[] | RestCountriesAlphaRecord>(
       fetchFn,
       `https://restcountries.com/v3.1/alpha/${encodeURIComponent(iso3)}`,
-      2200
+      PROVIDER_TIMEOUT_MS
     ),
     fetchJsonWithTimeout<unknown[]>(
       fetchFn,
       `https://api.worldbank.org/v2/country/${encodeURIComponent(iso3)}?format=json`,
-      2600
+      PROVIDER_TIMEOUT_MS
     ),
     fetchWorldBankIndicatorSeries(fetchFn, iso3, "NY.GDP.MKTP.CD", 10),
     fetchWorldBankIndicatorSeries(fetchFn, iso3, "SP.POP.TOTL", 10),
@@ -214,7 +351,7 @@ interface WorldBankCountryMetaRecord {
 
   const rcRecord = Array.isArray(rcRaw) ? rcRaw[0] : rcRaw;
   const validRc =
-    rcRecord && rcRecord.cca3 && rcRecord.cca3.toUpperCase() === iso3 ? rcRecord : null;
+    rcRecord && (!rcRecord.cca3 || rcRecord.cca3.toUpperCase() === iso3) ? rcRecord : null;
 
   const wbMetaList =
     Array.isArray(wbMetaRaw) && Array.isArray(wbMetaRaw[1])
@@ -439,17 +576,84 @@ interface WorldBankCountryMetaRecord {
   return hydrated;
 }
 
-export async function fetchOpenAlexSources(query: string, limit = 4): Promise<ResearchSourceItem[]> {
-  if (!query.trim()) return [];
-  const cacheKey = `openalex:${query.toLowerCase()}:${limit}`;
-  const cached = getCached<ResearchSourceItem[]>(cacheKey);
-  if (cached) return cached;
+const SCHOLARLY_STOPWORDS = new Set([
+  "how",
+  "what",
+  "why",
+  "when",
+  "does",
+  "did",
+  "are",
+  "was",
+  "were",
+  "the",
+  "and",
+  "for",
+  "with",
+  "from",
+  "according",
+  "recent",
+  "about",
+  "between",
+  "into",
+  "across",
+  "economic",
+  "research",
+  "study",
+  "studies",
+  "remains",
+  "remain",
+  "challenges",
+  "explain",
+  "compare",
+]);
 
-  if (typeof window !== "undefined") {
+function extractQueryFocusTokens(query: string): string[] {
+  return query
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((tok) => tok.length >= 2 && !SCHOLARLY_STOPWORDS.has(tok));
+}
+
+function scoreScholarlyRelevance(
+  title: string,
+  abstractText: string,
+  queryTokens: string[],
+  citedByCount: number,
+  year: number
+): number {
+  const lowerTitle = title.toLowerCase();
+  const lowerAbs = abstractText.toLowerCase();
+  let score = 0;
+  for (const tok of queryTokens) {
+    if (lowerTitle.includes(tok)) score += 16;
+    if (lowerAbs.includes(tok)) score += 5;
+  }
+  if (abstractText.trim().length > 30) score += 8;
+  score += Math.min(8, Math.log10(1 + Math.max(0, citedByCount)) * 2);
+  if (year >= 2019 && year <= 2026) score += 3;
+  return score;
+}
+
+export async function fetchOpenAlexSources(
+  query: string,
+  limit = 4,
+  fetchFn: typeof fetch = fetch
+): Promise<ResearchSourceItem[]> {
+  if (!query.trim()) return [];
+  const useCache = fetchFn === fetch;
+  const cacheKey = `openalex:${query.toLowerCase()}:${limit}`;
+  if (useCache) {
+    const cached = getCached<ResearchSourceItem[]>(cacheKey);
+    if (cached) return cached;
+  }
+
+  if (typeof window !== "undefined" && fetchFn === fetch) {
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 3500);
-      const res = await fetch(
+      const timer = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
+      const res = await fetchFn(
         `/api/v1/sources?provider=openalex-sources&q=${encodeURIComponent(query)}&limit=${limit}`,
         { signal: controller.signal, headers: { Accept: "application/json" } }
       );
@@ -457,7 +661,7 @@ export async function fetchOpenAlexSources(query: string, limit = 4): Promise<Re
       if (res.ok) {
         const payload = (await res.json()) as { items?: ResearchSourceItem[] };
         const items = Array.isArray(payload.items) ? payload.items : [];
-        setCached(cacheKey, items, items.length > 0 ? 600_000 : 60_000);
+        if (useCache) setCached(cacheKey, items, items.length > 0 ? 600_000 : 60_000);
         return items;
       }
     } catch {
@@ -466,17 +670,20 @@ export async function fetchOpenAlexSources(query: string, limit = 4): Promise<Re
     return [];
   }
 
-  if (Date.now() < openAlexCooldownUntil) {
+  if (Date.now() < openAlexCooldownUntil && fetchFn === fetch) {
     return [];
   }
 
   const nowIso = new Date().toISOString();
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 3000);
+    const timer = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
     const encoded = encodeURIComponent(query);
-    const url = `https://api.openalex.org/works?search=${encoded}&per-page=${limit}&sort=cited_by_count:desc&mailto=research@omnis-intelligence.org`;
-    const res = await fetch(url, {
+    const focusTokens = extractQueryFocusTokens(query);
+    const fetchLimit = Math.min(12, Math.max(limit * 3, limit));
+    const sortParam = focusTokens.length >= 2 ? "relevance_score:desc" : "cited_by_count:desc";
+    const url = `https://api.openalex.org/works?search=${encoded}&per-page=${fetchLimit}&sort=${sortParam}&mailto=research@omnis-intelligence.org`;
+    const res = await fetchFn(url, {
       signal: controller.signal,
       headers: {
         Accept: "application/json",
@@ -486,8 +693,10 @@ export async function fetchOpenAlexSources(query: string, limit = 4): Promise<Re
     clearTimeout(timer);
 
     if (res.status === 429) {
-      openAlexCooldownUntil = Date.now() + 60_000;
-      setCached(cacheKey, [], 60_000);
+      if (fetchFn === fetch) {
+        openAlexCooldownUntil = Date.now() + 60_000;
+        setCached(cacheKey, [], 60_000);
+      }
       return [];
     }
 
@@ -504,42 +713,71 @@ export async function fetchOpenAlexSources(query: string, limit = 4): Promise<Re
           };
           authorships?: Array<{ author?: { display_name?: string } }>;
           cited_by_count?: number;
+          abstract_inverted_index?: Record<string, number[]> | null;
         }>;
       };
       if (Array.isArray(data.results) && data.results.length > 0) {
-        const mapped: ResearchSourceItem[] = data.results
+        const ranked = [...data.results]
           .filter((w) => Boolean(w.title))
-          .slice(0, limit)
-          .map((work, idx) => {
-            const authors = (work.authorships ?? [])
-              .map((a) => a.author?.display_name)
-              .filter((n): n is string => Boolean(n))
-              .slice(0, 4);
-            const publisher =
-              work.primary_location?.source?.display_name ??
-              "OpenAlex Indexed Peer-Reviewed Journal";
-            const landingUrl =
-              work.doi || work.primary_location?.landing_page_url || work.id || "https://openalex.org";
-            return {
-              id: `src-openalex-${idx + 1}`,
-              title: sanitizeExternalSnippet(work.title ?? "Peer-Reviewed Research Study"),
-              publisher,
-              authors: authors.length > 0 ? authors : ["Research Consortium"],
-              publishedDate: String(work.publication_year ?? "2024"),
-              retrievedAt: nowIso,
-              url: landingUrl,
-              doi: work.doi ?? undefined,
-              sourceType: "Peer-Reviewed Academic",
-              supportingClaims: [
-                `Empirical scholarly literature (${work.cited_by_count ?? 0} citations) indexed via OpenAlex.`,
-              ],
-              excerpt: `Peer-reviewed research record retrieved from OpenAlex scholarly graph (${publisher}, ${
-                work.publication_year ?? "2024"
-              }).`,
-            };
-          });
+          .sort((a, b) => {
+            const absA = reconstructOpenAlexAbstract(a.abstract_inverted_index);
+            const absB = reconstructOpenAlexAbstract(b.abstract_inverted_index);
+            const scoreA = scoreScholarlyRelevance(
+              a.title ?? "",
+              absA,
+              focusTokens,
+              a.cited_by_count ?? 0,
+              a.publication_year ?? 2020
+            );
+            const scoreB = scoreScholarlyRelevance(
+              b.title ?? "",
+              absB,
+              focusTokens,
+              b.cited_by_count ?? 0,
+              b.publication_year ?? 2020
+            );
+            if (scoreB !== scoreA) return scoreB - scoreA;
+            return (b.cited_by_count ?? 0) - (a.cited_by_count ?? 0);
+          })
+          .slice(0, limit);
+
+        const mapped: ResearchSourceItem[] = ranked.map((work, idx) => {
+          const authors = (work.authorships ?? [])
+            .map((a) => a.author?.display_name)
+            .filter((n): n is string => Boolean(n))
+            .slice(0, 4);
+          const publisher =
+            work.primary_location?.source?.display_name ??
+            "OpenAlex Indexed Peer-Reviewed Journal";
+          const landingUrl =
+            work.doi || work.primary_location?.landing_page_url || work.id || "https://openalex.org";
+          const decodedAbstract = reconstructOpenAlexAbstract(work.abstract_inverted_index);
+          const cited = work.cited_by_count ?? 0;
+          const fallbackExcerpt = `Peer-reviewed research record retrieved from OpenAlex scholarly graph (${publisher}, ${
+            work.publication_year ?? "2024"
+          }${cited > 0 ? `, ${cited.toLocaleString()} citations` : ""}).`;
+
+          return {
+            id: `src-openalex-${idx + 1}`,
+            title: sanitizeExternalSnippet(work.title ?? "Peer-Reviewed Research Study"),
+            publisher,
+            authors: authors.length > 0 ? authors : ["Research Consortium"],
+            publishedDate: String(work.publication_year ?? "2024"),
+            retrievedAt: nowIso,
+            url: landingUrl,
+            doi: work.doi ?? undefined,
+            citedByCount: cited,
+            sourceType: "Peer-Reviewed Academic",
+            supportingClaims: [
+              decodedAbstract
+                ? decodedAbstract
+                : `Empirical scholarly literature (${cited} citations) indexed via OpenAlex.`,
+            ],
+            excerpt: decodedAbstract || fallbackExcerpt,
+          };
+        });
         if (mapped.length > 0) {
-          setCached(cacheKey, mapped, 600_000);
+          if (useCache) setCached(cacheKey, mapped, 600_000);
           return mapped;
         }
       }
@@ -551,18 +789,154 @@ export async function fetchOpenAlexSources(query: string, limit = 4): Promise<Re
   return [];
 }
 
-export async function fetchOpenAlexPublicationTrend(
-  query: string
-): Promise<Array<{ year: number; count: number }>> {
-  const cacheKey = `openalex-trend:${query.toLowerCase()}`;
-  const cached = getCached<Array<{ year: number; count: number }>>(cacheKey);
-  if (cached) return cached;
+export async function fetchCrossrefSources(
+  query: string,
+  limit = 3,
+  fetchFn: typeof fetch = fetch
+): Promise<ResearchSourceItem[]> {
+  if (!query.trim()) return [];
+  const useCache = fetchFn === fetch;
+  const cacheKey = `crossref:${query.toLowerCase()}:${limit}`;
+  if (useCache) {
+    const cached = getCached<ResearchSourceItem[]>(cacheKey);
+    if (cached) return cached;
+  }
 
-  if (typeof window !== "undefined") {
+  if (typeof window !== "undefined" && fetchFn === fetch) {
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 3500);
-      const res = await fetch(
+      const timer = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
+      const res = await fetchFn(
+        `/api/v1/sources?provider=crossref&q=${encodeURIComponent(query)}&limit=${limit}`,
+        { signal: controller.signal, headers: { Accept: "application/json" } }
+      );
+      clearTimeout(timer);
+      if (res.ok) {
+        const payload = (await res.json()) as { items?: ResearchSourceItem[] };
+        const items = Array.isArray(payload.items) ? payload.items : [];
+        if (useCache) setCached(cacheKey, items, items.length > 0 ? 600_000 : 60_000);
+        return items;
+      }
+    } catch {
+      // Graceful offline fallback
+    }
+    return [];
+  }
+
+  const nowIso = new Date().toISOString();
+  try {
+    const focusTokens = extractQueryFocusTokens(query);
+    const searchQuery = focusTokens.length > 0 ? focusTokens.join(" ") : query;
+    const rows = Math.min(10, Math.max(limit * 3, limit));
+    const url = `https://api.crossref.org/works?query=${encodeURIComponent(
+      searchQuery
+    )}&rows=${rows}&mailto=research@omnis-intelligence.org`;
+    const json = await fetchJsonWithTimeout<{
+      message?: {
+        items?: Array<{
+          DOI?: string;
+          title?: string[];
+          "container-title"?: string[];
+          publisher?: string;
+          issued?: { "date-parts"?: number[][] };
+          author?: Array<{ given?: string; family?: string }>;
+          abstract?: string;
+          "is-referenced-by-count"?: number;
+          URL?: string;
+        }>;
+      };
+    }>(fetchFn, url, PROVIDER_TIMEOUT_MS, {
+      Accept: "application/json",
+      "User-Agent": "OMNIS-Intelligence-Platform/1.0 (mailto:research@omnis-intelligence.org)",
+    });
+
+    const items = json?.message?.items;
+    if (Array.isArray(items) && items.length > 0) {
+      const mapped: ResearchSourceItem[] = [...items]
+        .filter((it) => Boolean(it.title?.[0]))
+        .sort((a, b) => {
+          const titleA = a.title?.[0] ?? "";
+          const titleB = b.title?.[0] ?? "";
+          const absA = a.abstract ?? "";
+          const absB = b.abstract ?? "";
+          const scoreA = scoreScholarlyRelevance(
+            titleA,
+            absA,
+            focusTokens,
+            a["is-referenced-by-count"] ?? 0,
+            a.issued?.["date-parts"]?.[0]?.[0] ?? 2020
+          );
+          const scoreB = scoreScholarlyRelevance(
+            titleB,
+            absB,
+            focusTokens,
+            b["is-referenced-by-count"] ?? 0,
+            b.issued?.["date-parts"]?.[0]?.[0] ?? 2020
+          );
+          return scoreB - scoreA;
+        })
+        .slice(0, limit)
+        .map((it, idx) => {
+          const authors = (it.author ?? [])
+            .map((a) => [a.given, a.family].filter(Boolean).join(" ").trim())
+            .filter(Boolean)
+            .slice(0, 4);
+          const publisher = sanitizeExternalSnippet(
+            it["container-title"]?.[0] || it.publisher || "Crossref Indexed Journal"
+          );
+          const year = String(it.issued?.["date-parts"]?.[0]?.[0] ?? "2024");
+          const doiUrl = it.DOI ? `https://doi.org/${it.DOI}` : it.URL || "https://www.crossref.org";
+          const cleanAbstract = it.abstract
+            ? truncateAtWord(sanitizeExternalSnippet(it.abstract), 360)
+            : "";
+          const cited = it["is-referenced-by-count"] ?? 0;
+          return {
+            id: `src-crossref-${idx + 1}`,
+            title: sanitizeExternalSnippet(it.title?.[0] ?? "Peer-Reviewed Publication"),
+            publisher,
+            authors: authors.length > 0 ? authors : ["Peer-Reviewed Consortium"],
+            publishedDate: year,
+            retrievedAt: nowIso,
+            url: doiUrl,
+            doi: it.DOI ? `https://doi.org/${it.DOI}` : undefined,
+            citedByCount: cited,
+            sourceType: "Peer-Reviewed Academic",
+            supportingClaims: [
+              cleanAbstract ||
+                `Crossref DOI-verified publication (${cited.toLocaleString()} citations, ${publisher}, ${year}).`,
+            ],
+            excerpt:
+              cleanAbstract ||
+              `DOI-verified study in ${publisher} (${year}, ${cited.toLocaleString()} citations).`,
+          };
+        });
+      if (mapped.length > 0) {
+        if (useCache) setCached(cacheKey, mapped, 600_000);
+        return mapped;
+      }
+    }
+  } catch {
+    // Graceful fallback if Crossref times out
+  }
+  return [];
+}
+
+export async function fetchOpenAlexPublicationTrend(
+  query: string,
+  fetchFn: typeof fetch = fetch
+): Promise<Array<{ year: number; count: number }>> {
+  const useCache = fetchFn === fetch;
+  const cacheKey = `openalex-trend:${query.toLowerCase()}`;
+  if (useCache) {
+    const cached = getCached<Array<{ year: number; count: number }>>(cacheKey);
+    if (cached) return cached;
+  }
+
+  if (typeof window !== "undefined" && fetchFn === fetch) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
+      const res = await fetchFn(
         `/api/v1/sources?provider=openalex-trend&q=${encodeURIComponent(query)}`,
         { signal: controller.signal, headers: { Accept: "application/json" } }
       );
@@ -572,7 +946,7 @@ export async function fetchOpenAlexPublicationTrend(
           trend?: Array<{ year: number; count: number }>;
         };
         const series = Array.isArray(payload.trend) ? payload.trend : [];
-        setCached(cacheKey, series, series.length > 0 ? 600_000 : 60_000);
+        if (useCache) setCached(cacheKey, series, series.length > 0 ? 600_000 : 60_000);
         return series;
       }
     } catch {
@@ -581,17 +955,17 @@ export async function fetchOpenAlexPublicationTrend(
     return [];
   }
 
-  if (Date.now() < openAlexCooldownUntil) {
+  if (Date.now() < openAlexCooldownUntil && fetchFn === fetch) {
     return [];
   }
 
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 3000);
+    const timer = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
     const url = `https://api.openalex.org/works?search=${encodeURIComponent(
       query
     )}&group_by=publication_year&mailto=research@omnis-intelligence.org`;
-    const res = await fetch(url, {
+    const res = await fetchFn(url, {
       signal: controller.signal,
       headers: {
         Accept: "application/json",
@@ -600,8 +974,10 @@ export async function fetchOpenAlexPublicationTrend(
     });
     clearTimeout(timer);
     if (res.status === 429) {
-      openAlexCooldownUntil = Date.now() + 60_000;
-      setCached(cacheKey, [], 60_000);
+      if (useCache) {
+        openAlexCooldownUntil = Date.now() + 60_000;
+        setCached(cacheKey, [], 60_000);
+      }
       return [];
     }
     if (res.ok) {
@@ -618,7 +994,7 @@ export async function fetchOpenAlexPublicationTrend(
           .sort((a, b) => a.year - b.year)
           .slice(-7);
         if (series.length > 0) {
-          setCached(cacheKey, series, 600_000);
+          if (useCache) setCached(cacheKey, series, 600_000);
           return series;
         }
       }
@@ -631,17 +1007,22 @@ export async function fetchOpenAlexPublicationTrend(
 }
 
 export async function fetchWikimediaSummary(
-  topic: string
+  topic: string,
+  fetchFn: typeof fetch = fetch
 ): Promise<{ title: string; extract: string; url: string } | null> {
+  if (!topic.trim()) return null;
+  const useCache = fetchFn === fetch;
   const cacheKey = `wiki:${topic.toLowerCase()}`;
-  const cached = getCached<{ title: string; extract: string; url: string }>(cacheKey);
-  if (cached) return cached;
+  if (useCache) {
+    const cached = getCached<{ title: string; extract: string; url: string }>(cacheKey);
+    if (cached) return cached;
+  }
 
-  if (typeof window !== "undefined") {
+  if (typeof window !== "undefined" && fetchFn === fetch) {
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 3000);
-      const res = await fetch(
+      const timer = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
+      const res = await fetchFn(
         `/api/v1/sources?provider=wikimedia&topic=${encodeURIComponent(topic)}`,
         { signal: controller.signal, headers: { Accept: "application/json" } }
       );
@@ -651,7 +1032,7 @@ export async function fetchWikimediaSummary(
           summary?: { title: string; extract: string; url: string } | null;
         };
         if (payload.summary) {
-          setCached(cacheKey, payload.summary, 600_000);
+          if (useCache) setCached(cacheKey, payload.summary, 600_000);
           return payload.summary;
         }
       }
@@ -663,9 +1044,9 @@ export async function fetchWikimediaSummary(
 
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 2500);
+    const timer = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
     const formatted = encodeURIComponent(topic.trim().replace(/\s+/g, "_"));
-    const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${formatted}`, {
+    const res = await fetchFn(`https://en.wikipedia.org/api/rest_v1/page/summary/${formatted}`, {
       signal: controller.signal,
       headers: { Accept: "application/json" },
     });
@@ -684,7 +1065,7 @@ export async function fetchWikimediaSummary(
             data.content_urls?.desktop?.page ??
             `https://en.wikipedia.org/wiki/${formatted}`,
         };
-        setCached(cacheKey, result, 600_000);
+        if (useCache) setCached(cacheKey, result, 600_000);
         return result;
       }
     }

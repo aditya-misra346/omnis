@@ -81,13 +81,16 @@ omnis/
 │   │   ├── layout/               # AppShell, Collapsible Sidebar, Top Command Header, Mobile Drawer, AI Assistant
 │   │   ├── globe/                # Interactive 3D Three.js Earth Globe with shaders & markers
 │   │   ├── graph/                # Interactive D3 multi-layout Knowledge Graph canvas
+│   │   ├── intelligence/         # IntelligenceBriefView, BriefChartRenderer, CitationDrawer, RetrievalProgressStepper
 │   │   └── ui/                   # Provenance badges, charts, modals, skeletons
 │   ├── lib/
+│   │   ├── ai/                   # Verified Plan -> Retrieve -> Verify -> Synthesize AI orchestrator & contracts
 │   │   ├── data/                 # Baseline curated datasets, historical registry, scientific constants
-│   │   ├── providers/            # Centralised live API provider clients (World Bank, OpenAlex, Wikimedia, REST Countries)
+│   │   ├── providers/            # Centralised live API provider clients (World Bank, OpenAlex, Crossref, Wikimedia, REST Countries)
+│   │   ├── research/             # Deep Research orchestration & strict citation-grounded synthesis prompts
 │   │   ├── simulations/          # Reproducible mathematical simulation & sensitivity engines
 │   │   ├── security/             # Input sanitizers, rate limiters, prompt-injection filters
-│   │   └── store/                # Zustand persistent state store (workspace, preferences, theme, auth)
+│   │   └── store/                # Zustand persistent state store (workspace, preferences, auth)
 │   └── types/                    # Strict TypeScript domain models & Zod schemas
-└── tests/                        # Frontend & API Vitest unit/integration suite
+└── tests/                        # Frontend, orchestrator grounding, and API Vitest unit/integration suite
 ```

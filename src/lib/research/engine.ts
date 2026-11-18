@@ -22,14 +22,10 @@ import {
   buildComparisonTakeaways,
   computeHistoricalMultiple,
 } from "@/lib/research/compare";
+import { orchestrateIntelligenceBrief } from "@/lib/ai/orchestrator";
+import type { RetrievalProgressCallback } from "@/lib/ai/contracts";
 import { synthesizeEditorialWithOptionalLlm } from "@/lib/research/llm";
 import { sanitizeEditorialProse } from "@/lib/research/prompts";
-import {
-  fetchLiveCountryIntelligence,
-  fetchOpenAlexPublicationTrend,
-  fetchOpenAlexSources,
-  fetchWikimediaSummary,
-} from "@/lib/providers/live-data";
 import type {
   CountryIntelligenceProfile,
   ResearchMode,
@@ -313,18 +309,52 @@ export function executeUniversalSearch(
 
 export async function orchestrateDeepResearch(
   query: string,
-  mode: ResearchMode = "deep"
+  mode: ResearchMode = "deep",
+  options?: {
+    fetchFn?: typeof fetch;
+    onProgress?: RetrievalProgressCallback;
+  }
 ): Promise<ResearchReportData> {
   const cleanQuery = query.trim();
   const nowIso = new Date().toISOString();
 
-  const [openAlexSources, openAlexTrend, wikiSummary] = await Promise.all([
-    fetchOpenAlexSources(cleanQuery, 4),
-    fetchOpenAlexPublicationTrend(cleanQuery),
-    fetchWikimediaSummary(
-      cleanQuery.length > 45 ? cleanQuery.split(/\s+/).slice(0, 3).join(" ") : cleanQuery
-    ),
-  ]);
+  const { plan, evidencePack, brief } = await orchestrateIntelligenceBrief(cleanQuery, mode, {
+    fetchFn: options?.fetchFn,
+    onProgress: options?.onProgress,
+  });
+
+  const openAlexSources: ResearchSourceItem[] = evidencePack.openAlexWorks.slice(0, 4).map((w, idx) => ({
+    id: `src-openalex-${idx + 1}`,
+    title: w.title,
+    publisher: w.publisher,
+    authors: w.authors,
+    publishedDate: w.year,
+    retrievedAt: nowIso,
+    url: w.url,
+    doi: w.doi,
+    citedByCount: w.citedByCount,
+    sourceType: "Peer-Reviewed Academic",
+    supportingClaims: [w.abstract],
+    excerpt: w.abstract,
+  }));
+
+  const crossrefSources: ResearchSourceItem[] = evidencePack.crossrefWorks.slice(0, 2).map((w, idx) => ({
+    id: `src-crossref-${idx + 1}`,
+    title: w.title,
+    publisher: w.publisher,
+    authors: w.authors,
+    publishedDate: w.year,
+    retrievedAt: nowIso,
+    url: w.url,
+    doi: w.doi,
+    citedByCount: w.citedByCount,
+    sourceType: "Peer-Reviewed Academic",
+    supportingClaims: [w.abstract],
+    excerpt: w.abstract,
+  }));
+
+  const openAlexTrend = evidencePack.openAlexTrend;
+  const wikiSummary = evidencePack.wikiSummaries[0] ?? null;
 
   const foundationalSources: ResearchSourceItem[] = [
     {
@@ -374,7 +404,9 @@ export async function orchestrateDeepResearch(
     });
   }
 
-  const allSources = [...openAlexSources, ...foundationalSources];
+  const allSources = plan.unavailableRequestedMetric
+    ? [...openAlexSources, ...crossrefSources]
+    : [...openAlexSources, ...crossrefSources, ...foundationalSources];
   const primarySourceId = allSources[0]?.id ?? "src-wb-wdi";
   const secondarySourceId = allSources[1]?.id ?? "src-imf-weo";
 
@@ -396,22 +428,48 @@ export async function orchestrateDeepResearch(
   const isSemiQuery = /semiconductor|chip|euv|tsmc|geopolit/i.test(cleanQuery);
   const isClimateQuery = /climate|carbon|warming|energy|nuclear/i.test(cleanQuery);
 
-  const matchedCatalogEntries = WORLD_COUNTRIES_CATALOG.filter((entry) =>
-    matchesCountryMention(cleanQuery, entry.name, entry.iso3)
-  ).slice(0, 2);
-
-  const hydratedMatchedCountries = (
-    await Promise.all(
-      matchedCatalogEntries.map(async (entry) => {
-        if (COUNTRIES_DATA[entry.iso3]) {
-          const liveCurated = await fetchLiveCountryIntelligence(entry.iso3).catch(() => null);
-          return liveCurated ?? COUNTRIES_DATA[entry.iso3];
-        }
-        const live = await fetchLiveCountryIntelligence(entry.iso3).catch(() => null);
-        return live ?? buildPlaceholderCountryProfile(entry.iso3);
-      })
-    )
-  ).filter((c): c is CountryIntelligenceProfile => Boolean(c));
+  const hydratedMatchedCountries: CountryIntelligenceProfile[] = plan.unavailableRequestedMetric
+    ? []
+    : plan.entities
+        .slice(0, 2)
+        .map((ent) => {
+          const curated = COUNTRIES_DATA[ent.iso3]
+            ? structuredClone(COUNTRIES_DATA[ent.iso3])
+            : buildPlaceholderCountryProfile(ent.iso3);
+          if (!curated) return null;
+          const wbGdp = evidencePack.wbReadings.find(
+            (r) => r.iso3 === ent.iso3 && r.indicator.code === "NY.GDP.MKTP.CD"
+          );
+          if (wbGdp && wbGdp.latestValue > 0) {
+            const gdpUsdBn = Number((wbGdp.latestValue / 1e9).toFixed(1));
+            curated.gdpUsdBn = gdpUsdBn;
+            curated.liveWorldBankOverride = {
+              latestYear: String(wbGdp.latestYear),
+              gdpUsdBn,
+              retrievedFromApi: true,
+            };
+          }
+          const wbGrowth = evidencePack.wbReadings.find(
+            (r) => r.iso3 === ent.iso3 && r.indicator.code === "NY.GDP.MKTP.KD.ZG"
+          );
+          if (wbGrowth) {
+            curated.gdpGrowthPct = Number(wbGrowth.latestValue.toFixed(2));
+          }
+          const wbPc = evidencePack.wbReadings.find(
+            (r) => r.iso3 === ent.iso3 && r.indicator.code === "NY.GDP.PCAP.CD"
+          );
+          if (wbPc) {
+            curated.gdpPerCapitaUsd = Math.round(wbPc.latestValue);
+          }
+          const wbCpi = evidencePack.wbReadings.find(
+            (r) => r.iso3 === ent.iso3 && r.indicator.code === "FP.CPI.TOTL.ZG"
+          );
+          if (wbCpi) {
+            curated.inflationPct = Number(wbCpi.latestValue.toFixed(2));
+          }
+          return curated;
+        })
+        .filter((c): c is CountryIntelligenceProfile => Boolean(c));
 
   const leadCountry = hydratedMatchedCountries[0];
   const compareCountry = hydratedMatchedCountries[1];
@@ -893,9 +951,9 @@ export async function orchestrateDeepResearch(
     verifiedContext,
   });
 
-  const finalExecutiveSummary = sanitizeEditorialProse(
-    optionalLlmBrief?.bottomLine ?? executiveSummary
-  );
+  const finalExecutiveSummary = plan.unavailableRequestedMetric
+    ? brief.bottomLine
+    : sanitizeEditorialProse(optionalLlmBrief?.bottomLine ?? executiveSummary);
   const baseDetailedAnalysis =
     mode === "quick"
       ? [
@@ -1041,5 +1099,6 @@ export async function orchestrateDeepResearch(
       : isSemiQuery
         ? "Semiconductors"
         : cleanQuery.slice(0, 50),
+    brief,
   };
 }

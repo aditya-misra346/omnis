@@ -1,4 +1,9 @@
 import {
+  detectUnavailableRequestedMetric,
+  orchestrateIntelligenceBrief,
+  resolveCountryEntities,
+} from "@/lib/ai/orchestrator";
+import {
   COMPARABLE_ENTITIES,
   COUNTRIES_DATA,
   TIMELINE_EVENTS,
@@ -18,6 +23,7 @@ import {
 import { buildInfiniteKnowledgeGraph } from "@/lib/graph/engine";
 import { matchCountryCatalogFromText } from "@/lib/intelligence/spatial-sync";
 import {
+  fetchCrossrefSources,
   fetchLiveCountryIntelligence,
   fetchOpenAlexSources,
   fetchWikimediaSummary,
@@ -46,6 +52,45 @@ export async function POST(request: Request) {
     const msg = check.sanitizedText;
     const contextTopic = body.contextTopic ?? "Global Overview";
     const intentInfo = classifyQueryIntent(`${msg} ${contextTopic}`);
+    const unavailableMetric = detectUnavailableRequestedMetric(msg);
+
+    // Explicit missing-data refusal path for sub-national / unavailable quarterly tax / city queries
+    if (unavailableMetric) {
+      const { brief } = await orchestrateIntelligenceBrief(msg, "quick");
+      return Response.json({
+        reply: brief.bottomLine,
+        timestamp: new Date().toISOString(),
+        citations: brief.sources.map((s) => ({ label: s.title, url: s.url })),
+        provenanceMeta: null,
+        brief,
+        suggestedActions: [
+          { label: "Inspect Full Evidence in Deep Research", href: `/research?q=${encodeURIComponent(msg)}` },
+          { label: "Check Sovereign Data Coverage", href: "/settings" },
+        ],
+      });
+    }
+
+    // Multi-country comparison queries leverage full multi-indicator orchestrator brief directly
+    const resolvedEntitiesInMsg = resolveCountryEntities(msg);
+    if (resolvedEntitiesInMsg.length >= 2) {
+      const { brief } = await orchestrateIntelligenceBrief(msg, "comparative");
+      return Response.json({
+        reply: brief.bottomLine,
+        timestamp: new Date().toISOString(),
+        citations: brief.sources.slice(0, 5).map((s) => ({
+          label: `${s.title} (${s.year})`,
+          url: s.url,
+        })),
+        provenanceMeta: null,
+        brief,
+        suggestedActions: [
+          { label: "Read Full Intelligence Brief", href: `/research?q=${encodeURIComponent(msg)}&mode=comparative` },
+          { label: "Compare Side by Side", href: `/intelligence` },
+          { label: `Explore Topic Map`, href: `/knowledge-graph?topic=${encodeURIComponent(msg.slice(0, 40))}` },
+        ],
+      });
+    }
+
     const matchedCatalog = matchCountryCatalogFromText(msg, contextTopic);
 
     const resolveCountryWithFallback = async (iso3: string) => {
@@ -69,11 +114,13 @@ export async function POST(request: Request) {
       };
     };
 
-    const [matchedCountry, openAlexWorks, wikiSummary] = await Promise.all([
+    const [matchedCountry, openAlexWorks, crossrefWorks, wikiSummary] = await Promise.all([
       matchedCatalog ? resolveCountryWithFallback(matchedCatalog.iso3) : Promise.resolve(null),
       fetchOpenAlexSources(msg, 3),
+      fetchCrossrefSources(msg, 2),
       fetchWikimediaSummary(matchedCatalog?.name ?? msg),
     ]);
+    const scholarlyWorks = [...openAlexWorks, ...crossrefWorks].slice(0, 4);
 
     let reply = "";
     const provenanceMethodology = matchedCountry
@@ -171,19 +218,27 @@ export async function POST(request: Request) {
           `${openingSentence}${secondSentence}\n\nSource: ${matchedCountry.provenance.source}${liveYear ? ` (${liveYear})` : ""}.`
         );
       }
-    } else if (openAlexWorks.length > 0 || wikiSummary) {
+    } else if (scholarlyWorks.length > 0 || wikiSummary) {
       const leadIntro = wikiSummary
         ? `${wikiSummary.extract.slice(0, 280)}${wikiSummary.extract.length > 280 ? "..." : ""}`
-        : `Here is what published studies and reference archives say about **"${msg}"**.`;
+        : `Here is what peer-reviewed studies in OpenAlex and Crossref say about **"${msg}"**.`;
       const papersBullet =
-        openAlexWorks.length > 0
-          ? `\n\n• **Recent academic studies (${openAlexWorks.length})**:\n${openAlexWorks
-              .map((w) => `  - "${w.title}" (${w.publisher}, ${w.publishedDate})`)
+        scholarlyWorks.length > 0
+          ? `\n\n• **Peer-reviewed findings (${scholarlyWorks.length})**:\n${scholarlyWorks
+              .map(
+                (w) =>
+                  `  - **"${w.title}"** (${w.publisher}, ${w.publishedDate})${
+                    w.excerpt && !w.excerpt.startsWith("Peer-reviewed research record")
+                      ? ` — ${w.excerpt.slice(0, 150)}`
+                      : ""
+                  }`
+              )
               .join("\n")}`
           : "";
-      const followUp = openAlexWorks.length > 0
-        ? `\n\nOpen the full Research report to inspect abstracts, disagreements across studies, and citations.`
-        : "";
+      const followUp =
+        scholarlyWorks.length > 0
+          ? `\n\nOpen the full Research brief to inspect visual trends, trade-offs, and interactive [SRC-n] citations.`
+          : "";
       reply = `${leadIntro}${papersBullet}${followUp}`;
     } else {
       const lowerMsg = msg.toLowerCase();
@@ -224,8 +279,10 @@ export async function POST(request: Request) {
 
     const verifiedContext = [
       `Deterministic Draft:\n${reply}`,
-      openAlexWorks.length > 0
-        ? `OpenAlex Papers:\n${openAlexWorks.map((w) => `- ${w.title} (${w.publisher}, ${w.publishedDate})`).join("\n")}`
+      scholarlyWorks.length > 0
+        ? `Academic Papers (OpenAlex & Crossref):\n${scholarlyWorks
+            .map((w) => `- ${w.title} (${w.publisher}, ${w.publishedDate}): ${w.excerpt.slice(0, 180)}`)
+            .join("\n")}`
         : "",
       wikiSummary ? `Wikimedia Summary (${wikiSummary.title}): ${wikiSummary.extract.slice(0, 260)}` : "",
     ]
@@ -251,14 +308,14 @@ export async function POST(request: Request) {
             },
           ]
         : []),
-      ...openAlexWorks.slice(0, 2).map((w) => ({
+      ...scholarlyWorks.slice(0, 3).map((w) => ({
         label: `${w.title} (${w.publishedDate})`,
         url: w.url,
       })),
       ...(wikiSummary
         ? [{ label: `Wikimedia — ${wikiSummary.title}`, url: wikiSummary.url }]
         : []),
-      ...(openAlexWorks.length === 0 && !matchedCountry
+      ...(scholarlyWorks.length === 0 && !matchedCountry
         ? [
             {
               label: `OpenAlex Search: ${msg}`,

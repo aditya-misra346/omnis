@@ -1,6 +1,11 @@
 import type { ResearchMode } from "@/types/omnis";
 import {
+  IntelligenceBriefLlmSchema,
+  type IntelligenceBriefLlmPayload,
+} from "@/lib/ai/contracts";
+import {
   buildAssistantSystemPrompt,
+  buildBriefSynthesisSystemPrompt,
   buildEditorialSystemPrompt,
   EditorialBriefPayloadSchema,
   sanitizeEditorialProse,
@@ -10,7 +15,7 @@ import {
 type LlmEnv = Record<string, string | undefined>;
 type LlmProvider = "openai" | "gemini" | "anthropic";
 
-const LLM_TIMEOUT_MS = 5500;
+const LLM_TIMEOUT_MS = 12000;
 
 function detectConfiguredProvider(env: LlmEnv = process.env): {
   provider: LlmProvider;
@@ -24,6 +29,13 @@ function detectConfiguredProvider(env: LlmEnv = process.env): {
 
   const anthropicKey = env.ANTHROPIC_API_KEY?.trim();
   if (anthropicKey) return { provider: "anthropic", apiKey: anthropicKey };
+
+  const genericKey = env.AI_PROVIDER_API_KEY?.trim();
+  if (genericKey) {
+    if (genericKey.startsWith("sk-ant-")) return { provider: "anthropic", apiKey: genericKey };
+    if (genericKey.startsWith("AIza")) return { provider: "gemini", apiKey: genericKey };
+    return { provider: "openai", apiKey: genericKey };
+  }
 
   return null;
 }
@@ -204,4 +216,69 @@ export async function synthesizeAssistantReplyWithOptionalLlm(params: {
 
   const cleaned = sanitizeEditorialProse(raw);
   return cleaned || null;
+}
+
+/**
+ * Synthesizes a structured IntelligenceBriefLlmPayload strictly grounded in VERIFIED EVIDENCE PACK
+ * when an external LLM API key is configured. Returns null cleanly with zero latency otherwise.
+ */
+export async function synthesizeStructuredBriefWithOptionalLlm(params: {
+  query: string;
+  mode: ResearchMode;
+  intent: string;
+  serializedEvidencePack: string;
+  unavailableRequestedMetric?: string | null;
+  fetchImpl?: typeof fetch;
+  env?: LlmEnv;
+}): Promise<IntelligenceBriefLlmPayload | null> {
+  const providerInfo = detectConfiguredProvider(params.env);
+  if (!providerInfo) return null;
+
+  const systemPrompt = buildBriefSynthesisSystemPrompt({
+    mode: params.mode,
+    intent: params.intent,
+    serializedEvidencePack: params.serializedEvidencePack,
+    unavailableRequestedMetric: params.unavailableRequestedMetric,
+  });
+
+  const raw = await callProviderText(
+    providerInfo,
+    systemPrompt,
+    `User Question: ${params.query}`,
+    true,
+    params.fetchImpl
+  );
+  if (!raw) return null;
+
+  try {
+    const parsedJson = JSON.parse(stripCodeFences(raw));
+    const validated = IntelligenceBriefLlmSchema.safeParse(parsedJson);
+    if (!validated.success) return null;
+
+    const p = validated.data;
+    return {
+      bottomLine: sanitizeEditorialProse(p.bottomLine),
+      keyMetrics: p.keyMetrics.map((m) => ({
+        ...m,
+        benchmark: sanitizeEditorialProse(m.benchmark),
+        everydayMeaning: sanitizeEditorialProse(m.everydayMeaning),
+      })),
+      sections: p.sections.map((s) => ({
+        heading: sanitizeEditorialProse(s.heading),
+        summary: sanitizeEditorialProse(s.summary),
+        bullets: s.bullets.map((b) => ({
+          point: sanitizeEditorialProse(b.point),
+          sourceIds: b.sourceIds,
+        })),
+      })),
+      practicalTakeaway: {
+        whatItMeansInPractice: sanitizeEditorialProse(p.practicalTakeaway.whatItMeansInPractice),
+        keyRisksOrTradeOffs: sanitizeEditorialProse(p.practicalTakeaway.keyRisksOrTradeOffs),
+        dataLimitations: sanitizeEditorialProse(p.practicalTakeaway.dataLimitations),
+      },
+      suggestedFollowUps: p.suggestedFollowUps.map((f) => sanitizeEditorialProse(f)).filter(Boolean),
+    };
+  } catch {
+    return null;
+  }
 }
